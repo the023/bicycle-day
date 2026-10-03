@@ -6,7 +6,9 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:pointer}
-  body.playing:not(.ui){cursor:none}
+  body.playing:not(.ui),body.live:not(.ui){cursor:none}
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);padding:10px 16px;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;opacity:0;transition:opacity .5s;pointer-events:none;z-index:7;white-space:nowrap}
+  #toast.on{opacity:1}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
   #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;
@@ -30,7 +32,7 @@
     font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
   body.playing #ctl{display:flex}
   body.ui #ctl{opacity:1;pointer-events:auto}
-  #pp{width:34px;height:34px;border-radius:50%;border:1px solid #f4f1ea88;background:none;color:#f4f1ea;cursor:pointer;font-size:12px}
+  #pp,#stopb{width:34px;height:34px;border-radius:50%;border:1px solid #f4f1ea88;background:none;color:#f4f1ea;cursor:pointer;font-size:12px}
   #bar{position:relative;flex:1;height:40px;cursor:pointer;touch-action:none;border-bottom:2px solid #f4f1ea55}
   #bar canvas{position:absolute;inset:0;width:100%;height:100%}
   #head{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
@@ -59,7 +61,8 @@
 </div>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><button id="lstop">■ stop</button></div>
-<div id="ctl"><button id="pp" title="Space">❚❚</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
+<div id="toast"></div>
+<div id="ctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
 
 <script>
 'use strict';
@@ -120,7 +123,7 @@ const ARCS = {
     [.95, [0,  0,  6, 0,   0,   0,   1,  1,  0,  0,  0,  1]],
     [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
   ] },
-  intense: { bpm: [84, 150], drive: 1, marks: { riser: [.18, .25], hit: .25, exhale: .93 }, keys: [   // short calm, fast climb, long relentless plateau (adds a kick + hats)
+  intense: { bpm: [84, 150], drive: 1, kalMax: .85, marks: { riser: [.18, .25], hit: .25, exhale: .93 }, keys: [   // short calm, fast climb, long relentless plateau (adds a kick + hats)
     [0,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
     [.03, [0,  0,  6, 0,   0,   0,   1,  .3, 0,  0,  0,  1]],
     [.10, [.5, .2, 8, .5,  .15, .2,  .4, 1,  .2, .5, .3, 1]],
@@ -160,7 +163,7 @@ const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
-uniform float uT,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect;
+uniform float uT,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
 const float TAU=6.28318530718;
 vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);return c*co+cross(k,c)*s+k*dot(k,c)*(1.-co);}
@@ -195,6 +198,10 @@ void main(){
   vec3 pal=.5+.5*cos(TAU*(lum*1.3+uHue*.2+vec3(0.,.33,.67)));
   c=mix(c,pal*(.55+.6*lum),uPal*.85);
   c=hueRot(c,uHue+length(p)*1.5*uPal);
+  // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
+  vec3 src=texture(uTex,vec2(p0.x/uAspect,p0.y)+.5).rgb;
+  float inside=(1.-smoothstep(.42*uAspect,.5*uAspect,abs(p0.x)))*(1.-smoothstep(.42,.5,abs(p0.y)));
+  c=mix(c,src,uAnchor*inside);
   c=mix(c,c*.12,smoothstep(.5*uAspect,.5*uAspect+.03,abs(p0.x))*uSide);            // the poster is square: dark ghost on the sides
   // feedback: previous frame, slightly rotated/zoomed and hue-shifted → rainbow trails
   vec2 q=fc-.5; q.x*=uRes.x/uRes.y;
@@ -230,7 +237,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse']);
   const half = !!gl.getExtension('EXT_color_buffer_float');
   const res = parseFloat(Q.get('res')); if (res) { FW = Math.round(1600 * res); FH = Math.round(900 * res); }
@@ -269,7 +276,8 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u = LIVE ? LIVE.u : clamp(t / TOTAL), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
-  const kal = clamp(kal0 * (1 + .2 * wob(t, 3)));
+  const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
+  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3))), anchor = .32 * clamp(kal0 + melt * .5 + pal * .5);
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fb = clamp(fb0 * (1 + .08 * wob(t, 2)), 0, .97);
   hue += hueSpd * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
@@ -289,7 +297,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
   gl.uniform1f(uS.uFb, fb); gl.uniform1f(uS.uFbHue, .006 + .02 * pal); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal);
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
-  gl.uniform1f(uS.uRot, rotA); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT);
+  gl.uniform1f(uS.uRot, rotA); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
@@ -427,6 +435,7 @@ function start() {
   if (playing || !ready || liveOn) return;
   begin(0, true); playing = true; gate.classList.add('off'); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
   requestAnimationFrame(loop);
 }
 function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); } }
@@ -448,17 +457,31 @@ function loop() {
 // light controls: they appear when the mouse goes near the bottom edge
 const showUI = () => {
   document.body.classList.add('ui'); clearTimeout(hideT);
-  hideT = setTimeout(() => { if (dragging || $('ctl').matches(':hover')) showUI(); else document.body.classList.remove('ui'); }, 900);
+  hideT = setTimeout(() => { if (dragging || $('ctl').matches(':hover')) showUI(); else document.body.classList.remove('ui'); }, 2500);
 };
-addEventListener('mousemove', e => { if (playing && (e.clientY > innerHeight * .78 || dragging)) showUI(); });
+addEventListener('mousemove', () => { if (playing || liveOn) showUI(); });   // any mouse move reveals the controls, like a video player
+document.addEventListener('fullscreenchange', () => { if (playing || liveOn) showUI(); });
+let toastT = 0;
+function toast(msg, ms = 5000) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms); }
+const toggleFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); };
+function stopPlay() {   // back to the start screen
+  if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+  document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed + ' · click to play again';
+  if (document.fullscreenElement) document.exitFullscreen();
+}
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
 bar.addEventListener('pointerdown', e => { dragging = true; bar.setPointerCapture(e.pointerId); $('head').style.left = frac(e) * 100 + '%'; });
 bar.addEventListener('pointermove', e => { if (dragging) { $('head').style.left = frac(e) * 100 + '%'; $('tm').textContent = fmt(frac(e) * TOTAL) + ' / ' + fmt(TOTAL); } });
 bar.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; seekTo(frac(e) * TOTAL); });
 $('pp').addEventListener('click', togglePause);
 $('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
+$('stopb').addEventListener('click', stopPlay);
 addEventListener('keydown', e => {
-  if (!playing) return;
+  if (!playing && !liveOn) return;
+  // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
+  if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
+  if (e.code === 'KeyF') { toggleFullscreen(); return; }
+  if (liveOn) return;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (e.code === 'ArrowRight') seekTo(lastT + 10); else if (e.code === 'ArrowLeft') seekTo(lastT - 10);
 });
@@ -521,7 +544,7 @@ async function startLive() {
   LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, tension: 0, boost: 0, sinceDrop: 99, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
-  gate.classList.add('off'); document.body.classList.add('live');
+  gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
   requestAnimationFrame(liveLoop);
 }
 function liveStep(dt) {   // causal features from the current spectrum → intensity, tension, drop, state
