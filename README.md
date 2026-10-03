@@ -12,6 +12,11 @@ xdg-open dist/bicycle-day.html   # or just double-click it; click the page to pl
 
 Chrome / Firefox / Safari with WebGL2. Sound on. Mouse to the bottom edge shows pause, seek, volume (Space = pause, ←/→ = ±10 s).
 
+## Live mode (prototype)
+
+Click **● Listen to a YouTube tab**: in Chrome's share dialog pick the YouTube *tab* and tick *Share tab audio*, then play the video.
+Keep this window visible (second window or screen) — a hidden tab stops animating. The animation follows the music (calm / build / drop / groove / breakdown). Nothing is recorded or uploaded. Chrome or Edge on desktop only; `?live=mic` listens to the microphone instead.
+
 ## Options
 
 On the start screen: pick a **curve** (journey / waves / slam / intense), a **duration**, or **drop any image** on the page.

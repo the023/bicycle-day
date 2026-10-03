@@ -19,6 +19,8 @@ Edit `src/index.html`, never `dist/` (generated; committed on purpose so it open
 - **Preset/params** – URL params + gate UI (arc, duration, image). One seed per play (`newSeed()`) drives all randomness.
 - **Transport** – `begin(off)` (re)starts sound at song time `off`; `seekTo`, `togglePause` (AudioContext suspend/resume).
 
+- **Live mode (prototype)** – `startLive()` captures a tab's audio via `getDisplayMedia` (Chrome/Edge desktop; `?live=mic` uses the microphone through the same pipeline), `liveStep()` extracts causal features (per-band auto-gain, kicks, build = brightness+level rising, drop = bass slam), produces `LIVE.u`, a position on the `journey` arc, so `render()` reuses all looks. The tab audio is analysed only, never routed to the speakers.
+
 ## Invariants (don't break)
 
 - The picture is a pure function of the audio clock time `t` (`render(t, dt, …)`). Drifting state (`hue`, `rotA`) is integrated per frame and re-derived by `integrateTo(off)` on seek — keep both in sync when changing `render()`.
@@ -35,4 +37,4 @@ google-chrome --headless=new --no-sandbox --use-gl=angle --use-angle=swiftshader
   --window-size=1920,1080 --virtual-time-budget=120000 --screenshot=/tmp/f.png \
   "file://$PWD/dist/bicycle-day.html?t=200&res=.3&step=.5&arc=intense&seed=3"
 ```
-`res` shrinks the offscreen buffer, `step` is the simulated frame step (bigger = faster, less exact). Audio can't be heard this way: smoke-test it by auto-calling `start()` with `--autoplay-policy=no-user-gesture-required` and checking the console for errors.
+`res` shrinks the offscreen buffer, `step` is the simulated frame step (bigger = faster, less exact). Live mode can be tested with real-time fake input: playwright chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream --use-file-for-fake-audio-capture=track.wav`, open `?live=mic&debug=1` and read the `LIVE t=…` console lines (state sequence should follow the track's structure). Audio can't be heard this way: smoke-test it by auto-calling `start()` with `--autoplay-policy=no-user-gesture-required` and checking the console for errors.

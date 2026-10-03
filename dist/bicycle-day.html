@@ -35,6 +35,14 @@
   #bar canvas{position:absolute;inset:0;width:100%;height:100%}
   #head{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
   #vol{width:90px;accent-color:#ffd60a}
+  #tabmode{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:14px 22px;cursor:pointer}
+  #tabmode:hover{background:#fff}
+  #livenote{font-size:10px!important;letter-spacing:.2em!important}
+  #live{position:fixed;left:24px;top:20px;display:none;align-items:center;gap:14px;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;z-index:6;opacity:.85;text-shadow:0 0 6px #000}
+  body.live #live{display:flex}
+  #lbar{width:140px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
+  #lbar i{display:block;height:100%;width:0;background:#ffd60a}
+  #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:6px 10px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -46,8 +54,11 @@
   <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
   <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
   <label id="pick">Choose an image<input type="file" accept="image/*" hidden></label>
+  <button id="tabmode">● Listen to a YouTube tab (live)</button>
+  <div class="sub" id="livenote">Chrome or Edge on desktop · keep this window visible, next to your video</div>
 </div>
 
+<div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><button id="lstop">■ stop</button></div>
 <div id="ctl"><button id="pp" title="Space">❚❚</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
 
 <script>
@@ -257,15 +268,17 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 /* ════════════════════════ director: turns the score into per-frame parameters ════════════════════════ */
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
-  const u = clamp(t / TOTAL), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  const u = LIVE ? LIVE.u : clamp(t / TOTAL), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   const kal = clamp(kal0 * (1 + .2 * wob(t, 3)));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fb = clamp(fb0 * (1 + .08 * wob(t, 2)), 0, .97);
   hue += hueSpd * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
-  while (bi + 1 < BEATS.length && BEATS[bi + 1] <= t) bi++;
-  let pulse = 0; if (t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u); }
-  bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * hbW(u));
+  let pulse = 0;
+  if (LIVE) pulse = LIVE.pulse;
+  else { while (bi + 1 < BEATS.length && BEATS[bi + 1] <= t) bi++; }
+  if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u); }
+  bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u)));
   const zoom = 1 + zoomAmp * .12 * Math.sin(t * .23 + wob(t, 6) * 2);
   const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .6 * mid), ab = aber + hi * 1.2;
   // pass 1 → offscreen (with feedback from the previous frame)
@@ -411,7 +424,7 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   pump = buildAudio(ac, t0, off); pump(); pumpId = setInterval(pump, 1000);
 }
 function start() {
-  if (playing || !ready) return;
+  if (playing || !ready || liveOn) return;
   begin(0, true); playing = true; gate.classList.add('off'); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
   requestAnimationFrame(loop);
@@ -474,6 +487,87 @@ const loadFile = f => { if (f && f.type.startsWith('image/')) { const url = URL.
 fileIn.addEventListener('change', () => loadFile(fileIn.files[0]));
 addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+/* ════════════════════════ LIVE MODE (prototype): listen to a tab (e.g. YouTube) and follow the music ════════════════════════
+   Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
+   Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
+let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null;
+async function startLive() {
+  if (!ready || playing || liveOn) return;
+  const mic = Q.get('live') === 'mic';   // same pipeline, microphone as the source (also handy for tests)
+  const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
+  let stream;
+  try {
+    if (mic) stream = await navigator.mediaDevices.getUserMedia({ audio: audioC });
+    else {
+      if (!navigator.mediaDevices.getDisplayMedia) throw new Error('This browser cannot capture tab audio — use Chrome or Edge on desktop');
+      const ctl = window.CaptureController ? new CaptureController() : null;
+      const p = navigator.mediaDevices.getDisplayMedia({ video: true, audio: audioC, surfaceSwitching: 'exclude', selfBrowserSurface: 'exclude', ...(ctl ? { controller: ctl } : {}) });
+      try { ctl && ctl.setFocusBehavior('no-focus-change'); } catch (e) {}   // stay on this window instead of jumping to the shared tab
+      stream = await p;
+    }
+  } catch (e) { hint.textContent = e.name === 'NotAllowedError' ? 'Cancelled — click again and pick a tab' : e.message; return; }
+  if (!stream.getAudioTracks().length) {
+    stream.getTracks().forEach(t => t.stop());
+    hint.textContent = 'No audio received — in the dialog pick a TAB (not a window) and tick “Share tab audio”'; return;
+  }
+  stream.getVideoTracks().forEach(t => { t.enabled = false; });   // we only want the sound
+  if (ac) ac.close().catch(() => {});
+  ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
+  const src = ac.createMediaStreamSource(stream);
+  analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .4; src.connect(analyser);   // analyser only: no output
+  LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
+  LB = { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)] };
+  setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
+  LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, tension: 0, boost: 0, sinceDrop: 99, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
+  liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0;
+  stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
+  gate.classList.add('off'); document.body.classList.add('live');
+  requestAnimationFrame(liveLoop);
+}
+function liveStep(dt) {   // causal features from the current spectrum → intensity, tension, drop, state
+  const L = LIVE, ease = tau => 1 - Math.exp(-dt / tau);
+  analyser.getFloatFrequencyData(LF);
+  const band = ([a, b]) => { let x = 0; for (let i = a; i < b; i++) x += Math.pow(10, LF[i] / 20); return x / Math.max(1, b - a); };
+  const raw = { b: band(LB.b), m: band(LB.m), h: band(LB.h) };
+  const n = {}; for (const key in raw) { L.ref[key] = Math.max(raw[key], L.ref[key] * Math.exp(-dt / 30), 1e-5); n[key] = clamp(raw[key] / L.ref[key]); }   // per-band auto-gain, 30 s memory
+  const lvl = .45 * n.b + .35 * n.m + .2 * n.h;
+  L.lv += (lvl - L.lv) * ease(1.2); L.ls += (lvl - L.ls) * ease(10);
+  const bright = n.h / (n.b + n.m + n.h + 1e-6);
+  L.bf += (bright - L.bf) * ease(1.5); L.bsl += (bright - L.bsl) * ease(10);
+  // kicks: positive jumps of the bass band
+  const kick = clamp((n.b - L.bassPrev) * 5); L.bassPrev = n.b;
+  L.pulse = Math.max(L.pulse * Math.exp(-dt * 8), kick);
+  L.bassFast += (n.b - L.bassFast) * ease(.3); L.bassLong += (n.b - L.bassLong) * ease(2.5);
+  // build = brightness and level both rising for a while; drop = bass slams back in after a quiet-bass stretch or after a build
+  const rising = (L.bf - L.bsl) > .01 && L.lv > L.ls + .02;
+  L.tension = rising ? Math.min(1, L.tension + dt * .12) : L.tension * Math.exp(-dt * .4);
+  L.sinceDrop += dt; L.age += dt;
+  const slam = n.b > .75 && L.bassLong < .45, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
+  if (L.age > 6 && L.sinceDrop > 8 && (slam || afterBuild))   // (no drops during the first seconds: the auto-gain is still settling)
+    { L.boost = 1; L.tension = 0; L.sinceDrop = 0; }
+  L.boost *= Math.exp(-dt / 6);
+  L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
+  L.u += (lerp(.07, .88, L.I) - L.u) * ease(.6);
+  L.state = L.age < 4 ? 'listening…' : L.boost > .5 ? 'drop' : L.tension > .2 ? 'build' : L.bassLong > .3 ? 'groove' : L.lv < .3 ? 'breakdown' : 'calm';
+  L.bn = n.b; L.mn = n.m; L.hn = n.h;
+}
+function liveLoop() {
+  if (!liveOn) return;
+  const t = ac.currentTime - liveT0, dt = clamp(t - lastT, 0, .1); lastT = t;
+  liveStep(dt); render(t, dt, LIVE.bn, LIVE.mn, LIVE.hn);
+  $('lstate').textContent = LIVE.state; $('lbar').firstElementChild.style.width = (LIVE.I * 100) + '%';
+  if (Q.has('debug') && Math.floor(t) !== Math.floor(t - dt)) console.log(`LIVE t=${t.toFixed(0)} lv=${LIVE.lv.toFixed(2)} ls=${LIVE.ls.toFixed(2)} bn=${LIVE.bn.toFixed(2)} tension=${LIVE.tension.toFixed(2)} boost=${LIVE.boost.toFixed(2)} I=${LIVE.I.toFixed(2)} state=${LIVE.state}`);
+  requestAnimationFrame(liveLoop);
+}
+function stopLive() {
+  if (!liveOn) return; liveOn = false; LIVE = null;
+  if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
+  if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+  document.body.classList.remove('live'); gate.classList.remove('off'); setArc(arcName); updateHint();
+}
+$('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(); });
+$('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
+if (Q.get('live') === 'mic') $('tabmode').textContent = '● Listen to the microphone (live)';
 addEventListener('resize', resize);
 document.addEventListener('click', start);
 addEventListener('load', () => {
