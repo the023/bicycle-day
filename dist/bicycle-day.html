@@ -21,6 +21,12 @@
   @keyframes hue{to{filter:hue-rotate(360deg)}}
   #gate .sub{opacity:.55;font-size:clamp(10px,1vw,14px)}
   #opts,#dur{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+  @media (max-height:800px){#gate{gap:18px}#gate .t{font-size:clamp(30px,6vw,76px)}}
+  #qual{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+  #qual span{opacity:.6;margin-right:4px}
+  #qual button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
+  #qual button.on{background:#f4f1ea;color:#05030c}
+  #qnote{font-size:10px!important;letter-spacing:.1em!important;text-transform:none!important;color:#ffd60a;min-height:12px}
   #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
   .card{width:230px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 16px;border:1px solid #f4f1ea33;border-radius:18px;text-align:center;letter-spacing:.08em;text-transform:none;background:#ffffff08}
   .card b{font-size:15px;letter-spacing:.3em;text-transform:uppercase}
@@ -81,6 +87,8 @@
       <button class="go" id="micmode">● Use the microphone</button></div>
     <div class="card off" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn">Coming soon</i></div>
   </div>
+  <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
+  <div class="sub" id="qnote"></div>
   <div class="sub" id="hint">Loading…</div>
 </div>
 
@@ -91,8 +99,9 @@
   <label title="Grid-of-tiles effect: each square turns or shifts on its own">Tiles<small>grid of rotating squares: 0 = never, 2 = a lot</small><input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
   <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
   <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.3" step=".05" value="1"></label>
+  <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off</div>
-  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
 </div>
@@ -199,6 +208,7 @@ precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
 uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot;
+uniform float uWarpN,uFx,uKali,uJulia;
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
 const float TAU=6.28318530718;
@@ -219,16 +229,28 @@ vec2 tile(vec2 p){
   else { a=(h-.5)*3.2*sin(uTT*.6+h*6.); z=1.+.4*(h-.5)*sin(uTT*.8+h*9.); c+=(vec2(h21(id+7.),h21(id+13.))-.5)*.3/N*sin(uTT*.5+h*5.); }   // shatter: every piece on its own
   return mix(p,c+rot(f,a)*z/N,uTile);
 }
+// styles (2D, cheap, inspired by raymarched Shadertoy fractals): the picture is re-sampled through a fractal map
+vec2 kaliFold(vec2 p){   // Kaliset-like: fold |p+1|-1, inversion, scale, repeated
+  vec2 q=p*1.4; float sc=1.25+.35*sin(uT*.13);
+  for(int i=0;i<4;i++){ q=abs(q+1.)-1.; q/=clamp(dot(q,q),.25,1.); q*=sc; }
+  return q*.35;
+}
+vec2 juliaWarp(vec2 p){   // a few Julia iterations: the picture is smeared along the orbit
+  vec2 z=p*1.6, c=vec2(-.74+.08*sin(uT*.07),.12+.1*cos(uT*.09));
+  for(int i=0;i<6;i++) z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;
+  return z*.35/(1.+.1*dot(z,z));
+}
 vec2 warp(vec2 p){
   float w=uWarp*.12, t=uT;
-  for(int i=0;i<4;i++){float fi=float(i);
+  for(int i=0;i<4;i++){float fi=float(i); if(fi>=uWarpN) break;
     p+=w*vec2(sin(p.y*(3.+fi)+t*(.5+.13*fi)+fi*1.7),cos(p.x*(3.+fi)-t*(.45+.11*fi)+fi*2.3));}
   p.y+=uMelt*.12*sin(p.x*5.+t*.8)*(.5+.5*sin(t*.3+p.x*2.));
   p.x+=uMelt*.05*sin(p.y*9.-t*1.1);
   return p;
 }
 vec3 tx(vec2 p){
-  vec2 uv=vec2(p.x/uAspect,p.y)+.5; float d=uAber*.012; vec2 dir=normalize(p+1e-4);
+  vec2 uv=vec2(p.x/uAspect,p.y)+.5; if(uFx<.5) return texture(uTex,uv).rgb;   // low quality: no colour fringing
+  float d=uAber*.012; vec2 dir=normalize(p+1e-4);
   return vec3(texture(uTex,uv+dir*d).r,texture(uTex,uv).g,texture(uTex,uv-dir*d).b);
 }
 void main(){
@@ -242,6 +264,8 @@ void main(){
   p*=1.-uPulse*.04;
   float n0=floor(uKalN),f=fract(uKalN);
   if(uTile>.001) p=tile(p);
+  if(uKali>.001) p=mix(p,kaliFold(p),uKali);
+  if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
   vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
   vec3 c=mix(tx(pa),tx(pb),f);
   float lum=dot(c,vec3(.299,.587,.114));
@@ -268,14 +292,14 @@ void main(){
 
 const FS_SHOW = `#version 300 es
 precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx;
 out vec4 o;
 void main(){
   vec2 uv=gl_FragCoord.xy/uRes, d=uv-.5; float r=length(d);
   float ab=.002+uAber*.004+uPulse*.003+uHi*.002;
-  vec3 c=vec3(texture(uTex,uv+d*ab).r,texture(uTex,uv).g,texture(uTex,uv-d*ab).b);
+  vec3 c=uFx<.5?texture(uTex,uv).rgb:vec3(texture(uTex,uv+d*ab).r,texture(uTex,uv).g,texture(uTex,uv-d*ab).b);
   c+=uPulse*.05; c*=1.-.55*smoothstep(.45,1.05,r*1.2);
-  float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi);
+  if(uFx>.5){ float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi); }
   o=vec4(c,1.);
 }`;
 
@@ -289,10 +313,18 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot']);
-  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
+  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx']);
+  makeTargets();
+}
+// graphics quality: internal resolution, warp layers, colour fringing / grain. Default depends on the renderer (software GL = low).
+const QUAL = { high: { res: 1, dpr: 1.5, warpN: 4, fx: 1 }, medium: { res: .7, dpr: 1, warpN: 3, fx: 1 }, low: { res: .5, dpr: 1, warpN: 2, fx: 0 } };
+let quality = 'high';
+function softwareGL() { const e = gl.getExtension('WEBGL_debug_renderer_info'); return !!e && /swiftshader|llvmpipe|software|basic render/i.test(String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL))); }
+function makeTargets() {
   const half = !!gl.getExtension('EXT_color_buffer_float');
-  const res = parseFloat(Q.get('res')); if (res) { FW = Math.round(1600 * res); FH = Math.round(900 * res); }
+  tex.forEach(t => gl.deleteTexture(t)); fbo.forEach(f => gl.deleteFramebuffer(f)); tex.length = 0; fbo.length = 0;
+  const res = parseFloat(Q.get('res')) || QUAL[quality].res; FW = Math.round(1600 * res); FH = Math.round(900 * res);
   for (let i = 0; i < 2; i++) {
     const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
     gl.texImage2D(gl.TEXTURE_2D, 0, half ? gl.RGBA16F : gl.RGBA8, FW, FH, 0, gl.RGBA, half ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, null);
@@ -301,7 +333,7 @@ function initGL() {
     const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
     gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); tex.push(t); fbo.push(f);
   }
-  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
 let ASPECT = 1;
 function loadPoster(src, done) {
@@ -319,21 +351,21 @@ function loadPoster(src, done) {
   img.src = src;
 }
 function resize() {   // keep the canvas a 16:9 box, centred, as large as the window allows
-  const w = Math.min(innerWidth, innerHeight * 16 / 9), h = w * 9 / 16, dpr = Math.min(devicePixelRatio || 1, 1.5);
+  const w = Math.min(innerWidth, innerHeight * 16 / 9), h = w * 9 / 16, dpr = Math.min(devicePixelRatio || 1, QUAL[quality].dpr);
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
   cv.width = Math.min(1920, Math.round(w * dpr)); cv.height = Math.round(cv.width * 9 / 16);
 }
 
 /* ════════════════════════ director: turns the score into per-frame parameters ════════════════════════ */
 // user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
-const USER = { inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
+const USER = { style: 0, inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
 // palettes: cosine palettes (frequency, phase) + how much the global hue drift may rotate them; a new one on every drop / window
 const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4], d: [0, .15, .2], ha: .3 }, { c: [2, 1, 0], d: [.5, .2, .25], ha: .3 }, { c: [1, 1, .5], d: [.8, .9, .3], ha: .3 }, { c: [1.5, 1.5, 1.5], d: [0, .5, .5], ha: .3 }, { c: [1, 1, 1], d: [.5, .2, .8], ha: .3 }];
 // per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
 const LIVE_LOOK = { drop: [1, 1, .8, 1], build: [.6, 1.3, 1, 1], groove: [.6, 1, 1.15, 1], breakdown: [.15, .8, .6, .6], calm: [.3, .9, .9, .8] };
 const CAM = { a: 0 }, BAND = { hi: 0, mid: 0, zt: 0, tt: 0 }, PAL_HI = [0, 1, 2, 4], PAL_LO = [3, 5];
 let lastScene = 0, trT0 = -99, lastMinor = 0, tmT0 = -99;   // live: when the current scene started (drives the transition envelope)
-const LOOK = { hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
+const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
@@ -354,6 +386,9 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (st === 'drop' && leadTile) tg[0] *= .35;
   const PL = PALS[Q.has('pal') ? +Q.get('pal') : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
   LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez; LOOK.hj += (hsh(tk, 7) * 2 - LOOK.hj) * (1 - Math.exp(-dt / 1.5));   // hue offset re-rolled on every minor change
+  // styles (opt-in): auto picks one per scene (20 % none); calm sections get a lighter touch
+  const sIdx = USER.style === 3 ? [0, 1, 2, 1, 2][Math.floor(hsh(LIVE ? scene : wi, 8) * 5)] : USER.style, sAmt = USER.style === 3 ? (kindOf(scene) ? .85 : .5) : .8;
+  LOOK.sk += ((sIdx === 1 ? sAmt : 0) - LOOK.sk) * ez; LOOK.sj += ((sIdx === 2 ? sAmt : 0) - LOOK.sj) * ez;
   for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
   // camera tilt amplitude by state; tilt direction drifts slowly and re-rolls per scene
   const camT = LIVE ? (kindOf(scene) ? .26 : .08) * (1 + .3 * (({ drop: .32, groove: .26, build: .2 }[st] ?? .1) / .26 - 1)) : .18 * smooth(.2, .5, u);
@@ -394,12 +429,14 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, USER.col === 2 ? 1 : 0);
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
-  else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); } gl.uniform1f(uS.uTileSeed, PH % 7);
+  else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); }
+  gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
+  gl.uniform1f(uS.uKali, LOOK.sk); gl.uniform1f(uS.uJulia, LOOK.sj);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex[w]); gl.uniform1i(uD.uTex, 0);
-  gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, ab); gl.uniform1f(uD.uPulse, pulse); gl.uniform1f(uD.uHi, BAND.hi);
+  gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, ab); gl.uniform1f(uD.uPulse, pulse); gl.uniform1f(uD.uHi, BAND.hi); gl.uniform1f(uD.uFx, QUAL[quality].fx);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   cur = w;
 }
@@ -588,16 +625,23 @@ addEventListener('keydown', e => {
   $(id).addEventListener('input', e => { USER[k] = +e.target.value; });
   $(id).addEventListener('change', e => e.target.blur());   // keep the keyboard free for pause / seek / fullscreen
 });
+const markSM = () => document.querySelectorAll('#smodes button').forEach(b => b.classList.toggle('on', +b.dataset.sm === USER.style));
+$('smodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { USER.style = +b.dataset.sm; markSM(); } });
+{ const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; } markSM();
+const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
+function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
+$('qual').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
+$('u-q').addEventListener('click', () => { const k = Object.keys(QUAL); setQuality(k[(k.indexOf(quality) + 1) % 3]); });
 const markTM = () => document.querySelectorAll('#tmodes button').forEach(b => b.classList.toggle('on', +b.dataset.tm === USER.force));
 const setTileMode = m => { USER.force = m; markTM(); };
 $('tmodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTileMode(+b.dataset.tm); });
 markTM();
-const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['inten', 'kal', 'tile', 'fb', 'col', 'src', 'force'], SLID = { inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
+const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
 function applyTweaks(o) {   // push saved values into USER and into the panel widgets
   KEYS_U.forEach(k => { if (typeof o[k] === 'number') USER[k] = o[k]; });
-  for (const k in SLID) $(SLID[k]).value = USER[k]; markTM();
+  for (const k in SLID) $(SLID[k]).value = USER[k]; markTM(); markSM();
   $('u-col').textContent = 'Colour: ' + COLS[USER.col]; $('u-src').textContent = 'Source: ' + (USER.src ? 'on' : 'off');
 }
 const snapTweaks = () => Object.fromEntries(KEYS_U.map(k => [k, USER[k]]));
@@ -771,6 +815,7 @@ addEventListener('resize', resize);
 $('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
 addEventListener('load', () => {
   if (!gl) { hint.textContent = 'WebGL2 is not available in this browser'; return; }
+  { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
   resize();
   loadPoster(IMG, () => {
