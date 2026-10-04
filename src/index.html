@@ -667,7 +667,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
   LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
   LB = { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)] };
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
-  LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
+  LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
   gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
@@ -686,14 +686,14 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   // kicks: positive jumps of the bass band
   const kick = clamp((n.b - L.bassPrev) * 5); L.bassPrev = n.b;
   L.pulse = Math.max(L.pulse * Math.exp(-dt * 8), kick);
-  L.bassFast += (n.b - L.bassFast) * ease(.3); L.bassLong += (n.b - L.bassLong) * ease(2.5);
+  L.bassFast += (n.b - L.bassFast) * ease(.3); L.bassLong += (n.b - L.bassLong) * ease(2.5); L.bassSlow += (n.b - L.bassSlow) * ease(6);
   // build = brightness and level both rising for a while; drop = bass slams back in after a quiet-bass stretch or after a build
   const rising = (L.bf - L.bsl) > .01 && L.lv > L.ls + .02;
   L.tension = rising ? Math.min(1, L.tension + dt * .12) : L.tension * Math.exp(-dt * .4);
   L.sinceDrop += dt; L.age += dt;
-  const slam = n.b > .75 && L.bassLong < .45, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
+  const slam = n.b > .75 && L.bassSlow < .3 && L.lv > L.ls + .05, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
   let dropped = false;
-  if (L.age > 6 && L.sinceDrop > 8 && (slam || afterBuild))   // (no drops during the first seconds: the auto-gain is still settling)
+  if (L.age > 6 && L.sinceDrop > 12 && (slam || afterBuild))   // (no drops during the first seconds: the auto-gain is still settling)
     { L.boost = 1; L.tension = 0; L.sinceDrop = 0; dropped = true; }
   // section detector: a fast average of (level, brightness, bass) against a slow one; a lasting gap = the music moved on to another part
   const cur = [L.lv, clamp(L.bf * 2.5), L.bassLong];
@@ -703,12 +703,20 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   L.secT = gap > .16 ? L.secT + dt : Math.max(0, L.secT - dt); L.sinceScene += dt;
   if ((dropped && L.sinceScene > 4) || (L.secT > 1.2 && L.sinceScene > 10)) {   // new scene: new palette / lead effect / tile grid, with a visible transition
     L.scenes++; L.kinds[L.scenes] = dropped || L.sf[0] >= L.ss[0] ? 1 : 0;   // (rising = energetic, falling = calm)
-    L.sinceScene = 0; L.secT = 0; L.ss = L.sf.slice();
+    L.sinceScene = 0; L.secT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
   }
   L.boost *= Math.exp(-dt / 6);
   L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
   { const tgt = lerp(.26, .88, L.I); L.u += (tgt - L.u) * ease(tgt > L.u ? .45 : 2.5); }   // quick to rise on a build / drop, slow to fall: no flicker within a theme
-  L.state = L.age < 4 ? 'listening…' : L.boost > .5 ? 'drop' : L.tension > .2 ? 'build' : L.bassLong > .3 ? 'groove' : L.lv < .3 ? 'breakdown' : 'calm';
+  // state label: a new state must hold for 3 s before it shows (drops show at once and stay >= 4 s), so a steady passage doesn't flicker
+  const rawSt = L.boost > .5 ? 'drop' : L.tension > .25 ? 'build' : L.bassLong > .3 ? 'groove' : L.lv < .27 ? 'breakdown' : 'calm';
+  if (L.age < 4) L.state = 'listening…';
+  else {
+    L.stT = (L.stT || 0) + dt;
+    if (rawSt === L.state) L.cand = null;
+    else if (rawSt === 'drop' || L.state === 'listening…') { L.state = rawSt; L.stT = 0; L.cand = null; }
+    else if (L.stT > 4) { if (rawSt !== L.cand) { L.cand = rawSt; L.candT = 0; } else if ((L.candT += dt) > 3) { L.state = rawSt; L.stT = 0; L.cand = null; } }
+  }
   L.bn = n.b; L.mn = n.m; L.hn = n.h;
 }
 function liveLoop() {
