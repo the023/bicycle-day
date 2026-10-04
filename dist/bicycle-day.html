@@ -657,7 +657,9 @@ const bandsFor = k => {   // bin ranges for the 3 analysis bands + 10 log-spaced
   const e = []; for (let i = 0; i <= 10; i++) e.push(Math.round(40 * Math.pow(6500 / 40, i / 10) / k));
   return { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)], p: e };
 };
-const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, minors: 0, pT: 0, pf: null, ps: null, sinceMinor: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
+// detector settings (tuned on real tracks with tools/sweep.py; see tools/refs.json)
+const DET = { sfTau: 1, ssTau: 12, gapThr: .16, gapDur: 1.5, dwell: 4, dropGap: 2.5, dropDwell: 18, slamBass: .3, slamLv: .05, warm: 25, minFloor: 1.2, minK: 1.6, minDur: 1.5, minDwell: 12, dropMinGap: 0, dropMinProf: 0, bigFloor: 99, bigK: 3, bigDur: 1 };
+const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, minors: 0, pT: 0, bigT: 0, pf: null, ps: null, sinceMinor: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
 async function startLive(mic = Q.get('live') === 'mic') {
   if (!ready || playing || liveOn) return;
   const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
@@ -708,27 +710,28 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   const rising = (L.bf - L.bsl) > .01 && L.lv > L.ls + .02;
   L.tension = rising ? Math.min(1, L.tension + dt * .12) : L.tension * Math.exp(-dt * .4);
   L.sinceDrop += dt; L.age += dt;
-  const slam = n.b > .75 && L.bassSlow < .3 && L.lv > L.ls + .05, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
+  const slam = n.b > .75 && L.bassSlow < DET.slamBass && L.lv > L.ls + DET.slamLv, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
   let dropped = false;
-  if (L.age > 25 && L.sinceDrop > 12 && (slam || afterBuild))   // (no drops during the first 25 s: the auto-gain is still settling and fakes them)
+  if (L.age > DET.warm && L.sinceDrop > DET.dropDwell && (slam || afterBuild))   // (no drops during the first 25 s: the auto-gain is still settling and fakes them)
     { L.boost = 1; L.tension = 0; L.sinceDrop = 0; dropped = true; }
   // section detector: a fast average of (level, brightness, bass) against a slow one; a lasting gap = the music moved on to another part
   const cur = [L.lv, clamp(L.bf * 2.5), L.bassLong];
-  for (let i = 0; i < 3; i++) { L.sf[i] += (cur[i] - L.sf[i]) * ease(1.5); L.ss[i] += (cur[i] - L.ss[i]) * ease(L.sinceScene < 5 ? .5 : 8); }   // right after a scene change the reference catches up fast, so a ramp isn't read as another change
-  if (L.age < 25) L.ss = L.sf.slice();
+  for (let i = 0; i < 3; i++) { L.sf[i] += (cur[i] - L.sf[i]) * ease(DET.sfTau); L.ss[i] += (cur[i] - L.ss[i]) * ease(L.sinceScene < 5 ? .5 : DET.ssTau); }   // right after a scene change the reference catches up fast, so a ramp isn't read as another change
+  if (L.age < DET.warm) L.ss = L.sf.slice();
   const gap = Math.abs(L.sf[0] - L.ss[0]) + Math.abs(L.sf[1] - L.ss[1]) + .5 * Math.abs(L.sf[2] - L.ss[2]);
-  L.secT = gap > .16 ? L.secT + dt : Math.max(0, L.secT - dt); L.sinceScene += dt;
+  L.secT = gap > DET.gapThr ? L.secT + dt : Math.max(0, L.secT - dt); L.sinceScene += dt;
   // minor changes: how much the SHAPE of the spectrum (10 log bands, in dB) just moved away from its recent average
   const prof = []; for (let i = 0; i < 10; i++) { let x = 0; const a = LB.p[i], b = Math.max(a + 1, LB.p[i + 1]); for (let j = a; j < b; j++) x += Math.max(-120, LF[j]); prof.push(x / (b - a)); }
   if (!L.pf) { L.pf = prof.slice(); L.ps = prof.slice(); }
   let dprof = 0; for (let i = 0; i < 10; i++) { L.pf[i] += (prof[i] - L.pf[i]) * ease(1.5); L.ps[i] += (prof[i] - L.ps[i]) * ease(L.sinceMinor < 4 ? .5 : 10); dprof += Math.abs(L.pf[i] - L.ps[i]) / 10; }
   L.dm = (L.dm ?? dprof) + (dprof - (L.dm ?? dprof)) * ease(60);   // typical amount of spectral movement in THIS track: busy tracks need a bigger jump to count
-  L.pT = dprof > Math.max(1.2, 1.6 * L.dm) ? L.pT + dt : Math.max(0, L.pT - dt); L.sinceMinor += dt; L.dprof = dprof;
-  if (L.age > 25 && ((dropped && L.sinceScene > 2.5) || (L.secT > 1.2 && L.sinceScene > 8))) {   // new scene: new palette / lead effect / tile grid, with a visible transition
+  L.pT = dprof > Math.max(DET.minFloor, DET.minK * L.dm) ? L.pT + dt : Math.max(0, L.pT - dt); L.sinceMinor += dt; L.dprof = dprof;
+  L.bigT = dprof > Math.max(DET.bigFloor, DET.bigK * L.dm) ? L.bigT + dt : Math.max(0, L.bigT - dt);   // a very large jump of the spectral shape is a scene on its own
+  if (L.age > DET.warm && ((dropped && L.sinceScene > DET.dropGap && (gap > DET.dropMinGap || dprof > DET.dropMinProf)) || ((L.secT > DET.gapDur || L.bigT > DET.bigDur) && L.sinceScene > DET.dwell))) {   // new scene: new palette / lead effect / tile grid, with a visible transition
     L.scenes++; L.kinds[L.scenes] = dropped || L.sf[0] >= L.ss[0] ? 1 : 0;   // (rising = energetic, falling = calm)
-    L.sinceScene = 0; L.secT = 0; L.sinceMinor = 0; L.pT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
+    L.sinceScene = 0; L.secT = 0; L.sinceMinor = 0; L.pT = 0; L.bigT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
   }
-  else if (L.age > 30 && L.pT > 1 && L.sinceMinor > 8 && L.sinceScene > 6) { L.minors++; L.sinceMinor = 0; L.pT = 0; }   // minor: a lighter transition, same scene
+  else if (L.age > DET.warm + 5 && L.pT > DET.minDur && L.sinceMinor > DET.minDwell && L.sinceScene > 6) { L.minors++; L.sinceMinor = 0; L.pT = 0; }   // minor: a lighter transition, same scene
   L.boost *= Math.exp(-dt / 6);
   L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
   { const tgt = lerp(.26, .88, L.I); L.u += (tgt - L.u) * ease(tgt > L.u ? .45 : 2.5); }   // quick to rise on a build / drop, slow to fall: no flicker within a theme
