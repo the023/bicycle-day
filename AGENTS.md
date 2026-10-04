@@ -1,6 +1,6 @@
 # Bicycle Day — Agent Guide
 
-**Status, decisions, calibration results and next steps: read `NOTES.md` first.**
+**Status, decisions and calibration results: kept outside this repo (private notes); the architecture and invariants below are self-contained.**
 
 ## Project Overview
 
@@ -12,6 +12,7 @@ Single-file generative animation: a WebGL2 fragment shader warps one image (kale
 ```bash
 npm run build     # src/index.html + assets/poster.jpg → dist/bicycle-day.html (also syntax-checks inline scripts)
 ```
+
 Edit `src/index.html`, never `dist/` (generated; committed on purpose so it opens without a build).
 
 ## Architecture (all in `src/index.html`)
@@ -28,7 +29,6 @@ Edit `src/index.html`, never `dist/` (generated; committed on purpose so it open
 - **User tweaks** – `USER` object (sliders/buttons in `#tune`, mouse: move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom, keys `1-3`/`T` = tiles). Persistent state on top of the score, never touched by seek. `?tile=<mode>,<N>` forces the tile effect (testing).
 - **Surges & moods** – `timelines()` builds seeded, irregular timelines (pure functions of `t`): `surgeAt(t)` = intensity swell (rise 15-30 s, fall 6-15 s, then the image recomposes) scaling warp/kal/Kali/Julia/melt/aberration; `moodAt(t)` = dark / bw / blaze / strobe stretches (blaze also fires at the top of big surges). Mood effects live in `FS_SHOW` (`uDark/uBlaze/uStrobe/uRate`), bw reuses `uMono`. `?mood=dark|bw|blaze|strobe` and `?surge=0..1` force them (testing). `FS_SHOW` also does the colour grade (saturation/contrast).
 - **Transport** – `begin(off)` (re)starts sound at song time `off`; `seekTo`, `togglePause` (AudioContext suspend/resume).
-
 - **Live mode (prototype)** – `startLive()` captures a tab's audio via `getDisplayMedia` (Chrome/Edge desktop; `?live=mic` uses the microphone through the same pipeline), `liveStep()` extracts causal features (per-band auto-gain, kicks, build = brightness+level rising, drop = bass slam), produces `LIVE.u`, a position on the `journey` arc, so `render()` reuses all looks. The tab audio is analysed only, never routed to the speakers.
 
 ## Invariants (don't break)
@@ -47,4 +47,5 @@ google-chrome --headless=new --no-sandbox --use-gl=angle --use-angle=swiftshader
   --window-size=1920,1080 --virtual-time-budget=120000 --screenshot=/tmp/f.png \
   "file://$PWD/dist/bicycle-day.html?t=200&res=.3&step=.5&arc=intense&seed=3"
 ```
+
 `res` shrinks the offscreen buffer, `step` is the simulated frame step (bigger = faster, less exact). Live mode can be tested with real-time fake input: playwright chromium with `--use-fake-device-for-media-stream --use-fake-ui-for-media-stream --use-file-for-fake-audio-capture=track.wav`, open `?live=mic&debug=1` and read the `LIVE t=…` console lines (state sequence should follow the track's structure). Audio can't be heard this way: smoke-test it by auto-calling `start()` with `--autoplay-policy=no-user-gesture-required` and checking the console for errors.

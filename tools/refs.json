@@ -1,0 +1,9 @@
+{
+  "_doc": "Hand-confirmed structure per track, seconds. big = must be a scene change; small = any event (scene or minor); weak/unconfirmed = not counted as false; ignore = [from,to] zones not scored for false alarms.",
+  "chronobrain": { "big": [89, 97], "small": [13, 45, 116], "weak": [142, 165] },
+  "ttc":         { "big": [112, 118], "small": [74, 80, 93, 182, 195], "weak": [8] },
+  "lsdf":        { "big": [29, 94], "small": [61], "weak": [160, 173, 182], "weight": 0.3 },
+  "aksys":       { "big": [43, 51, 81, 102], "weak": [92] },
+  "kaiju":       { "big": [31, 61, 72, 90, 100], "ignore": [0, 30] },
+  "lapsuceur":   { "big": [32, 36, 48, 63, 67], "weak": [80, 84, 96] }
+}
