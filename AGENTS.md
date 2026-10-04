@@ -1,5 +1,7 @@
 # Bicycle Day — Agent Guide
 
+**Status, decisions, calibration results and next steps: read `NOTES.md` first.**
+
 ## Project Overview
 
 Single-file generative animation: a WebGL2 fragment shader warps one image (kaleidoscope, domain warp, feedback trails, hue/palette cycling) while a Web Audio synth plays generative music. The picture and the sound follow a shared "arc" (intensity over time).
