@@ -179,7 +179,7 @@ const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
-uniform vec2 uCenter; uniform vec4 uRip;
+uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform float uHueAmt;
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
 const float TAU=6.28318530718;
@@ -225,9 +225,9 @@ void main(){
   vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
   vec3 c=mix(tx(pa),tx(pb),f);
   float lum=dot(c,vec3(.299,.587,.114));
-  vec3 pal=.5+.5*cos(TAU*(lum*1.3+uHue*.2+vec3(0.,.33,.67)));
+  vec3 pal=.5+.5*cos(TAU*(lum*uPalC+uHue*.2*uHueAmt+uPalD));
   c=mix(c,pal*(.55+.6*lum),uPal*.85);
-  c=hueRot(c,uHue+length(p)*1.5*uPal);
+  c=hueRot(c,(uHue+length(p)*1.5*uPal)*uHueAmt);
   // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
   vec3 src=texture(uTex,vec2(p0.x/uAspect,p0.y)+.5).rgb;
   float inside=(1.-smoothstep(.42*uAspect,.5*uAspect,abs(p0.x)))*(1.-smoothstep(.42,.5,abs(p0.y)));
@@ -268,7 +268,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse']);
   const half = !!gl.getExtension('EXT_color_buffer_float');
   const res = parseFloat(Q.get('res')); if (res) { FW = Math.round(1600 * res); FH = Math.round(900 * res); }
@@ -306,18 +306,31 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 /* ════════════════════════ director: turns the score into per-frame parameters ════════════════════════ */
 // user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
 const USER = { inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
+// palettes: cosine palettes (frequency, phase) + how much the global hue drift may rotate them; a new one on every drop / window
+const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4], d: [0, .15, .2], ha: .3 }, { c: [2, 1, 0], d: [.5, .2, .25], ha: .3 }, { c: [1, 1, .5], d: [.8, .9, .3], ha: .3 }, { c: [1.5, 1.5, 1.5], d: [0, .5, .5], ha: .3 }, { c: [1, 1, 1], d: [.5, .2, .8], ha: .3 }], ICE = 3;
+// per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
+const LIVE_LOOK = { drop: [1, 1, .8, 1], build: [.6, 1.3, 1, 1], groove: [.6, 1, 1.15, 1], breakdown: [.15, .8, .6, .6], calm: [.3, .9, .9, .8] };
+const LOOK = { k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
+  const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.drops : wi;
+  const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+  const palIdx = n => { const i = Math.floor(hsh(n, 4) * PALS.length); return i === Math.floor(hsh(n - 1, 4) * PALS.length) ? (i + 1) % PALS.length : i; };
+  const leadTile = hsh(scene, 3) < .5, st = LIVE ? LIVE.state : '', tg = (LIVE_LOOK[st] || [1, 1, 1, 1]).slice();
+  if (st === 'drop' && leadTile) tg[0] *= .35;
+  const PL = PALS[Q.has('pal') ? +Q.get('pal') : st === 'breakdown' ? ICE : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
+  LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez;
+  for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
   USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
-  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal), anchor = .2 * clamp(kal0 + melt * .5 + pal * .5) * USER.src;
+  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k), anchor = .2 * clamp(kal0 + melt * .5 + pal * .5) * USER.src;
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
-  const fb = clamp(fb0 * (1 + .08 * wob(t, 2)) * USER.fb, 0, .97);
+  const fb = clamp(fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, 0, .97);
   hue += (USER.col === 1 ? 0 : hueSpd) * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
-  const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, hs = k => { const x = Math.sin((wi + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
-  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) + (LIVE ? LIVE.boost * .9 : 0)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hs(1) * 4)], tileMode = Math.floor(hs(2) * 3);
+  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(wi, 1) * 4)], tileMode = Math.floor(hsh(wi, 2) * 3);
   if (USER.force >= 0) { tile = 1; tileMode = USER.force; }
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
   let pulse = 0;
@@ -326,17 +339,19 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u0); }
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
   const zoom = (1 + zoomAmp * .12 * Math.sin(t * .23 + wob(t, 6) * 2)) * USER.zoom;
-  const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .6 * mid), ab = aber + hi * 1.2;
+  const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .6 * mid) * LOOK.w, ab = aber + hi * 1.2;
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texImg); gl.uniform1i(uS.uTex, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tex[cur]); gl.uniform1i(uS.uPrev, 1);
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
-  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile)));   // trails would smear the tiles away, so they thin out while tiles are on gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : .006 + .02 * pal); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal);
+  // trails would smear the tiles away, so they thin out while tiles are on
+  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile))); gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal * LOOK.p);
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
+  gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
   gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, USER.col === 2 ? 1 : 0);
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
@@ -606,7 +621,7 @@ async function startLive() {
   LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
   LB = { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)] };
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
-  LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, tension: 0, boost: 0, sinceDrop: 99, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
+  LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, tension: 0, boost: 0, sinceDrop: 99, drops: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
   gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
@@ -632,7 +647,7 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   L.sinceDrop += dt; L.age += dt;
   const slam = n.b > .75 && L.bassLong < .45, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
   if (L.age > 6 && L.sinceDrop > 8 && (slam || afterBuild))   // (no drops during the first seconds: the auto-gain is still settling)
-    { L.boost = 1; L.tension = 0; L.sinceDrop = 0; }
+    { L.boost = 1; L.tension = 0; L.sinceDrop = 0; L.drops++; }
   L.boost *= Math.exp(-dt / 6);
   L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
   L.u += (lerp(.2, .88, L.I) - L.u) * ease(.6);
