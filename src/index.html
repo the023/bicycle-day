@@ -332,14 +332,18 @@ const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4],
 // per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
 const LIVE_LOOK = { drop: [1, 1, .8, 1], build: [.6, 1.3, 1, 1], groove: [.6, 1, 1.15, 1], breakdown: [.15, .8, .6, .6], calm: [.3, .9, .9, .8] };
 const CAM = { a: 0 }, BAND = { hi: 0, mid: 0, zt: 0, tt: 0 }, PAL_HI = [0, 1, 2, 4], PAL_LO = [3, 5];
-let lastScene = 0, trT0 = -99;   // live: when the current scene started (drives the transition envelope)
-const LOOK = { k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
+let lastScene = 0, trT0 = -99, lastMinor = 0, tmT0 = -99;   // live: when the current scene started (drives the transition envelope)
+const LOOK = { hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
   const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
+  const mi = LIVE ? LIVE.minors : Math.floor(t / 15 + PH * .2), mf = t / 15 + PH * .2 - mi;
+  if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
+  const tm = LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2);   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  const tk = scene * 50 + mi;
   const tr = LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) : 0;   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
   const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
   const kindOf = n => LIVE ? (LIVE.kinds[n] ?? 1) : 1;   // 1 = energetic section, 0 = calm one
@@ -349,7 +353,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const tg = base.map((b, i) => b * (1 + .3 * (sv[i] - 1)));   // the section sets the look; the instantaneous state only nudges it
   if (st === 'drop' && leadTile) tg[0] *= .35;
   const PL = PALS[Q.has('pal') ? +Q.get('pal') : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
-  LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez;
+  LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez; LOOK.hj += (hsh(tk, 7) * 2 - LOOK.hj) * (1 - Math.exp(-dt / 1.5));   // hue offset re-rolled on every minor change
   for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
   // camera tilt amplitude by state; tilt direction drifts slowly and re-rolls per scene
   const camT = LIVE ? (kindOf(scene) ? .26 : .08) * (1 + .3 * (({ drop: .32, groove: .26, build: .2 }[st] ?? .1) / .26 - 1)) : .18 * smooth(.2, .5, u);
@@ -362,9 +366,9 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src;
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .27 * (1 - Math.exp(-(fbx - .7) / .27)), 0, .97);   // soft knee: cranking the slider still leaves the engine's variation
-  hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5) * dt * rotDir; rotA += dt * rotDir * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; rotA += dt * rotDir * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
-  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? scene : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? scene : wi, 2) * 3);
+  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
   if (USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * USER.tile)); tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
   let pulse = 0;
@@ -373,7 +377,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u0); }
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
-  const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * USER.zoom * (1 + bassE * .04);
+  const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
   const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w, ab = aber + BAND.hi * .6;
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
@@ -382,7 +386,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tex[cur]); gl.uniform1i(uS.uPrev, 1);
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
   // trails would smear the tiles away, so they thin out while tiles are on
-  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile))); gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal * LOOK.p);
+  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile))); gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha); gl.uniform1f(uS.uHue, hue + LOOK.hj); gl.uniform1f(uS.uPal, pal * LOOK.p);
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
@@ -649,7 +653,11 @@ addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.file
    Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
    Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
 let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null;
-const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
+const bandsFor = k => {   // bin ranges for the 3 analysis bands + 10 log-spaced bands of the spectral profile
+  const e = []; for (let i = 0; i <= 10; i++) e.push(Math.round(40 * Math.pow(6500 / 40, i / 10) / k));
+  return { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)], p: e };
+};
+const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, minors: 0, pT: 0, pf: null, ps: null, sinceMinor: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
 async function startLive(mic = Q.get('live') === 'mic') {
   if (!ready || playing || liveOn) return;
   const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
@@ -674,7 +682,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
   const src = ac.createMediaStreamSource(stream);
   analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .3; src.connect(analyser);   // analyser only: no output
   LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
-  LB = { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)] };
+  LB = bandsFor(k);
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
   LIVE = newLive();
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99;
@@ -710,10 +718,17 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   if (L.age < 25) L.ss = L.sf.slice();
   const gap = Math.abs(L.sf[0] - L.ss[0]) + Math.abs(L.sf[1] - L.ss[1]) + .5 * Math.abs(L.sf[2] - L.ss[2]);
   L.secT = gap > .16 ? L.secT + dt : Math.max(0, L.secT - dt); L.sinceScene += dt;
+  // minor changes: how much the SHAPE of the spectrum (10 log bands, in dB) just moved away from its recent average
+  const prof = []; for (let i = 0; i < 10; i++) { let x = 0; const a = LB.p[i], b = Math.max(a + 1, LB.p[i + 1]); for (let j = a; j < b; j++) x += Math.max(-120, LF[j]); prof.push(x / (b - a)); }
+  if (!L.pf) { L.pf = prof.slice(); L.ps = prof.slice(); }
+  let dprof = 0; for (let i = 0; i < 10; i++) { L.pf[i] += (prof[i] - L.pf[i]) * ease(1.5); L.ps[i] += (prof[i] - L.ps[i]) * ease(L.sinceMinor < 4 ? .5 : 10); dprof += Math.abs(L.pf[i] - L.ps[i]) / 10; }
+  L.dm = (L.dm ?? dprof) + (dprof - (L.dm ?? dprof)) * ease(60);   // typical amount of spectral movement in THIS track: busy tracks need a bigger jump to count
+  L.pT = dprof > Math.max(1.2, 1.6 * L.dm) ? L.pT + dt : Math.max(0, L.pT - dt); L.sinceMinor += dt; L.dprof = dprof;
   if (L.age > 25 && ((dropped && L.sinceScene > 2.5) || (L.secT > 1.2 && L.sinceScene > 8))) {   // new scene: new palette / lead effect / tile grid, with a visible transition
     L.scenes++; L.kinds[L.scenes] = dropped || L.sf[0] >= L.ss[0] ? 1 : 0;   // (rising = energetic, falling = calm)
-    L.sinceScene = 0; L.secT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
+    L.sinceScene = 0; L.secT = 0; L.sinceMinor = 0; L.pT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
   }
+  else if (L.age > 30 && L.pT > 1 && L.sinceMinor > 8 && L.sinceScene > 6) { L.minors++; L.sinceMinor = 0; L.pT = 0; }   // minor: a lighter transition, same scene
   L.boost *= Math.exp(-dt / 6);
   L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
   { const tgt = lerp(.26, .88, L.I); L.u += (tgt - L.u) * ease(tgt > L.u ? .45 : 2.5); }   // quick to rise on a build / drop, slow to fall: no flicker within a theme
