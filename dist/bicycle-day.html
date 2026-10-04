@@ -163,7 +163,7 @@ const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
-uniform float uT,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
+uniform float uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
 const float TAU=6.28318530718;
 vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);return c*co+cross(k,c)*s+k*dot(k,c)*(1.-co);}
@@ -172,6 +172,16 @@ vec2 kal(vec2 p,float n){
   vec2 off=vec2(.12*sin(uT*.07),.1*cos(uT*.05)-.05); p-=off;
   float a=atan(p.y,p.x),r=length(p),seg=TAU/n; a=mod(a,seg); a=abs(a-seg*.5);
   return r*vec2(cos(a),sin(a))+off;
+}
+// tiles: cut the picture into an N×N grid; each cell turns / zooms / shifts its own piece (smooth, never a flash)
+float h21(vec2 i){return fract(sin(dot(i+uTileSeed,vec2(12.9898,78.233)))*43758.5453);}
+vec2 tile(vec2 p){
+  float N=uTileN; vec2 g=p*N, id=floor(g), f=fract(g)-.5, c=(id+.5)/N;
+  float h=h21(id), a, z=1.;
+  if(uTileMode<.5){ a=mod(id.x+id.y,2.)*2.-1.; a*=1.57*sin(uT*.5+h*.8); }                       // checkerboard: neighbours turn opposite ways
+  else if(uTileMode<1.5){ a=1.3*sin(id.x*.55+id.y*.4+uT*1.2); z=1.+.25*sin(id.y*.7-uT*.9); }      // wave rolling across the grid
+  else { a=(h-.5)*3.2*sin(uT*.6+h*6.); z=1.+.4*(h-.5)*sin(uT*.8+h*9.); c+=(vec2(h21(id+7.),h21(id+13.))-.5)*.3/N*sin(uT*.5+h*5.); }   // shatter: every piece on its own
+  return mix(p,c+rot(f,a)*z/N,uTile);
 }
 vec2 warp(vec2 p){
   float w=uWarp*.12, t=uT;
@@ -192,6 +202,7 @@ void main(){
   p*=1.+uBreath*.05*sin(length(p)*9.-uT*1.6);
   p*=1.-uPulse*.04;
   float n0=floor(uKalN),f=fract(uKalN);
+  if(uTile>.001) p=tile(p);
   vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
   vec3 c=mix(tx(pa),tx(pb),f);
   float lum=dot(c,vec3(.299,.587,.114));
@@ -237,7 +248,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse']);
   const half = !!gl.getExtension('EXT_color_buffer_float');
   const res = parseFloat(Q.get('res')); if (res) { FW = Math.round(1600 * res); FH = Math.round(900 * res); }
@@ -277,10 +288,13 @@ let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u = LIVE ? LIVE.u : clamp(t / TOTAL), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
-  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3))), anchor = .32 * clamp(kal0 + melt * .5 + pal * .5);
+  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3))), anchor = .2 * clamp(kal0 + melt * .5 + pal * .5);
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fb = clamp(fb0 * (1 + .08 * wob(t, 2)), 0, .97);
   hue += hueSpd * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
+  const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, hs = k => { const x = Math.sin((wi + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+  const tile = clamp(smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) + (LIVE ? LIVE.boost * .9 : 0)), tileN = [8, 12, 16, 25][Math.floor(hs(1) * 4)], tileMode = Math.floor(hs(2) * 3);
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
   let pulse = 0;
   if (LIVE) pulse = LIVE.pulse;
@@ -295,9 +309,12 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texImg); gl.uniform1i(uS.uTex, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tex[cur]); gl.uniform1i(uS.uPrev, 1);
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
-  gl.uniform1f(uS.uFb, fb); gl.uniform1f(uS.uFbHue, .006 + .02 * pal); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal);
+  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile)));   // trails would smear the tiles away, so they thin out while tiles are on gl.uniform1f(uS.uFbHue, .006 + .02 * pal); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal);
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
+  const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
+  if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
+  else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); } gl.uniform1f(uS.uTileSeed, PH % 7);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
@@ -570,7 +587,7 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
     { L.boost = 1; L.tension = 0; L.sinceDrop = 0; }
   L.boost *= Math.exp(-dt / 6);
   L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
-  L.u += (lerp(.07, .88, L.I) - L.u) * ease(.6);
+  L.u += (lerp(.2, .88, L.I) - L.u) * ease(.6);
   L.state = L.age < 4 ? 'listening…' : L.boost > .5 ? 'drop' : L.tension > .2 ? 'build' : L.bassLong > .3 ? 'groove' : L.lv < .3 ? 'breakdown' : 'calm';
   L.bn = n.b; L.mn = n.m; L.hn = n.h;
 }
