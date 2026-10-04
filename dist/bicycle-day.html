@@ -702,15 +702,15 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   L.sinceDrop += dt; L.age += dt;
   const slam = n.b > .75 && L.bassSlow < .3 && L.lv > L.ls + .05, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
   let dropped = false;
-  if (L.age > 6 && L.sinceDrop > 12 && (slam || afterBuild))   // (no drops during the first seconds: the auto-gain is still settling)
+  if (L.age > 25 && L.sinceDrop > 12 && (slam || afterBuild))   // (no drops during the first 25 s: the auto-gain is still settling and fakes them)
     { L.boost = 1; L.tension = 0; L.sinceDrop = 0; dropped = true; }
   // section detector: a fast average of (level, brightness, bass) against a slow one; a lasting gap = the music moved on to another part
   const cur = [L.lv, clamp(L.bf * 2.5), L.bassLong];
-  for (let i = 0; i < 3; i++) { L.sf[i] += (cur[i] - L.sf[i]) * ease(2); L.ss[i] += (cur[i] - L.ss[i]) * ease(8); }
-  if (L.age < 6) L.ss = L.sf.slice();
+  for (let i = 0; i < 3; i++) { L.sf[i] += (cur[i] - L.sf[i]) * ease(1.5); L.ss[i] += (cur[i] - L.ss[i]) * ease(L.sinceScene < 5 ? .5 : 8); }   // right after a scene change the reference catches up fast, so a ramp isn't read as another change
+  if (L.age < 25) L.ss = L.sf.slice();
   const gap = Math.abs(L.sf[0] - L.ss[0]) + Math.abs(L.sf[1] - L.ss[1]) + .5 * Math.abs(L.sf[2] - L.ss[2]);
   L.secT = gap > .16 ? L.secT + dt : Math.max(0, L.secT - dt); L.sinceScene += dt;
-  if ((dropped && L.sinceScene > 4) || (L.secT > 1.2 && L.sinceScene > 10)) {   // new scene: new palette / lead effect / tile grid, with a visible transition
+  if (L.age > 25 && ((dropped && L.sinceScene > 2.5) || (L.secT > 1.2 && L.sinceScene > 8))) {   // new scene: new palette / lead effect / tile grid, with a visible transition
     L.scenes++; L.kinds[L.scenes] = dropped || L.sf[0] >= L.ss[0] ? 1 : 0;   // (rising = energetic, falling = calm)
     L.sinceScene = 0; L.secT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
   }

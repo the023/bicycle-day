@@ -15,7 +15,7 @@ LIVE=newLive();
 const rows=[]; let lastScene=0, events=[];
 for(cur=0; cur<${nf}; cur++){ liveStep(1/${FPS});
   if(LIVE.scenes!==lastScene){ lastScene=LIVE.scenes; events.push({t:+(cur/${FPS}).toFixed(1), scene:LIVE.scenes, kind:LIVE.kinds[LIVE.scenes]}); }
-  if(cur%${FPS}===0) rows.push({t:cur/${FPS}, lv:+LIVE.lv.toFixed(2), bn:+LIVE.bn.toFixed(2), state:LIVE.state, scene:LIVE.scenes, I:+LIVE.I.toFixed(2)}); }
+  if(cur%${FPS}===0) rows.push({t:cur/${FPS}, gap:+(Math.abs(LIVE.sf[0]-LIVE.ss[0])+Math.abs(LIVE.sf[1]-LIVE.ss[1])+.5*Math.abs(LIVE.sf[2]-LIVE.ss[2])).toFixed(2), lv:+LIVE.lv.toFixed(2), bn:+LIVE.bn.toFixed(2), state:LIVE.state, scene:LIVE.scenes, I:+LIVE.I.toFixed(2)}); }
 return {rows, events};`;
 const res = new Function('SPEC', 'NB', 'SR', src)(spec, NB, SR);
 fs.writeFileSync(prefix + '.replay.json', JSON.stringify(res));
