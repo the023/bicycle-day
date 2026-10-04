@@ -45,6 +45,15 @@
   #lbar{width:140px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
   #lbar i{display:block;height:100%;width:0;background:#ffd60a}
   #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:6px 10px;cursor:pointer}
+  #wrap{touch-action:none}
+  #tune{position:fixed;right:20px;top:20px;display:none;flex-direction:column;gap:9px;width:190px;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
+    font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .3s;z-index:6}
+  body.playing #tune,body.live #tune{display:flex}
+  body.ui #tune{opacity:1;pointer-events:auto}
+  #tune label{display:flex;flex-direction:column;gap:5px}
+  #tune input{width:100%;accent-color:#ffd60a;margin:0}
+  #tune button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:1px solid #f4f1ea66;border-radius:99px;padding:7px 10px;cursor:pointer}
+  #tune button:hover{border-color:#ffd60a}
 </style>
 </head>
 <body>
@@ -61,6 +70,13 @@
 </div>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><button id="lstop">■ stop</button></div>
+<div id="tune">
+  <label>Intensity<input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
+  <label>Kaleidoscope<input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
+  <label>Tiles<input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
+  <label>Trails<input type="range" id="u-fb" min="0" max="1.3" step=".05" value="1"></label>
+  <button id="u-col">Colour: auto</button><button id="u-src">Source: on</button>
+</div>
 <div id="toast"></div>
 <div id="ctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
 
@@ -163,13 +179,14 @@ const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
-uniform float uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
+uniform vec2 uCenter; uniform vec4 uRip;
+uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
 const float TAU=6.28318530718;
 vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);return c*co+cross(k,c)*s+k*dot(k,c)*(1.-co);}
 vec2 rot(vec2 p,float a){float s=sin(a),c=cos(a);return vec2(c*p.x-s*p.y,s*p.x+c*p.y);}
 vec2 kal(vec2 p,float n){
-  vec2 off=vec2(.12*sin(uT*.07),.1*cos(uT*.05)-.05); p-=off;
+  vec2 off=vec2(.12*sin(uT*.07),.1*cos(uT*.05)-.05)+uCenter; p-=off;
   float a=atan(p.y,p.x),r=length(p),seg=TAU/n; a=mod(a,seg); a=abs(a-seg*.5);
   return r*vec2(cos(a),sin(a))+off;
 }
@@ -198,7 +215,9 @@ vec3 tx(vec2 p){
 void main(){
   vec2 fc=gl_FragCoord.xy/uRes;
   vec2 p0=(gl_FragCoord.xy-.5*uRes)/uRes.y;
-  vec2 p=rot(p0/uZoom,uRot);
+  vec2 pr=p0;   // click ripple: a soft ring of displacement that spreads from the click and fades out
+  if(uRip.w>0.){ vec2 d=p0-uRip.xy; float r=length(d), ring=exp(-pow((r-uRip.z*.7)*9.,2.))*(1.-smoothstep(0.,2.,uRip.z)); pr+=d/(r+1e-4)*ring*.07; }
+  vec2 p=rot(pr/uZoom,uRot);
   p*=1.+uBreath*.05*sin(length(p)*9.-uT*1.6);
   p*=1.-uPulse*.04;
   float n0=floor(uKalN),f=fract(uKalN);
@@ -221,6 +240,7 @@ void main(){
   vec3 pv=hueRot(texture(uPrev,q).rgb,uFbHue);
   pv=clamp(mix(vec3(dot(pv,vec3(.299,.587,.114))),pv,1.04),0.,1.);   // trails get slightly more saturated, not greyer
   c=mix(c,pv,uFb);
+  c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),uMono);
   c*=uBright;   // (the pulse flash is added in the display pass, outside the feedback loop, so it can't accumulate)
   o=vec4(c,1.);
 }`;
@@ -248,7 +268,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse']);
   const half = !!gl.getExtension('EXT_color_buffer_float');
   const res = parseFloat(Q.get('res')); if (res) { FW = Math.round(1600 * res); FH = Math.round(900 * res); }
@@ -284,24 +304,28 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 }
 
 /* ════════════════════════ director: turns the score into per-frame parameters ════════════════════════ */
+// user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
+const USER = { inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
-  const u = LIVE ? LIVE.u : clamp(t / TOTAL), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
-  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3))), anchor = .2 * clamp(kal0 + melt * .5 + pal * .5);
+  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal), anchor = .2 * clamp(kal0 + melt * .5 + pal * .5) * USER.src;
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
-  const fb = clamp(fb0 * (1 + .08 * wob(t, 2)), 0, .97);
-  hue += hueSpd * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  const fb = clamp(fb0 * (1 + .08 * wob(t, 2)) * USER.fb, 0, .97);
+  hue += (USER.col === 1 ? 0 : hueSpd) * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
   const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, hs = k => { const x = Math.sin((wi + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
-  const tile = clamp(smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) + (LIVE ? LIVE.boost * .9 : 0)), tileN = [8, 12, 16, 25][Math.floor(hs(1) * 4)], tileMode = Math.floor(hs(2) * 3);
+  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) + (LIVE ? LIVE.boost * .9 : 0)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hs(1) * 4)], tileMode = Math.floor(hs(2) * 3);
+  if (USER.force >= 0) { tile = 1; tileMode = USER.force; }
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
   let pulse = 0;
   if (LIVE) pulse = LIVE.pulse;
   else { while (bi + 1 < BEATS.length && BEATS[bi + 1] <= t) bi++; }
-  if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u); }
-  bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u)));
-  const zoom = 1 + zoomAmp * .12 * Math.sin(t * .23 + wob(t, 6) * 2);
+  if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u0); }
+  bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
+  const zoom = (1 + zoomAmp * .12 * Math.sin(t * .23 + wob(t, 6) * 2)) * USER.zoom;
   const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .6 * mid), ab = aber + hi * 1.2;
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
@@ -309,9 +333,11 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texImg); gl.uniform1i(uS.uTex, 0);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tex[cur]); gl.uniform1i(uS.uPrev, 1);
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
-  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile)));   // trails would smear the tiles away, so they thin out while tiles are on gl.uniform1f(uS.uFbHue, .006 + .02 * pal); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal);
+  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile)));   // trails would smear the tiles away, so they thin out while tiles are on gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : .006 + .02 * pal); gl.uniform1f(uS.uHue, hue); gl.uniform1f(uS.uPal, pal);
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
-  gl.uniform1f(uS.uRot, rotA); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
+  gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
+  const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
+  gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, USER.col === 2 ? 1 : 0);
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
   else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); } gl.uniform1f(uS.uTileSeed, PH % 7);
@@ -474,7 +500,7 @@ function loop() {
 // light controls: they appear when the mouse goes near the bottom edge
 const showUI = () => {
   document.body.classList.add('ui'); clearTimeout(hideT);
-  hideT = setTimeout(() => { if (dragging || $('ctl').matches(':hover')) showUI(); else document.body.classList.remove('ui'); }, 2500);
+  hideT = setTimeout(() => { if (dragging || $('ctl').matches(':hover') || $('tune').matches(':hover')) showUI(); else document.body.classList.remove('ui'); }, 2500);
 };
 addEventListener('mousemove', () => { if (playing || liveOn) showUI(); });   // any mouse move reveals the controls, like a video player
 document.addEventListener('fullscreenchange', () => { if (playing || liveOn) showUI(); });
@@ -498,10 +524,32 @@ addEventListener('keydown', e => {
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
   if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
+  if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
+  if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; USER.force = USER.force === m ? -1 : m; toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
   if (liveOn) return;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (e.code === 'ArrowRight') seekTo(lastT + 10); else if (e.code === 'ArrowLeft') seekTo(lastT - 10);
 });
+[['u-inten', 'inten'], ['u-kal', 'kal'], ['u-tile', 'tile'], ['u-fb', 'fb']].forEach(([id, k]) => {
+  $(id).addEventListener('input', e => { USER[k] = +e.target.value; });
+  $(id).addEventListener('change', e => e.target.blur());   // keep the keyboard free for pause / seek / fullscreen
+});
+const COLS = ['auto', 'frozen', 'b&w'];
+$('u-col').addEventListener('click', e => { USER.col = (USER.col + 1) % 3; e.target.textContent = 'Colour: ' + COLS[USER.col]; });
+$('u-src').addEventListener('click', e => { USER.src = 1 - USER.src; e.target.textContent = 'Source: ' + (USER.src ? 'on' : 'off'); });
+// mouse / touch on the picture: move = centre of the kaleidoscope, click = ripple, drag = rotate, wheel = zoom
+const wrapEl = $('wrap'); let ptr = null;
+const toP = e => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width - .5) * 16 / 9, y: -((e.clientY - r.top) / r.height - .5) }; };
+wrapEl.addEventListener('pointerdown', e => { if (playing || liveOn) ptr = { x: e.clientX, y: e.clientY, drag: false }; });
+wrapEl.addEventListener('pointermove', e => {
+  if (!(playing || liveOn)) return;
+  if (ptr) {
+    if (!ptr.drag && Math.hypot(e.clientX - ptr.x, e.clientY - ptr.y) > 6) ptr.drag = true;
+    if (ptr.drag) { USER.rot += (e.clientX - ptr.x) / cv.clientWidth * 4; ptr.x = e.clientX; ptr.y = e.clientY; }
+  } else if (e.pointerType === 'mouse') { const p = toP(e); USER.tx = p.x; USER.ty = p.y; }
+});
+addEventListener('pointerup', e => { if (ptr && !ptr.drag) { const p = toP(e); USER.rip = { x: p.x, y: p.y, t0: performance.now() }; } ptr = null; });
+wrapEl.addEventListener('wheel', e => { if (!(playing || liveOn)) return; e.preventDefault(); USER.zoom = clamp(USER.zoom * Math.exp(-e.deltaY * .0012), .5, 2.5); }, { passive: false });
 function drawProfile() {   // the arc's intensity curve, drawn behind the seek bar
   const c = $('prof'), x = c.getContext('2d'), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
   x.fillStyle = 'rgba(244,241,234,.28)'; x.beginPath(); x.moveTo(0, h);
