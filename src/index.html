@@ -103,7 +103,7 @@
   <label title="Maximum amount of mirror symmetry">Kaleidoscope<small>mirror symmetry; 0 = never</small><input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
   <label title="Grid-of-tiles effect: each square turns or shifts on its own">Tiles<small>grid of rotating squares: 0 = never, 2 = a lot</small><input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
   <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
-  <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.3" step=".05" value="1"></label>
+  <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off</div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
@@ -297,13 +297,18 @@ void main(){
 
 const FS_SHOW = `#version 300 es
 precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate;
 out vec4 o;
 void main(){
   vec2 uv=gl_FragCoord.xy/uRes, d=uv-.5; float r=length(d);
   float ab=.002+uAber*.004+uPulse*.003+uHi*.002;
   vec3 c=uFx<.5?texture(uTex,uv).rgb:vec3(texture(uTex,uv+d*ab).r,texture(uTex,uv).g,texture(uTex,uv-d*ab).b);
+  c=clamp(c,0.,1.); float L=dot(c,vec3(.299,.587,.114)); c=mix(vec3(L),c,1.8); c=clamp(c,0.,1.); c=mix(c,c*c*(3.-2.*c),.5);   // colour grade: richer, less pastel
   c+=uPulse*.05; c*=1.-.55*smoothstep(.45,1.05,r*1.2);
+  // moods (display pass only, nothing here feeds back): dark = only the brightest bits survive, blaze = near white, strobe = fast white / dark alternation
+  float th=uDark*.45; c=max(c-th,0.)/(1.-th); c*=1.+.5*uDark;
+  c=c*(1.+1.3*uBlaze)+uBlaze*.3;
+  c=mix(c,fract(uT*uRate)<.5?vec3(1.):c*.12,uStrobe*.85);
   if(uFx>.5){ float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi); }
   o=vec4(c,1.);
 }`;
@@ -319,7 +324,7 @@ function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformL
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
   uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
-  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx']);
+  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate']);
   makeTargets();
 }
 // graphics quality: internal resolution, warp layers, colour fringing / grain. Default depends on the renderer (software GL = low).
@@ -374,6 +379,30 @@ const LIVE_LOOK = { drop: [1, 1, .8, 1], build: [.6, 1.3, 1, 1], groove: [.6, 1,
 const CAM = { a: 0 }, BAND = { hi: 0, mid: 0, zt: 0, tt: 0 }, PAL_HI = [0, 1, 2, 4], PAL_LO = [3, 5];
 let lastScene = 0, trT0 = -99, lastMinor = 0, tmT0 = -99;   // live: when the current scene started (drives the transition envelope)
 const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
+// surges + moods: irregular seeded timelines, pure functions of t (so seek and still-rendering work)
+// surge = intensity swell (rises 15-30 s, falls 6-15 s, then the picture recomposes for a while); mood = dark / blaze / b&w / strobe stretch
+let TL = null, TLph = null;
+function timelines() {
+  if (TL && TLph === PH) return TL;
+  const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [];
+  let t = rr(5, 20);
+  while (t < 7200) { const rise = rr(15, 30), fall = rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: rr(.5, 1) }); t += rise + fall + rr(4, 25); }
+  t = rr(15, 40);
+  while (t < 7200) { const k = ['dark', 'bw', 'strobe', 'blaze'][Math.floor(r() * 4)], d = k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(6, 14) : rr(10, 25); moods.push({ k, a: t, b: t + d, rate: rr(5, 11) }); t += d + rr(20, 50); }
+  TLph = PH; return TL = { sur, moods };
+}
+function surgeAt(t) {
+  const s = timelines().sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
+  return t < s.b ? s.h * smooth(s.a, s.b, t) : s.h * (1 - smooth(s.b, s.c, t));
+}
+function moodAt(t) {
+  const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { sur, moods } = timelines(), f = Q.get('mood');
+  const s = f ? { k: f, a: -1e9, b: 1e9, rate: 8 } : moods.find(x => t >= x.a && t < x.b);
+  if (s) { m[s.k] = smooth(s.a, s.a + 1.5, t) * (1 - smooth(s.b - 1.5, s.b, t)); m.rate = s.rate; }
+  const p = sur.find(c => c.h > .75 && t > c.b - 2 && t < c.b + 3);   // the top of a big swell blows out briefly
+  if (p) m.blaze = Math.max(m.blaze, .8 * smooth(p.b - 1.5, p.b, t) * (1 - smooth(p.b, p.b + 2.5, t)));
+  return m;
+}
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
@@ -395,7 +424,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const PL = PALS[Q.has('pal') ? +Q.get('pal') : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
   LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez; LOOK.hj += (hsh(tk, 7) * 2 - LOOK.hj) * (1 - Math.exp(-dt / 1.5));   // hue offset re-rolled on every minor change
   // styles (opt-in): auto picks one per scene (20 % none); calm sections get a lighter touch
-  const sIdx = USER.style === 3 ? [0, 1, 2, 1, 2][Math.floor(hsh(LIVE ? scene : wi, 8) * 5)] : USER.style, sAmt = USER.style === 3 ? (kindOf(scene) ? .85 : .5) : .8;
+  const sIdx = USER.style === 3 ? [0, 1, 2, 1, 2][Math.floor(hsh(LIVE ? scene : wi, 8) * 5)] : USER.style, sAmt = USER.style === 3 ? (kindOf(scene) ? .55 : .3) : .5;
   LOOK.sk += ((sIdx === 1 ? sAmt : 0) - LOOK.sk) * ez; LOOK.sj += ((sIdx === 2 ? sAmt : 0) - LOOK.sj) * ez;
   for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
   // camera tilt amplitude by state; tilt direction drifts slowly and re-rolls per scene
@@ -406,9 +435,10 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   BAND.hi += (hi - BAND.hi) * (1 - Math.exp(-dt * 3)); BAND.mid += (mid - BAND.mid) * (1 - Math.exp(-dt * 3)); BAND.zt += ((LIVE ? .45 * LIVE.tension : 0) - BAND.zt) * (1 - Math.exp(-dt * 2)); BAND.tt = LIVE ? BAND.tt + dt * (1 + 2.5 * bass) : t;
   USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
-  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src;
+  const sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t), md = moodAt(t);
+  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
-  const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .27 * (1 - Math.exp(-(fbx - .7) / .27)), 0, .97);   // soft knee: cranking the slider still leaves the engine's variation
+  const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
   hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; rotA += dt * rotDir * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
   let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
@@ -421,7 +451,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
   const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
-  const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w, ab = aber + BAND.hi * .6;
+  const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg), ab = (aber + BAND.hi * .6) * (1 + .5 * sg);
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
@@ -430,21 +460,22 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
   // trails would smear the tiles away, so they thin out while tiles are on
   gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile))); gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha); gl.uniform1f(uS.uHue, hue + LOOK.hj); gl.uniform1f(uS.uPal, pal * LOOK.p);
-  gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
+  gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt * (.5 + sg)); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
   gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform1f(uS.uSrcZ, 1 + .3 * Math.sin(t * .045 + PH)); gl.uniform1f(uS.uSrcRot, .5 * Math.sin(t * .031 + PH * 2)); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
-  gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, USER.col === 2 ? 1 : 0);
+  gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, Math.max(USER.col === 2 ? 1 : 0, md.bw));
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
   else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); }
   gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
-  gl.uniform1f(uS.uKali, LOOK.sk); gl.uniform1f(uS.uJulia, LOOK.sj);
+  gl.uniform1f(uS.uKali, Math.min(1, LOOK.sk * (.3 + sg))); gl.uniform1f(uS.uJulia, Math.min(1, LOOK.sj * (.3 + sg)));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex[w]); gl.uniform1i(uD.uTex, 0);
   gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, ab); gl.uniform1f(uD.uPulse, pulse); gl.uniform1f(uD.uHi, BAND.hi); gl.uniform1f(uD.uFx, QUAL[quality].fx);
+  gl.uniform1f(uD.uDark, md.dark); gl.uniform1f(uD.uBlaze, md.blaze); gl.uniform1f(uD.uStrobe, md.strobe); gl.uniform1f(uD.uRate, md.rate);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   cur = w;
 }

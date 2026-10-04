@@ -26,6 +26,7 @@ Edit `src/index.html`, never `dist/` (generated; committed on purpose so it open
 - **Mic input** – `micGain` (GainNode between source and analyser, `MICDB` saved in localStorage `bicycleday.micdb`), `METER` (RMS dBFS from `getFloatTimeDomainData`) drawn in `liveLoop`. Declare any top-level `let/const` used by the UI wiring BEFORE that wiring (TDZ error kills the whole script).
 - **Presets** – tweak panel values autosave to localStorage (`bicycleday.last`) and 3 slots (`bicycleday.slot1-3`).
 - **User tweaks** – `USER` object (sliders/buttons in `#tune`, mouse: move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom, keys `1-3`/`T` = tiles). Persistent state on top of the score, never touched by seek. `?tile=<mode>,<N>` forces the tile effect (testing).
+- **Surges & moods** – `timelines()` builds seeded, irregular timelines (pure functions of `t`): `surgeAt(t)` = intensity swell (rise 15-30 s, fall 6-15 s, then the image recomposes) scaling warp/kal/Kali/Julia/melt/aberration; `moodAt(t)` = dark / bw / blaze / strobe stretches (blaze also fires at the top of big surges). Mood effects live in `FS_SHOW` (`uDark/uBlaze/uStrobe/uRate`), bw reuses `uMono`. `?mood=dark|bw|blaze|strobe` and `?surge=0..1` force them (testing). `FS_SHOW` also does the colour grade (saturation/contrast).
 - **Transport** – `begin(off)` (re)starts sound at song time `off`; `seekTo`, `togglePause` (AudioContext suspend/resume).
 
 - **Live mode (prototype)** – `startLive()` captures a tab's audio via `getDisplayMedia` (Chrome/Edge desktop; `?live=mic` uses the microphone through the same pipeline), `liveStep()` extracts causal features (per-band auto-gain, kicks, build = brightness+level rising, drop = bass slam), produces `LIVE.u`, a position on the `journey` arc, so `render()` reuses all looks. The tab audio is analysed only, never routed to the speakers.
@@ -34,7 +35,7 @@ Edit `src/index.html`, never `dist/` (generated; committed on purpose so it open
 
 - The picture is a pure function of the audio clock time `t` (`render(t, dt, …)`). Drifting state (`hue`, `rotA`) is integrated per frame and re-derived by `integrateTo(off)` on seek — keep both in sync when changing `render()`.
 - Anything added to the **feedback loop** (pass 1) accumulates frame after frame. One-shot flashes (pulse) must be added in the display pass, not pass 1 (this once blew the image out to white).
-- No strobing / rapid full-screen flashes (photosensitivity). `intense` = big fast motion, still no strobe.
+- Strobe is allowed on purpose (owner's call: tool for people used to fast visuals, not for children): the `strobe` mood flashes full-screen white/dark at 5-11 Hz for 6-14 s. Keep it in the display pass only (never pass 1) so it can't accumulate in the feedback loop.
 - The poster must be inlined as a data URI (WebGL rejects `file://` images as textures); user images go through `URL.createObjectURL`, which is fine.
 
 ## Testing without a GPU / speakers
