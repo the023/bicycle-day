@@ -649,6 +649,7 @@ addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.file
    Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
    Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
 let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null;
+const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
 async function startLive(mic = Q.get('live') === 'mic') {
   if (!ready || playing || liveOn) return;
   const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
@@ -675,7 +676,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
   LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
   LB = { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)] };
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
-  LIVE = { u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 };
+  LIVE = newLive();
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
   gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
