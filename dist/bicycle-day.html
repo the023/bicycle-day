@@ -11,7 +11,7 @@
   #toast.on{opacity:1}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
-  #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:34px;
+  #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
     background:#05030c;color:#f4f1ea;font:700 14px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.55em;text-transform:uppercase;transition:opacity .8s;overflow:hidden}
   #gate.off{opacity:0;pointer-events:none}
   #gate .t{font-weight:900;font-size:clamp(40px,8vw,128px);letter-spacing:.04em;line-height:.9;text-align:center;
@@ -20,12 +20,17 @@
   @keyframes flow{to{background-position:300% 0}}
   @keyframes hue{to{filter:hue-rotate(360deg)}}
   #gate .sub{opacity:.55;font-size:clamp(10px,1vw,14px)}
-  #play{position:relative;width:96px;height:96px;border-radius:50%;border:3px solid #f4f1ea;display:grid;place-items:center}
-  #play::before{content:"";margin-left:10px;border-style:solid;border-width:20px 0 20px 34px;border-color:transparent transparent transparent #f4f1ea}
-  #play::after{content:"";position:absolute;inset:-3px;border-radius:50%;border:3px solid #ffd60a;animation:ring 1.8s ease-out infinite}
-  @keyframes ring{0%{transform:scale(1);opacity:.9}100%{transform:scale(2);opacity:0}}
-  #opts,#dur{display:flex;gap:10px}
-  #opts button,#dur button,#pick{font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:10px 16px;cursor:pointer}
+  #opts,#dur{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+  #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
+  .card{width:230px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 16px;border:1px solid #f4f1ea33;border-radius:18px;text-align:center;letter-spacing:.08em;text-transform:none;background:#ffffff08}
+  .card b{font-size:15px;letter-spacing:.3em;text-transform:uppercase}
+  .card span{font-weight:400;font-size:12px;line-height:1.5;opacity:.75;flex:1}
+  .card.off{opacity:.4}
+  .card .warn{font-style:normal;font-size:11px;color:#ffd60a}
+  .card .go{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
+  .card .go:hover:not(:disabled){background:#fff}
+  .card .go:disabled{opacity:.35;cursor:not-allowed}
+  #opts button,#dur button,#pick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
   #opts button.on,#dur button.on{background:#f4f1ea;color:#05030c}
   #pick:hover,#opts button:hover,#dur button:hover{border-color:#ffd60a}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
@@ -37,9 +42,6 @@
   #bar canvas{position:absolute;inset:0;width:100%;height:100%}
   #head{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
   #vol{width:90px;accent-color:#ffd60a}
-  #tabmode{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.3em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:14px 22px;cursor:pointer}
-  #tabmode:hover{background:#fff}
-  #livenote{font-size:10px!important;letter-spacing:.2em!important}
   #live{position:fixed;left:24px;top:20px;display:none;align-items:center;gap:14px;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;z-index:6;opacity:.85;text-shadow:0 0 6px #000}
   body.live #live{display:flex}
   #lbar{width:140px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
@@ -54,19 +56,27 @@
   #tune input{width:100%;accent-color:#ffd60a;margin:0}
   #tune button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:1px solid #f4f1ea66;border-radius:99px;padding:7px 10px;cursor:pointer}
   #tune button:hover{border-color:#ffd60a}
+  #tune .prow{display:flex;align-items:center;gap:6px}
+  #tune .prow button{flex:1;padding:6px 0}
 </style>
 </head>
 <body>
 <div id="wrap"><canvas id="c"></canvas></div>
 <div id="gate">
   <div class="t">BICYCLE<br>DAY</div>
-  <div id="play"></div>
+  <div id="cards">
+    <div class="card" id="c-gen"><b>Generative</b><span>Pick an image. The app composes its own music and the picture follows it.</span>
+      <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
+      <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
+      <label id="pick">Choose an image<input type="file" accept="image/*" hidden></label>
+      <button class="go" id="playgen">▶ Play</button></div>
+    <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
+      <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">● Listen to a tab</button></div>
+    <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
+      <button class="go" id="micmode">● Use the microphone</button></div>
+    <div class="card off" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn">Coming soon</i></div>
+  </div>
   <div class="sub" id="hint">Loading…</div>
-  <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
-  <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
-  <label id="pick">Choose an image<input type="file" accept="image/*" hidden></label>
-  <button id="tabmode">● Listen to a YouTube tab (live)</button>
-  <div class="sub" id="livenote">Chrome or Edge on desktop · keep this window visible, next to your video</div>
 </div>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><button id="lstop">■ stop</button></div>
@@ -76,6 +86,8 @@
   <label>Tiles<input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
   <label>Trails<input type="range" id="u-fb" min="0" max="1.3" step=".05" value="1"></label>
   <button id="u-col">Colour: auto</button><button id="u-src">Source: on</button>
+  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
+  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
 </div>
 <div id="toast"></div>
 <div id="ctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
@@ -179,7 +191,7 @@ const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
-uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform float uHueAmt;
+uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT;
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
 const float TAU=6.28318530718;
@@ -195,9 +207,9 @@ float h21(vec2 i){return fract(sin(dot(i+uTileSeed,vec2(12.9898,78.233)))*43758.
 vec2 tile(vec2 p){
   float N=uTileN; vec2 g=p*N, id=floor(g), f=fract(g)-.5, c=(id+.5)/N;
   float h=h21(id), a, z=1.;
-  if(uTileMode<.5){ a=mod(id.x+id.y,2.)*2.-1.; a*=1.57*sin(uT*.5+h*.8); }                       // checkerboard: neighbours turn opposite ways
-  else if(uTileMode<1.5){ a=1.3*sin(id.x*.55+id.y*.4+uT*1.2); z=1.+.25*sin(id.y*.7-uT*.9); }      // wave rolling across the grid
-  else { a=(h-.5)*3.2*sin(uT*.6+h*6.); z=1.+.4*(h-.5)*sin(uT*.8+h*9.); c+=(vec2(h21(id+7.),h21(id+13.))-.5)*.3/N*sin(uT*.5+h*5.); }   // shatter: every piece on its own
+  if(uTileMode<.5){ a=mod(id.x+id.y,2.)*2.-1.; a*=1.57*sin(uTT*.5+h*.8); }                       // checkerboard: neighbours turn opposite ways
+  else if(uTileMode<1.5){ a=1.3*sin(id.x*.55+id.y*.4+uTT*1.2); z=1.+.25*sin(id.y*.7-uTT*.9); }      // wave rolling across the grid
+  else { a=(h-.5)*3.2*sin(uTT*.6+h*6.); z=1.+.4*(h-.5)*sin(uTT*.8+h*9.); c+=(vec2(h21(id+7.),h21(id+13.))-.5)*.3/N*sin(uTT*.5+h*5.); }   // shatter: every piece on its own
   return mix(p,c+rot(f,a)*z/N,uTile);
 }
 vec2 warp(vec2 p){
@@ -217,6 +229,7 @@ void main(){
   vec2 p0=(gl_FragCoord.xy-.5*uRes)/uRes.y;
   vec2 pr=p0;   // click ripple: a soft ring of displacement that spreads from the click and fades out
   if(uRip.w>0.){ vec2 d=p0-uRip.xy; float r=length(d), ring=exp(-pow((r-uRip.z*.7)*9.,2.))*(1.-smoothstep(0.,2.,uRip.z)); pr+=d/(r+1e-4)*ring*.07; }
+  pr/=1.+dot(p0,uTilt);   // camera tilt: cheap perspective, the picture leans away to one side
   vec2 p=rot(pr/uZoom,uRot);
   p*=1.+uBreath*.05*sin(length(p)*9.-uT*1.6);
   p*=1.-uPulse*.04;
@@ -247,14 +260,14 @@ void main(){
 
 const FS_SHOW = `#version 300 es
 precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi;
 out vec4 o;
 void main(){
   vec2 uv=gl_FragCoord.xy/uRes, d=uv-.5; float r=length(d);
-  float ab=.002+uAber*.004+uPulse*.003;
+  float ab=.002+uAber*.004+uPulse*.003+uHi*.002;
   vec3 c=vec3(texture(uTex,uv+d*ab).r,texture(uTex,uv).g,texture(uTex,uv-d*ab).b);
   c+=uPulse*.05; c*=1.-.55*smoothstep(.45,1.05,r*1.2);
-  float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*.05;
+  float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi);
   o=vec4(c,1.);
 }`;
 
@@ -268,8 +281,8 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt']);
-  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT']);
+  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi']);
   const half = !!gl.getExtension('EXT_color_buffer_float');
   const res = parseFloat(Q.get('res')); if (res) { FW = Math.round(1600 * res); FH = Math.round(900 * res); }
   for (let i = 0; i < 2; i++) {
@@ -310,6 +323,7 @@ const USER = { inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom
 const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4], d: [0, .15, .2], ha: .3 }, { c: [2, 1, 0], d: [.5, .2, .25], ha: .3 }, { c: [1, 1, .5], d: [.8, .9, .3], ha: .3 }, { c: [1.5, 1.5, 1.5], d: [0, .5, .5], ha: .3 }, { c: [1, 1, 1], d: [.5, .2, .8], ha: .3 }], ICE = 3;
 // per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
 const LIVE_LOOK = { drop: [1, 1, .8, 1], build: [.6, 1.3, 1, 1], groove: [.6, 1, 1.15, 1], breakdown: [.15, .8, .6, .6], calm: [.3, .9, .9, .8] };
+const CAM = { a: 0 }, BAND = { hi: 0, tt: 0 };
 const LOOK = { k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
 let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
@@ -323,12 +337,18 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const PL = PALS[Q.has('pal') ? +Q.get('pal') : st === 'breakdown' ? ICE : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
   LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez;
   for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
+  // camera tilt amplitude by state; tilt direction drifts slowly and re-rolls per scene
+  const camT = LIVE ? ({ drop: .32, groove: .26, build: .2, breakdown: .05, calm: .08 }[st] ?? .15) : .18 * smooth(.2, .5, u);
+  CAM.a += (camT - CAM.a) * ez;
+  const tilt = [CAM.a * Math.sin(t * .11 + hsh(scene, 5) * 6.28), CAM.a * Math.cos(t * .087 + hsh(scene, 6) * 6.28)];
+  // band reactivity: mids spin the picture, bass speeds the tiles up, highs add sparkle (live only where it would break the pure f(t))
+  BAND.hi += (hi - BAND.hi) * (1 - Math.exp(-dt * 6)); BAND.tt = LIVE ? BAND.tt + dt * (1 + 2.5 * bass) : t;
   USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
   const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k), anchor = .2 * clamp(kal0 + melt * .5 + pal * .5) * USER.src;
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fb = clamp(fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, 0, .97);
-  hue += (USER.col === 1 ? 0 : hueSpd) * dt; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += mid * dt * .12 * rotDir; rotA += dt * rotDir * smooth(.12, .35, u) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
   let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(wi, 1) * 4)], tileMode = Math.floor(hsh(wi, 2) * 3);
   if (USER.force >= 0) { tile = 1; tileMode = USER.force; }
@@ -338,7 +358,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   else { while (bi + 1 < BEATS.length && BEATS[bi + 1] <= t) bi++; }
   if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u0); }
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
-  const zoom = (1 + zoomAmp * .12 * Math.sin(t * .23 + wob(t, 6) * 2)) * USER.zoom;
+  const zoom = (1 + zoomAmp * .12 * Math.sin(t * .23 + wob(t, 6) * 2)) * USER.zoom * (1 + bassE * .04);
   const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .6 * mid) * LOOK.w, ab = aber + hi * 1.2;
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
@@ -351,7 +371,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
-  gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
+  gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
   gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, USER.col === 2 ? 1 : 0);
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
@@ -360,7 +380,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex[w]); gl.uniform1i(uD.uTex, 0);
-  gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, ab); gl.uniform1f(uD.uPulse, pulse);
+  gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, ab); gl.uniform1f(uD.uPulse, pulse); gl.uniform1f(uD.uHi, BAND.hi);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   cur = w;
 }
@@ -509,7 +529,7 @@ function loop() {
   }
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Click to replay · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
   requestAnimationFrame(loop);
 }
 // light controls: they appear when the mouse goes near the bottom edge
@@ -524,7 +544,7 @@ function toast(msg, ms = 5000) { const el = $('toast'); el.textContent = msg; el
 const toggleFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); };
 function stopPlay() {   // back to the start screen
   if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed + ' · click to play again';
+  document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
@@ -549,7 +569,23 @@ addEventListener('keydown', e => {
   $(id).addEventListener('input', e => { USER[k] = +e.target.value; });
   $(id).addEventListener('change', e => e.target.blur());   // keep the keyboard free for pause / seek / fullscreen
 });
-const COLS = ['auto', 'frozen', 'b&w'];
+const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['inten', 'kal', 'tile', 'fb', 'col', 'src'], SLID = { inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
+const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
+function applyTweaks(o) {   // push saved values into USER and into the panel widgets
+  KEYS_U.forEach(k => { if (typeof o[k] === 'number') USER[k] = o[k]; });
+  for (const k in SLID) $(SLID[k]).value = USER[k];
+  $('u-col').textContent = 'Colour: ' + COLS[USER.col]; $('u-src').textContent = 'Source: ' + (USER.src ? 'on' : 'off');
+}
+const snapTweaks = () => Object.fromEntries(KEYS_U.map(k => [k, USER[k]]));
+let saveT = 0; const autosave = () => { clearTimeout(saveT); saveT = setTimeout(() => lsSet('last', snapTweaks()), 300); };   // the panel remembers where you left it
+$('tune').addEventListener('input', autosave); $('tune').addEventListener('click', autosave);
+$('tune').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.save) { lsSet('slot' + b.dataset.save, snapTweaks()); toast('Saved to preset ' + b.dataset.save, 1500); }
+  else if (b.dataset.load) { const o = lsGet('slot' + b.dataset.load); if (o) { applyTweaks(o); autosave(); toast('Preset ' + b.dataset.load, 1500); } else toast('Preset ' + b.dataset.load + ' is empty — use Save', 2000); }
+});
+{ const o = lsGet('last'); if (o) applyTweaks(o); }
 $('u-col').addEventListener('click', e => { USER.col = (USER.col + 1) % 3; e.target.textContent = 'Colour: ' + COLS[USER.col]; });
 $('u-src').addEventListener('click', e => { USER.src = 1 - USER.src; e.target.textContent = 'Source: ' + (USER.src ? 'on' : 'off'); });
 // mouse / touch on the picture: move = centre of the kaleidoscope, click = ripple, drag = rotate, wheel = zoom
@@ -571,7 +607,7 @@ function drawProfile() {   // the arc's intensity curve, drawn behind the seek b
   for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - energy(i / 200) * (h - 8));
   x.lineTo(w, h); x.fill();
 }
-const updateHint = () => { if (ready) hint.textContent = `Click to play · sound on · ${MIN} min`; };
+const updateHint = () => { if (ready) hint.textContent = `Choose a mode · generative: ${MIN} min, sound on`; };
 const chips = [...document.querySelectorAll('#opts button')];
 chips.forEach(b => b.classList.toggle('on', b.dataset.arc === arcName));
 document.getElementById('opts').addEventListener('click', e => {
@@ -594,9 +630,8 @@ addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.file
    Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
    Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
 let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null;
-async function startLive() {
+async function startLive(mic = Q.get('live') === 'mic') {
   if (!ready || playing || liveOn) return;
-  const mic = Q.get('live') === 'mic';   // same pipeline, microphone as the source (also handy for tests)
   const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
   let stream;
   try {
@@ -617,7 +652,7 @@ async function startLive() {
   if (ac) ac.close().catch(() => {});
   ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
   const src = ac.createMediaStreamSource(stream);
-  analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .4; src.connect(analyser);   // analyser only: no output
+  analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .3; src.connect(analyser);   // analyser only: no output
   LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
   LB = { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)] };
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
@@ -634,7 +669,7 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
   const raw = { b: band(LB.b), m: band(LB.m), h: band(LB.h) };
   const n = {}; for (const key in raw) { L.ref[key] = Math.max(raw[key], L.ref[key] * Math.exp(-dt / 30), 1e-5); n[key] = clamp(raw[key] / L.ref[key]); }   // per-band auto-gain, 30 s memory
   const lvl = .45 * n.b + .35 * n.m + .2 * n.h;
-  L.lv += (lvl - L.lv) * ease(1.2); L.ls += (lvl - L.ls) * ease(10);
+  L.lv += (lvl - L.lv) * ease(.8); L.ls += (lvl - L.ls) * ease(10);
   const bright = n.h / (n.b + n.m + n.h + 1e-6);
   L.bf += (bright - L.bf) * ease(1.5); L.bsl += (bright - L.bsl) * ease(10);
   // kicks: positive jumps of the bass band
@@ -650,7 +685,7 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
     { L.boost = 1; L.tension = 0; L.sinceDrop = 0; L.drops++; }
   L.boost *= Math.exp(-dt / 6);
   L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
-  L.u += (lerp(.2, .88, L.I) - L.u) * ease(.6);
+  L.u += (lerp(.2, .88, L.I) - L.u) * ease(.4);
   L.state = L.age < 4 ? 'listening…' : L.boost > .5 ? 'drop' : L.tension > .2 ? 'build' : L.bassLong > .3 ? 'groove' : L.lv < .3 ? 'breakdown' : 'calm';
   L.bn = n.b; L.mn = n.m; L.hn = n.h;
 }
@@ -668,11 +703,15 @@ function stopLive() {
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
   document.body.classList.remove('live'); gate.classList.remove('off'); setArc(arcName); updateHint();
 }
-$('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(); });
+$('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
+$('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
+{ // tab capture needs desktop Chrome / Edge: say so up front instead of failing after the click
+  const ua = navigator.userAgent, ok = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !/Firefox|Mobi|Android|iPhone|iPad/.test(ua);
+  if (!ok) { $('tabmode').disabled = true; $('streamwarn').textContent = /Firefox/.test(ua) ? 'Not supported in Firefox (no tab audio). Use Chrome / Edge, or Live.' : 'Needs Chrome or Edge on a computer. Use Live instead.'; }
+}
 $('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
-if (Q.get('live') === 'mic') $('tabmode').textContent = '● Listen to the microphone (live)';
 addEventListener('resize', resize);
-document.addEventListener('click', start);
+$('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
 addEventListener('load', () => {
   if (!gl) { hint.textContent = 'WebGL2 is not available in this browser'; return; }
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
