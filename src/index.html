@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Bicycle Day — a trip in WebGL</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:pointer}
+  body.playing:not(.ui),body.live:not(.ui){cursor:none}
+  #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);padding:10px 16px;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;opacity:0;transition:opacity .5s;pointer-events:none;z-index:7;white-space:nowrap}
+  #toast.on{opacity:1}
+  #wrap{position:fixed;inset:0;display:grid;place-items:center}
+  canvas{display:block;background:#000}
+  #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
+    background:#05030c;color:#f4f1ea;font:700 14px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.55em;text-transform:uppercase;transition:opacity .8s;overflow:hidden}
+  #gate.off{opacity:0;pointer-events:none}
+  #gate .t{font-weight:900;font-size:clamp(40px,8vw,128px);letter-spacing:.04em;line-height:.9;text-align:center;
+    background:linear-gradient(90deg,#ff2d95,#ffd60a,#2cff8a,#00e5ff,#7c4dff,#ff2d95);background-size:300% 100%;
+    -webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 6s linear infinite,hue 9s linear infinite}
+  @keyframes flow{to{background-position:300% 0}}
+  @keyframes hue{to{filter:hue-rotate(360deg)}}
+  #gate .sub{opacity:.55;font-size:clamp(10px,1vw,14px)}
+  #opts,#dur{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+  @media (max-height:800px){#gate{gap:18px}#gate .t{font-size:clamp(30px,6vw,76px)}}
+  #qual{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+  #qual span{opacity:.6;margin-right:4px}
+  #qual button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
+  #qual button.on{background:#f4f1ea;color:#05030c}
+  #qnote{font-size:10px!important;letter-spacing:.1em!important;text-transform:none!important;color:#ffd60a;min-height:12px}
+  #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
+  .card{width:230px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 16px;border:1px solid #f4f1ea33;border-radius:18px;text-align:center;letter-spacing:.08em;text-transform:none;background:#ffffff08}
+  .card b{font-size:15px;letter-spacing:.3em;text-transform:uppercase}
+  .card span{font-weight:400;font-size:12px;line-height:1.5;opacity:.75;flex:1}
+  .card.off{opacity:.4}
+  .card .warn{font-style:normal;font-size:11px;color:#ffd60a}
+  .card .go{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
+  .card .go:hover:not(:disabled){background:#fff}
+  .card .go:disabled{opacity:.35;cursor:not-allowed}
+  #opts button,#dur button,#pick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
+  #opts button.on,#dur button.on{background:#f4f1ea;color:#05030c}
+  #pick:hover,#opts button:hover,#dur button:hover{border-color:#ffd60a}
+  #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
+    font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
+  body.playing #ctl{display:flex}
+  body.ui #ctl{opacity:1;pointer-events:auto}
+  #pp,#stopb{width:34px;height:34px;border-radius:50%;border:1px solid #f4f1ea88;background:none;color:#f4f1ea;cursor:pointer;font-size:12px}
+  #bar{position:relative;flex:1;height:40px;cursor:pointer;touch-action:none;border-bottom:2px solid #f4f1ea55}
+  #bar canvas{position:absolute;inset:0;width:100%;height:100%}
+  #head{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
+  #vol{width:90px;accent-color:#ffd60a}
+  #live{position:fixed;left:24px;top:20px;display:none;align-items:center;gap:14px;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;z-index:6;opacity:.85;text-shadow:0 0 6px #000}
+  body.live #live{display:flex}
+  #lbar{width:140px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
+  #lbar i{display:block;height:100%;width:0;background:#ffd60a}
+  #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:6px 10px;cursor:pointer}
+  #wrap{touch-action:none}
+  #tune{position:fixed;right:20px;top:20px;display:none;flex-direction:column;gap:9px;width:210px;max-height:calc(100vh - 80px);overflow-y:auto;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
+    font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .3s;z-index:6}
+  body.playing #tune,body.live #tune{display:flex}
+  body.ui #tune{opacity:1;pointer-events:auto}
+  #tune label{display:flex;flex-direction:column;gap:5px}
+  body:not(.mic) .micOnly{display:none}
+  #mlev{position:relative;width:110px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
+  #mlev i{position:absolute;left:0;top:0;bottom:0;width:0;background:#2cff8a;transition:background .2s}
+  #mtxt{font-size:10px;letter-spacing:.1em;min-width:120px}
+  #tune small{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none;opacity:.6;line-height:1.3}
+  #tune .help{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none;opacity:.6;line-height:1.4}
+  #tune input{width:100%;accent-color:#ffd60a;margin:0}
+  #tune button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:1px solid #f4f1ea66;border-radius:99px;padding:7px 10px;cursor:pointer}
+  #tune button:hover{border-color:#ffd60a}
+  #tune .tmodes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  #tune .tmodes button{padding:6px 0}
+  #tune button.on{background:#f4f1ea;color:#05030c}
+  #tune .prow{display:flex;align-items:center;gap:6px}
+  #tune .prow button{flex:1;padding:6px 0}
+</style>
+</head>
+<body>
+<div id="wrap"><canvas id="c"></canvas></div>
+<div id="gate">
+  <div class="t">BICYCLE<br>DAY</div>
+  <div id="cards">
+    <div class="card" id="c-gen"><b>Generative</b><span>Pick an image. The app composes its own music and the picture follows it.</span>
+      <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
+      <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
+      <label id="pick">Choose an image<input type="file" accept="image/*" hidden></label>
+      <button class="go" id="playgen">▶ Play</button></div>
+    <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
+      <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">● Listen to a tab</button></div>
+    <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
+      <button class="go" id="micmode">● Use the microphone</button></div>
+    <div class="card off" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn">Coming soon</i></div>
+  </div>
+  <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
+  <div class="sub" id="qnote"></div>
+  <div class="sub" id="hint">Loading…</div>
+</div>
+
+<div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
+<div id="tune">
+  <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
+  <label title="Shifts the whole animation up or down the intensity curve">Intensity<small>how wild overall: calmer ↔ more effects</small><input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
+  <label title="Maximum amount of mirror symmetry">Kaleidoscope<small>mirror symmetry; 0 = never</small><input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
+  <label title="Grid-of-tiles effect: each square turns or shifts on its own">Tiles<small>grid of rotating squares: 0 = never, 2 = a lot</small><input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
+  <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
+  <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
+  <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
+  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off</div>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
+  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
+  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
+</div>
+<div id="toast"></div>
+<div id="ctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
+
+<script>
+'use strict';
+/* ════════════════════════ config ════════════════════════
+   ?min=5 sets the length (default 5 min). ?t=120 renders one silent still at 120 s (debug). */
+const Q = new URLSearchParams(location.search);
+let MIN = parseFloat(Q.get('min')) || 5, TOTAL = MIN * 60;
+const cv = document.getElementById('c'), gate = document.getElementById('gate'), hint = document.getElementById('hint');
+const gl = cv.getContext('webgl2', { antialias: false, alpha: false });
+const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
+const lerp = (a, b, t) => a + (b - a) * t;
+const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+
+/* ════════════════════════ PRESET: everything that gives a piece its character ════════════════════════
+   Generic parts: the engine (shaders + synth) and the energy "arc". Swappable parts: image, arc, scale, root, tempo, colour, seed.
+   URL: ?arc=journey|waves|slam  ?scale=dorian|lydian|phrygian|minor  ?root=50 (midi note)  ?bpm=52-118
+        ?seed=7 (same seed = same piece; omit = new each play)  ?hue=random|<radians>  ?min=5   — and drop any image on the page. */
+const SCALES = { dorian: [0, 2, 3, 5, 7, 9, 10], lydian: [0, 2, 4, 6, 7, 9, 11], phrygian: [0, 1, 3, 5, 7, 8, 10], minor: [0, 2, 3, 5, 7, 8, 10] };
+const SCALE = SCALES[Q.get('scale')] || SCALES.dorian, ROOT = parseInt(Q.get('root')) || 50;
+const [BPM0, BPM1] = (Q.get('bpm') || '52-118').split('-').map(Number);
+function mulberry32(a) { return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+
+/* ════════════════════════ ARCS: the sequential part ("score") ════════════════════════
+   Each row = [position 0..1, [warp, kaleidoscope, folds, feedback, hue speed, palette, side-dark, breath, melt, zoom, aberration, brightness]]
+   Values are interpolated between rows. marks = where the sound places its riser / impact / exhale. */
+const ARCS = {
+  journey: { marks: { riser: [.72, .88], hit: .88, exhale: .95 }, keys: [
+    [0,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],   // black
+    [.05, [0,  0,  6, 0,   0,   0,   1,  .2, 0,  0,  0,  1]],   // the image appears
+    [.15, [.15,0,  6, .1,  .02, 0,   .9, 1,  0,  .2, .1, 1]],   // it starts to breathe
+    [.30, [.6, 0,  6, .45, .08, .15, .5, 1,  .2, .4, .3, 1]],   // ripples, trails
+    [.45, [.8, .5, 6, .7,  .15, .3,  0,  1,  .3, .6, .4, 1]],   // frame dissolves, kaleidoscope enters
+    [.60, [1,  1,  8, .8,  .25, .5,  0,  1,  .5, .8, .6, 1]],   // full kaleidoscope
+    [.75, [1.3,.7, 10,.9,  .35, .8,  0,  1,  1,  1,  .9, 1]],   // melting
+    [.88, [2,  .4, 12,.94, .5,  1,   0,  1,  1,  1.2,1,  1]],   // dissolve into colour
+    [.95, [.2, 0,  6, .3,  .05, 0,   .9, 1,  0,  .2, .2, 1]],   // return
+    [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],   // black
+  ] },
+  waves: { marks: { riser: [.55, .72], hit: .72, exhale: .88 }, keys: [   // two swells: a medium one, then a bigger one
+    [0,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+    [.04, [0,  0,  6, 0,   0,   0,   1,  .2, 0,  0,  0,  1]],
+    [.12, [.2, 0,  6, .15, .02, 0,   .8, 1,  0,  .2, .1, 1]],
+    [.28, [.9, .6, 8, .75, .2,  .4,  0,  1,  .4, .7, .5, 1]],
+    [.42, [.15,0,  6, .1,  .02, 0,   .9, 1,  0,  .2, .1, 1]],
+    [.55, [.7, .3, 6, .5,  .12, .2,  .3, 1,  .3, .5, .3, 1]],
+    [.72, [1.6,1,  12,.92, .45, 1,   0,  1,  1,  1.2,1,  1]],
+    [.88, [.3, 0,  6, .3,  .05, .1,  .7, 1,  0,  .3, .2, 1]],
+    [.95, [0,  0,  6, 0,   0,   0,   1,  .5, 0,  0,  0,  1]],
+    [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+  ] },
+  slam: { marks: { riser: [.55, .781], hit: .781, exhale: .79 }, keys: [  // slow build, then a hard cut back to the still image
+    [0,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+    [.05, [0,  0,  6, 0,   0,   0,   1,  .2, 0,  0,  0,  1]],
+    [.30, [.5, 0,  6, .4,  .1,  .1,  .6, 1,  .1, .4, .2, 1]],
+    [.60, [1,  .6, 8, .8,  .25, .5,  0,  1,  .5, .8, .6, 1]],
+    [.78, [2,  1,  12,.95, .55, 1,   0,  1,  1,  1.3,1,  1]],
+    [.783,[0,  0,  6, 0,   0,   0,   1,  1,  0,  0,  0,  1]],
+    [.95, [0,  0,  6, 0,   0,   0,   1,  1,  0,  0,  0,  1]],
+    [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+  ] },
+  intense: { bpm: [84, 150], drive: 1, kalMax: .85, marks: { riser: [.18, .25], hit: .25, exhale: .93 }, keys: [   // short calm, fast climb, long relentless plateau (adds a kick + hats)
+    [0,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+    [.03, [0,  0,  6, 0,   0,   0,   1,  .3, 0,  0,  0,  1]],
+    [.10, [.5, .2, 8, .5,  .15, .2,  .4, 1,  .2, .5, .3, 1]],
+    [.25, [1,  .8, 10,.75, .35, .6,  0,  1,  .6, .9, .7, 1]],
+    [.45, [1.6,1,  12,.8,  .6,  .9,  0,  1,  1,  1.2,1,  1]],
+    [.70, [2,  1,  14,.85, .8,  1,   0,  1,  1,  1.4,1.3,1]],
+    [.88, [2.2,1,  16,.87, .9,  1,   0,  1,  1,  1.5,1.5,1]],
+    [.93, [.4, .3, 6, .4,  .1,  .2,  .5, 1,  .1, .3, .3, 1]],
+    [.97, [0,  0,  6, 0,   0,   0,   1,  .5, 0,  0,  0,  1]],
+    [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+  ] },
+};
+let arcName = ARCS[Q.get('arc')] ? Q.get('arc') : 'journey', ARC, KEYS, EMAX = 1, BEATS = [], PH = 0;
+function score(u) {
+  let i = 0; while (i < KEYS.length - 2 && u > KEYS[i + 1][0]) i++;
+  const [u0, a] = KEYS[i], [u1, b] = KEYS[i + 1], k = smooth(u0, u1, u);
+  return a.map((x, j) => x + (b[j] - x) * k);
+}
+const wob = (t, s) => Math.sin(t * .13 * s + s + PH * s) * .5 + Math.sin(t * .071 * s * 1.7 + 2 * s + PH * (s + 1)) * .3 + Math.sin(t * .037 * s * 2.3 + PH) * .2;
+// "energy" = how intense the arc is right now (0..1). Heartbeat tempo, drone brightness, arpeggios and bells all follow it.
+const energyRaw = u => { const e = score(u); return (e[0] / 2 + e[1] + e[5] + e[8] + e[9] / 1.2) / 5; };
+const energy = u => clamp(energyRaw(u) / EMAX);
+const bpmAt = u => { const [a, b] = Q.get('bpm') ? [BPM0, BPM1] : (ARC.bpm || [BPM0, BPM1]); return lerp(a, b, energy(u)); };
+const hbW = u => smooth(.05, .2, u) * (1 - smooth(.93, .97, u));
+function setArc(name) {
+  arcName = name; ARC = ARCS[name]; KEYS = ARC.keys; EMAX = 1;
+  let m = 0; for (let i = 0; i <= 200; i++) m = Math.max(m, energyRaw(i / 200)); EMAX = m || 1;
+  BEATS = []; for (let s = TOTAL * .06; s < TOTAL * .97; s += 60 / bpmAt(s / TOTAL)) BEATS.push(s);   // heartbeat times, shared by sound and picture
+}
+setArc(arcName);
+
+/* ════════════════════════ shaders ════════════════════════ */
+const VS = `#version 300 es
+void main(){ vec2 p=vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position=vec4(p*2.-1.,0.,1.); }`;
+
+const FS_SCENE = `#version 300 es
+precision highp float;
+uniform sampler2D uTex,uPrev;
+uniform vec2 uRes;
+uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot;
+uniform float uWarpN,uFx,uKali,uJulia;
+uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
+out vec4 o;
+const float TAU=6.28318530718;
+vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);return c*co+cross(k,c)*s+k*dot(k,c)*(1.-co);}
+vec2 rot(vec2 p,float a){float s=sin(a),c=cos(a);return vec2(c*p.x-s*p.y,s*p.x+c*p.y);}
+vec2 kal(vec2 p,float n){
+  vec2 off=vec2(.12*sin(uT*.07),.1*cos(uT*.05)-.05)+uCenter; p-=off;
+  float a=atan(p.y,p.x),r=length(p),seg=TAU/n; a=mod(a,seg); a=abs(a-seg*.5);
+  return r*vec2(cos(a),sin(a))+off;
+}
+// tiles: cut the picture into an N×N grid; each cell turns / zooms / shifts its own piece (smooth, never a flash)
+float h21(vec2 i){return fract(sin(dot(i+uTileSeed,vec2(12.9898,78.233)))*43758.5453);}
+vec2 tile(vec2 p){
+  float N=uTileN; vec2 g=p*N, id=floor(g), f=fract(g)-.5, c=(id+.5)/N;
+  float h=h21(id), a, z=1.;
+  if(uTileMode<.5){ a=mod(id.x+id.y,2.)*2.-1.; a*=1.57*sin(uTT*.5+h*.8); }                       // checkerboard: neighbours turn opposite ways
+  else if(uTileMode<1.5){ a=1.3*sin(id.x*.55+id.y*.4+uTT*1.2); z=1.+.25*sin(id.y*.7-uTT*.9); }      // wave rolling across the grid
+  else { a=(h-.5)*3.2*sin(uTT*.6+h*6.); z=1.+.4*(h-.5)*sin(uTT*.8+h*9.); c+=(vec2(h21(id+7.),h21(id+13.))-.5)*.3/N*sin(uTT*.5+h*5.); }   // shatter: every piece on its own
+  return mix(p,c+rot(f,a)*z/N,uTile);
+}
+// styles (2D, cheap, inspired by raymarched Shadertoy fractals): the picture is re-sampled through a fractal map
+vec2 kaliFold(vec2 p){   // Kaliset-like: fold |p+1|-1, inversion, scale, repeated
+  vec2 q=p*1.4; float sc=1.25+.35*sin(uT*.13);
+  for(int i=0;i<4;i++){ q=abs(q+1.)-1.; q/=clamp(dot(q,q),.25,1.); q*=sc; }
+  return q*.35;
+}
+vec2 juliaWarp(vec2 p){   // a few Julia iterations: the picture is smeared along the orbit
+  vec2 z=p*1.6, c=vec2(-.74+.08*sin(uT*.07),.12+.1*cos(uT*.09));
+  for(int i=0;i<6;i++) z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;
+  return z*.35/(1.+.1*dot(z,z));
+}
+vec2 warp(vec2 p){
+  float w=uWarp*.12, t=uT;
+  for(int i=0;i<4;i++){float fi=float(i); if(fi>=uWarpN) break;
+    p+=w*vec2(sin(p.y*(3.+fi)+t*(.5+.13*fi)+fi*1.7),cos(p.x*(3.+fi)-t*(.45+.11*fi)+fi*2.3));}
+  p.y+=uMelt*.12*sin(p.x*5.+t*.8)*(.5+.5*sin(t*.3+p.x*2.));
+  p.x+=uMelt*.05*sin(p.y*9.-t*1.1);
+  return p;
+}
+vec3 tx(vec2 p){
+  vec2 uv=vec2(p.x/uAspect,p.y)+.5; if(uFx<.5) return texture(uTex,uv).rgb;   // low quality: no colour fringing
+  float d=uAber*.012; vec2 dir=normalize(p+1e-4);
+  return vec3(texture(uTex,uv+dir*d).r,texture(uTex,uv).g,texture(uTex,uv-dir*d).b);
+}
+void main(){
+  vec2 fc=gl_FragCoord.xy/uRes;
+  vec2 p0=(gl_FragCoord.xy-.5*uRes)/uRes.y;
+  vec2 pr=p0;   // click ripple: a soft ring of displacement that spreads from the click and fades out
+  if(uRip.w>0.){ vec2 d=p0-uRip.xy; float r=length(d), ring=exp(-pow((r-uRip.z*.7)*9.,2.))*(1.-smoothstep(0.,2.,uRip.z)); pr+=d/(r+1e-4)*ring*.07; }
+  pr/=1.+dot(p0,uTilt);   // camera tilt: cheap perspective, the picture leans away to one side
+  vec2 p=rot(pr/uZoom,uRot);
+  p*=1.+uBreath*.05*sin(length(p)*9.-uT*1.6);
+  p*=1.-uPulse*.04;
+  float n0=floor(uKalN),f=fract(uKalN);
+  if(uTile>.001) p=tile(p);
+  if(uKali>.001) p=mix(p,kaliFold(p),uKali);
+  if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
+  vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
+  vec3 c=mix(tx(pa),tx(pb),f);
+  float lum=dot(c,vec3(.299,.587,.114));
+  vec3 pal=.5+.5*cos(TAU*(lum*uPalC+uHue*.2*uHueAmt+uPalD));
+  c=mix(c,pal*(.55+.6*lum),uPal*.85);
+  c=hueRot(c,(uHue+length(p)*1.5*uPal)*uHueAmt);
+  // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
+  vec2 ps=rot(p0/uSrcZ,uSrcRot); ps+=.04*vec2(sin(ps.y*5.+uT*.23),cos(ps.x*5.+uT*.19));   // the ghost of the source drifts too: slow zoom, turn and wobble
+  vec3 src=texture(uTex,vec2(ps.x/uAspect,ps.y)+.5).rgb;
+  float inside=(1.-smoothstep(.42*uAspect,.5*uAspect,abs(ps.x)))*(1.-smoothstep(.42,.5,abs(ps.y)));
+  c=mix(c,src,uAnchor*inside);
+  c=mix(c,c*.12,smoothstep(.5*uAspect,.5*uAspect+.03,abs(p0.x))*uSide);            // the poster is square: dark ghost on the sides
+  // feedback: previous frame, slightly rotated/zoomed and hue-shifted → rainbow trails
+  vec2 q=fc-.5; q.x*=uRes.x/uRes.y;
+  q=rot(q,.004+.01*uFb)*(1.-.006-.01*uFb*sin(uT*.2));
+  q.x/=uRes.x/uRes.y; q+=.5;
+  vec3 pv=hueRot(texture(uPrev,q).rgb,uFbHue);
+  pv=clamp(mix(vec3(dot(pv,vec3(.299,.587,.114))),pv,1.04),0.,1.);   // trails get slightly more saturated, not greyer
+  c=mix(c,pv,uFb);
+  c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),uMono);
+  c*=uBright;   // (the pulse flash is added in the display pass, outside the feedback loop, so it can't accumulate)
+  o=vec4(c,1.);
+}`;
+
+const FS_SHOW = `#version 300 es
+precision highp float;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate;
+out vec4 o;
+void main(){
+  vec2 uv=gl_FragCoord.xy/uRes, d=uv-.5; float r=length(d);
+  float ab=.002+uAber*.004+uPulse*.003+uHi*.002;
+  vec3 c=uFx<.5?texture(uTex,uv).rgb:vec3(texture(uTex,uv+d*ab).r,texture(uTex,uv).g,texture(uTex,uv-d*ab).b);
+  c=clamp(c,0.,1.); float L=dot(c,vec3(.299,.587,.114)); c=mix(vec3(L),c,1.8); c=clamp(c,0.,1.); c=mix(c,c*c*(3.-2.*c),.5);   // colour grade: richer, less pastel
+  c+=uPulse*.05; c*=1.-.55*smoothstep(.45,1.05,r*1.2);
+  // moods (display pass only, nothing here feeds back): dark = only the brightest bits survive, blaze = near white, strobe = fast white / dark alternation
+  float th=uDark*.45; c=max(c-th,0.)/(1.-th); c*=1.+.5*uDark;
+  c=c*(1.+1.3*uBlaze)+uBlaze*.3;
+  c=mix(c,fract(uT*uRate)<.5?vec3(1.):c*.12,uStrobe*.85);
+  if(uFx>.5){ float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi); }
+  o=vec4(c,1.);
+}`;
+
+/* ════════════════════════ GL setup ════════════════════════ */
+let progS, progD, uS = {}, uD = {}, texImg, fbo = [], tex = [], FW = 1600, FH = 900, ready = false;
+function prog(fs) {
+  const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
+  const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, VS)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
+  if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); return p;
+}
+function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
+function initGL() {
+  progS = prog(FS_SCENE); progD = prog(FS_SHOW);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
+  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate']);
+  makeTargets();
+}
+// graphics quality: internal resolution, warp layers, colour fringing / grain. Default depends on the renderer (software GL = low).
+const QUAL = { high: { res: 1, dpr: 1.5, warpN: 4, fx: 1 }, medium: { res: .7, dpr: 1, warpN: 3, fx: 1 }, low: { res: .5, dpr: 1, warpN: 2, fx: 0 } };
+let quality = 'high';
+function softwareGL() { const e = gl.getExtension('WEBGL_debug_renderer_info'); return !!e && /swiftshader|llvmpipe|software|basic render/i.test(String(gl.getParameter(e.UNMASKED_RENDERER_WEBGL))); }
+function makeTargets() {
+  const half = !!gl.getExtension('EXT_color_buffer_float');
+  tex.forEach(t => gl.deleteTexture(t)); fbo.forEach(f => gl.deleteFramebuffer(f)); tex.length = 0; fbo.length = 0;
+  const res = parseFloat(Q.get('res')) || QUAL[quality].res; FW = Math.round(1600 * res); FH = Math.round(900 * res);
+  for (let i = 0; i < 2; i++) {
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+    gl.texImage2D(gl.TEXTURE_2D, 0, half ? gl.RGBA16F : gl.RGBA8, FW, FH, 0, gl.RGBA, half ? gl.HALF_FLOAT : gl.UNSIGNED_BYTE, null);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0);
+    gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT); tex.push(t); fbo.push(f);
+  }
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
+}
+let ASPECT = 1;
+function loadPoster(src, done) {
+  const img = new Image();
+  img.onload = () => {
+    if (texImg) gl.deleteTexture(texImg);
+    texImg = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, texImg);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); gl.generateMipmap(gl.TEXTURE_2D);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+    ASPECT = img.naturalWidth / img.naturalHeight; done && done();
+  };
+  img.onerror = () => { hint.textContent = 'Could not load that image'; };
+  img.src = src;
+}
+function resize() {   // keep the canvas a 16:9 box, centred, as large as the window allows
+  const w = Math.min(innerWidth, innerHeight * 16 / 9), h = w * 9 / 16, dpr = Math.min(devicePixelRatio || 1, QUAL[quality].dpr);
+  cv.style.width = w + 'px'; cv.style.height = h + 'px';
+  cv.width = Math.min(1920, Math.round(w * dpr)); cv.height = Math.round(cv.width * 9 / 16);
+}
+
+/* ════════════════════════ director: turns the score into per-frame parameters ════════════════════════ */
+// microphone input: software gain (dB), level meter state
+const METER = { db: -90 };
+let micGain = null, TD = null, MICDB = 0, clipT = 0;
+// user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
+const USER = { style: 0, inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
+// palettes: cosine palettes (frequency, phase) + how much the global hue drift may rotate them; a new one on every drop / window
+const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4], d: [0, .15, .2], ha: .3 }, { c: [2, 1, 0], d: [.5, .2, .25], ha: .3 }, { c: [1, 1, .5], d: [.8, .9, .3], ha: .3 }, { c: [1.5, 1.5, 1.5], d: [0, .5, .5], ha: .3 }, { c: [1, 1, 1], d: [.5, .2, .8], ha: .3 }];
+// per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
+const LIVE_LOOK = { drop: [1, 1, .8, 1], build: [.6, 1.3, 1, 1], groove: [.6, 1, 1.15, 1], breakdown: [.15, .8, .6, .6], calm: [.3, .9, .9, .8] };
+const CAM = { a: 0 }, BAND = { hi: 0, mid: 0, zt: 0, tt: 0 }, PAL_HI = [0, 1, 2, 4], PAL_LO = [3, 5];
+let lastScene = 0, trT0 = -99, lastMinor = 0, tmT0 = -99;   // live: when the current scene started (drives the transition envelope)
+const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
+// surges + moods: irregular seeded timelines, pure functions of t (so seek and still-rendering work)
+// surge = intensity swell (rises 15-30 s, falls 6-15 s, then the picture recomposes for a while); mood = dark / blaze / b&w / strobe stretch
+let TL = null, TLph = null;
+function timelines() {
+  if (TL && TLph === PH) return TL;
+  const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [];
+  let t = rr(5, 20);
+  while (t < 7200) { const rise = rr(15, 30), fall = rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: rr(.5, 1) }); t += rise + fall + rr(4, 25); }
+  t = rr(15, 40);
+  while (t < 7200) { const k = ['dark', 'bw', 'strobe', 'blaze'][Math.floor(r() * 4)], d = k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(6, 14) : rr(10, 25); moods.push({ k, a: t, b: t + d, rate: rr(5, 11) }); t += d + rr(20, 50); }
+  TLph = PH; return TL = { sur, moods };
+}
+function surgeAt(t) {
+  const s = timelines().sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
+  return t < s.b ? s.h * smooth(s.a, s.b, t) : s.h * (1 - smooth(s.b, s.c, t));
+}
+function moodAt(t) {
+  const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { sur, moods } = timelines(), f = Q.get('mood');
+  const s = f ? { k: f, a: -1e9, b: 1e9, rate: 8 } : moods.find(x => t >= x.a && t < x.b);
+  if (s) { m[s.k] = smooth(s.a, s.a + 1.5, t) * (1 - smooth(s.b - 1.5, s.b, t)); m.rate = s.rate; }
+  const p = sur.find(c => c.h > .75 && t > c.b - 2 && t < c.b + 3);   // the top of a big swell blows out briefly
+  if (p) m.blaze = Math.max(m.blaze, .8 * smooth(p.b - 1.5, p.b, t) * (1 - smooth(p.b, p.b + 2.5, t)));
+  return m;
+}
+let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
+function render(t, dt, bass, mid = 0, hi = 0) {
+  const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
+  const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
+  if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
+  const mi = LIVE ? LIVE.minors : Math.floor(t / 15 + PH * .2), mf = t / 15 + PH * .2 - mi;
+  if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
+  const tm = LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2);   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  const tk = scene * 50 + mi;
+  const tr = LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) : 0;   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
+  const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+  const kindOf = n => LIVE ? (LIVE.kinds[n] ?? 1) : 1;   // 1 = energetic section, 0 = calm one
+  const palRaw = n => { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[Math.floor(hsh(n, 4) * pool.length)]; };
+  const palIdx = n => { const a = palRaw(n); if (n > 0 && a === palRaw(n - 1)) { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[(pool.indexOf(a) + 1) % pool.length]; } return a; };
+  const leadTile = hsh(scene, 3) < .5, st = LIVE ? LIVE.state : '', sv = LIVE_LOOK[st] || [1, 1, 1, 1], base = kindOf(scene) ? [1, 1.1, 1, 1] : [.35, .8, .7, .7];
+  const tg = base.map((b, i) => b * (1 + .3 * (sv[i] - 1)));   // the section sets the look; the instantaneous state only nudges it
+  if (st === 'drop' && leadTile) tg[0] *= .35;
+  const PL = PALS[Q.has('pal') ? +Q.get('pal') : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
+  LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez; LOOK.hj += (hsh(tk, 7) * 2 - LOOK.hj) * (1 - Math.exp(-dt / 1.5));   // hue offset re-rolled on every minor change
+  // styles (opt-in): auto picks one per scene (20 % none); calm sections get a lighter touch
+  const sIdx = USER.style === 3 ? [0, 1, 2, 1, 2][Math.floor(hsh(LIVE ? scene : wi, 8) * 5)] : USER.style, sAmt = USER.style === 3 ? (kindOf(scene) ? .55 : .3) : .5;
+  LOOK.sk += ((sIdx === 1 ? sAmt : 0) - LOOK.sk) * ez; LOOK.sj += ((sIdx === 2 ? sAmt : 0) - LOOK.sj) * ez;
+  for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
+  // camera tilt amplitude by state; tilt direction drifts slowly and re-rolls per scene
+  const camT = LIVE ? (kindOf(scene) ? .26 : .08) * (1 + .3 * (({ drop: .32, groove: .26, build: .2 }[st] ?? .1) / .26 - 1)) : .18 * smooth(.2, .5, u);
+  CAM.a += (camT - CAM.a) * ez;
+  const tilt = [CAM.a * Math.sin(t * .11 + hsh(scene, 5) * 6.28), CAM.a * Math.cos(t * .087 + hsh(scene, 6) * 6.28)];
+  // band reactivity: mids spin the picture, bass speeds the tiles up, highs add sparkle (live only where it would break the pure f(t))
+  BAND.hi += (hi - BAND.hi) * (1 - Math.exp(-dt * 3)); BAND.mid += (mid - BAND.mid) * (1 - Math.exp(-dt * 3)); BAND.zt += ((LIVE ? .45 * LIVE.tension : 0) - BAND.zt) * (1 - Math.exp(-dt * 2)); BAND.tt = LIVE ? BAND.tt + dt * (1 + 2.5 * bass) : t;
+  USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
+  const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
+  const sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t), md = moodAt(t);
+  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
+  const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
+  const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
+  hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; rotA += dt * rotDir * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
+  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
+  if (USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * USER.tile)); tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
+  // heartbeat (lub-dub) + low-frequency energy of the actual sound
+  let pulse = 0;
+  if (LIVE) pulse = LIVE.pulse;
+  else { while (bi + 1 < BEATS.length && BEATS[bi + 1] <= t) bi++; }
+  if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u0); }
+  bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
+  // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
+  const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
+  const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg), ab = (aber + BAND.hi * .6) * (1 + .5 * sg);
+  // pass 1 → offscreen (with feedback from the previous frame)
+  const w = cur ^ 1;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texImg); gl.uniform1i(uS.uTex, 0);
+  gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tex[cur]); gl.uniform1i(uS.uPrev, 1);
+  gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
+  // trails would smear the tiles away, so they thin out while tiles are on
+  gl.uniform1f(uS.uFb, fb * (1 - .75 * (Q.get('tile') ? 1 : tile))); gl.uniform1f(uS.uFbHue, USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha); gl.uniform1f(uS.uHue, hue + LOOK.hj); gl.uniform1f(uS.uPal, pal * LOOK.p);
+  gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt * (.5 + sg)); gl.uniform1f(uS.uZoom, zoom);
+  gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
+  const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
+  gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform1f(uS.uSrcZ, 1 + .3 * Math.sin(t * .045 + PH)); gl.uniform1f(uS.uSrcRot, .5 * Math.sin(t * .031 + PH * 2)); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
+  gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, Math.max(USER.col === 2 ? 1 : 0, md.bw));
+  const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
+  if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
+  else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); }
+  gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
+  gl.uniform1f(uS.uKali, Math.min(1, LOOK.sk * (.3 + sg))); gl.uniform1f(uS.uJulia, Math.min(1, LOOK.sj * (.3 + sg)));
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  // pass 2 → screen (aberration, vignette, grain)
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex[w]); gl.uniform1i(uD.uTex, 0);
+  gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, ab); gl.uniform1f(uD.uPulse, pulse); gl.uniform1f(uD.uHi, BAND.hi); gl.uniform1f(uD.uFx, QUAL[quality].fx);
+  gl.uniform1f(uD.uDark, md.dark); gl.uniform1f(uD.uBlaze, md.blaze); gl.uniform1f(uD.uStrobe, md.strobe); gl.uniform1f(uD.uRate, md.rate);
+  gl.drawArrays(gl.TRIANGLES, 0, 3);
+  cur = w;
+}
+
+/* ════════════════════════ generative sound (different every play) ════════════════════════ */
+let analyser = null, fdata = null;
+function buildAudio(a, t0, off = 0) {
+  const rand = rng, pick = arr => arr[Math.floor(rand() * arr.length)];
+  const mtof = m => 440 * Math.pow(2, (m - 69) / 12), SC = SCALE;            // D dorian
+  const note = i => ROOT + SC[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
+  const master = a.createGain(), fi = Math.min(5, TOTAL * .15), fo = Math.min(10, TOTAL * .25);
+  const ts = t0 + off;   // song time 'off' happens now when seeking
+  master.gain.setValueAtTime(0, ts); master.gain.linearRampToValueAtTime(.9, ts + (off ? 1.2 : fi));
+  master.gain.setValueAtTime(.9, t0 + TOTAL - fo); master.gain.linearRampToValueAtTime(0, t0 + TOTAL - .3);
+  const comp = a.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.knee.value = 14;
+  analyser = a.createAnalyser(); analyser.fftSize = 1024; analyser.smoothingTimeConstant = .6; fdata = new Uint8Array(analyser.frequencyBinCount);
+  master.connect(comp); comp.connect(analyser); const outG = a.createGain(); outG.gain.value = +document.getElementById('vol').value; volNode = outG; comp.connect(outG); outG.connect(a.destination);
+  const irL = a.sampleRate * 3.5, ir = a.createBuffer(2, irL, a.sampleRate);
+  for (let c = 0; c < 2; c++) { const d = ir.getChannelData(c); for (let i = 0; i < irL; i++) d[i] = (rand() * 2 - 1) * Math.pow(1 - i / irL, 2.5); }
+  const rev = a.createConvolver(); rev.buffer = ir; const rg = a.createGain(); rg.gain.value = .55; rev.connect(rg); rg.connect(master);
+  const dly = a.createDelay(2); dly.delayTime.value = .42; const fb = a.createGain(); fb.gain.value = .42;
+  const dlf = a.createBiquadFilter(); dlf.type = 'lowpass'; dlf.frequency.value = 2400; dly.connect(dlf); dlf.connect(fb); fb.connect(dly); dlf.connect(master); dlf.connect(rev);
+  const send = (n, r, d = 0) => { if (r) { const s = a.createGain(); s.gain.value = r; n.connect(s); s.connect(rev); } if (d) { const s = a.createGain(); s.gain.value = d; n.connect(s); s.connect(dly); } };
+  const nb = a.createBuffer(1, a.sampleRate * 2, a.sampleRate), nd = nb.getChannelData(0); for (let i = 0; i < nd.length; i++) nd[i] = rand() * 2 - 1;
+  const noise = (t, d) => { const s = a.createBufferSource(); s.buffer = nb; s.loop = true; s.start(t, rand() * 1.5); s.stop(t + d); return s; };
+  const env = (t, at, pk, dec, dest) => { const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + at); g.gain.exponentialRampToValueAtTime(.0001, t + at + dec); g.connect(dest); return g; };
+
+  // — drone: two saws that slowly drift apart (beating), a sub, and a filter that opens with the score
+  const dl = a.createBiquadFilter(); dl.type = 'lowpass'; dl.Q.value = 4; const dg = a.createGain(); dg.gain.value = .2; dl.connect(dg); dg.connect(master); send(dg, .25);
+  const o1 = a.createOscillator(), o2 = a.createOscillator(), o3 = a.createOscillator(), sg = a.createGain(); sg.gain.value = .5;
+  o1.type = o2.type = 'sawtooth'; o3.type = 'sine'; o1.frequency.value = o2.frequency.value = mtof(ROOT - 12); o3.frequency.value = mtof(ROOT - 24);
+  o1.connect(dl); o2.connect(dl); o3.connect(sg); sg.connect(dg);
+  const lfo = a.createOscillator(), lg = a.createGain(); lfo.frequency.value = .07; lg.gain.value = 120; lfo.connect(lg); lg.connect(dl.frequency);
+  const CN = 128, cut = new Float32Array(CN), det = new Float32Array(CN), u0 = off / TOTAL;
+  for (let i = 0; i < CN; i++) { const k = energy(lerp(u0, 1, i / (CN - 1))); cut[i] = 200 * Math.pow(2, 4.5 * k); det[i] = 3 + 45 * smooth(.2, .9, k); }
+  dl.frequency.setValueCurveAtTime(cut, ts, TOTAL - off); o2.detune.setValueCurveAtTime(det, ts, TOTAL - off);
+  [o1, o2, o3, lfo].forEach(o => { o.start(ts); o.stop(t0 + TOTAL + 1); });
+
+  const pad = (t, idxs, dur) => {
+    for (const i of idxs) for (const dt of [-7, 7]) {
+      const o = a.createOscillator(), lp = a.createBiquadFilter(), g = a.createGain(); o.type = 'sawtooth'; o.frequency.value = mtof(note(i)); o.detune.value = dt;
+      lp.type = 'lowpass'; lp.frequency.value = 1100; g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(.045, t + 3); g.gain.setValueAtTime(.045, t + dur - 3.5); g.gain.linearRampToValueAtTime(.0001, t + dur);
+      o.connect(lp); lp.connect(g); g.connect(master); send(g, .5); o.start(t); o.stop(t + dur + .1);
+    }
+  };
+  const bell = (t, i, v) => {
+    const f = mtof(note(i) + 12), c = a.createOscillator(), m = a.createOscillator(), mg = a.createGain(), out = env(t, .004, v, 4.5, master);
+    c.frequency.value = f; m.frequency.value = f * 3.5; mg.gain.setValueAtTime(f * 1.2, t); mg.gain.exponentialRampToValueAtTime(1, t + 3);
+    m.connect(mg); mg.connect(c.frequency); c.connect(out); send(out, .7, .35); [c, m].forEach(o => { o.start(t); o.stop(t + 5); });
+  };
+  const arp = (t, i, v) => {
+    const o = a.createOscillator(), lp = a.createBiquadFilter(); o.type = 'triangle'; o.frequency.value = mtof(note(i) + 12);
+    lp.type = 'lowpass'; lp.Q.value = 2; lp.frequency.setValueAtTime(3500, t); lp.frequency.exponentialRampToValueAtTime(500, t + .2);
+    const g = env(t, .004, v, .22, master); o.connect(lp); lp.connect(g); send(g, .3, .5); o.start(t); o.stop(t + .3);
+  };
+  const kick = (t, v) => { const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(46, t + .12); const g = env(t, .003, v, .3, master); o.connect(g); o.start(t); o.stop(t + .4); };
+  const hat = (t, v) => { const n = noise(t, .08), f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; n.connect(f); f.connect(env(t, .002, v, .04, master)); };
+  const thump = (t, v) => {
+    for (const [dt, f0, f1, k] of [[0, 78, 42, 1], [.22, 64, 38, .6]]) {
+      const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(f0, t + dt); o.frequency.exponentialRampToValueAtTime(f1, t + dt + .14);
+      const g = env(t + dt, .005, v * k, .25, master); o.connect(g); o.start(t + dt); o.stop(t + dt + .35);
+    }
+  };
+  // one-off gestures: riser into the dissolve, impact, exhale
+  if (t0 + TOTAL * ARC.marks.riser[0] > a.currentTime + .1) { const t = t0 + TOTAL * ARC.marks.riser[0], d = TOTAL * (ARC.marks.riser[1] - ARC.marks.riser[0]), n = noise(t, d + .1), f = a.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
+    f.frequency.setValueAtTime(200, t); f.frequency.exponentialRampToValueAtTime(7000, t + d);
+    const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.3, t + d); g.gain.setValueAtTime(.0001, t + d + .05);
+    n.connect(f); f.connect(g); g.connect(master); send(g, .5); }
+  if (t0 + TOTAL * ARC.marks.hit > a.currentTime + .1) { const t = t0 + TOTAL * ARC.marks.hit, o = a.createOscillator(); o.frequency.setValueAtTime(70, t); o.frequency.exponentialRampToValueAtTime(28, t + 1.8);
+    o.connect(env(t, .01, .9, 2.2, master)); o.start(t); o.stop(t + 2.4);
+    const n = noise(t, 2.5), f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 4000; const g = env(t, .005, .35, 2.2, master); n.connect(f); f.connect(g); send(g, .6); }
+  if (t0 + TOTAL * ARC.marks.exhale > a.currentTime + .1) { const t = t0 + TOTAL * ARC.marks.exhale, d = Math.min(5, TOTAL * .04), n = noise(t, d + .1), f = a.createBiquadFilter(); f.type = 'lowpass';
+    f.frequency.setValueAtTime(5000, t); f.frequency.exponentialRampToValueAtTime(150, t + d);
+    const g = a.createGain(); g.gain.setValueAtTime(.3, t); g.gain.exponentialRampToValueAtTime(.0001, t + d); n.connect(f); f.connect(g); g.connect(master); send(g, .5); }
+
+  // rolling scheduler: random notes, a few seconds at a time
+  const nw = Math.max(t0 + 1, ts + .1); let nextPad = nw, nextBell = Math.max(t0 + TOTAL * .04, ts + .1), nextArp = nw, hb = (() => { const i = BEATS.findIndex(b => b >= off); return i < 0 ? BEATS.length : i; })(), chord = 0, ai = 12;
+  const prog = [0, 3, 4, 2, 5, 6];
+  return function pump() {
+    const hz = a.currentTime + 30;
+    while (nextPad < hz && nextPad < t0 + TOTAL - 4) {
+      chord = pick(prog); pad(nextPad, [chord, chord + 2, chord + 4, rand() < .5 ? chord + 6 : chord + 7], 11 + rand() * 4); nextPad += 7 + rand() * 4;
+    }
+    while (nextBell < hz && nextBell < t0 + TOTAL - 4) {
+      const p = .04 + .4 * clamp(energy((nextBell - t0) / TOTAL) * 1.3);
+      if (rand() < p) bell(nextBell, 14 + [0, 2, 4, 5, 7, 9][Math.floor(rand() * 6)] % 7 + (rand() < .3 ? 7 : 0), .05 + rand() * .06);
+      nextBell += .5;
+    }
+    while (nextArp < hz && nextArp < t0 + TOTAL - 4) {
+      const en = energy((nextArp - t0) / TOTAL);
+      if (en > .2 && rand() < .55) { ai = clamp(ai + pick([-2, -1, 1, 2]), 7, 17); arp(nextArp, ai, .05 * smooth(.2, .5, en)); }
+      nextArp += .25;
+    }
+    while (hb < BEATS.length && t0 + BEATS[hb] < hz) {
+      const bt = t0 + BEATS[hb], uu = BEATS[hb] / TOTAL, w = hbW(uu), en = energy(uu);
+      if (w > .01 && bt > a.currentTime - .1) {
+        thump(bt, .6 * w);
+        if (ARC.drive && en > .3) { kick(bt, .5 * en); hat(bt + 30 / bpmAt(uu), .12 * en); }   // intense: kick + off-beat hat
+      }
+      hb++;
+    }
+  };
+}
+
+/* ════════════════════════ transport ════════════════════════ */
+let ac = null, t0 = 0, playing = false, lat = 0, pump = null, pumpId = 0, rng = Math.random, seedUsed = 0;
+let paused = false, hueBase = 0, dragging = false, volNode = null, hideT = 0;
+const $ = id => document.getElementById(id);
+const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
+function newSeed() {   // one seed drives all the randomness of a play (notes, drift phases, spin direction, start hue)
+  const q = Q.get('seed'); seedUsed = q !== null ? (parseFloat(q) || 0) : Math.floor(Math.random() * 1e6);
+  rng = mulberry32(seedUsed); PH = rng() * 6.283; rotDir = rng() < .5 ? -1 : 1;
+  const h = Q.get('hue'); hueBase = h === 'random' ? rng() * 6.283 : (parseFloat(h) || 0);
+}
+function integrateTo(off) {   // fast-forward the drifting state (hue, spin) to a given time; mirrors render()
+  hue = hueBase; rotA = 0;
+  for (let s = 0; s < off; s += .5) { const u = s / TOTAL, e = score(u); hue += e[4] * .5; rotA += .5 * rotDir * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)); }
+}
+const setPP = () => { $('pp').textContent = paused ? '▶' : '❚❚'; };
+function begin(off, fresh) {   // (re)start sound + state at song time `off`; the picture is a pure function of time so it just follows
+  clearInterval(pumpId); if (ac) ac.close().catch(() => {});
+  ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
+  off = clamp(off, 0, Math.max(0, TOTAL - 3));
+  t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
+  if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
+  bi = 0; bassE = 0; lastT = off; integrateTo(off); paused = false; setPP();
+  pump = buildAudio(ac, t0, off); pump(); pumpId = setInterval(pump, 1000);
+}
+function start() {
+  if (playing || !ready || liveOn) return;
+  begin(0, true); playing = true; gate.classList.add('off'); document.body.classList.add('playing');
+  const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
+  toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
+  requestAnimationFrame(loop);
+}
+function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); } }
+function togglePause() { if (!playing) return; if (paused) ac.resume(); else ac.suspend(); paused = !paused; setPP(); }
+function loop() {
+  if (!playing) return;
+  const t = Math.max(0, ac.currentTime - t0 - lat), dt = clamp(t - lastT, 0, .1); lastT = t;
+  let bass = 0, mid = 0, hi = 0;
+  if (analyser) {
+    analyser.getByteFrequencyData(fdata);
+    for (let i = 1; i < 7; i++) bass += fdata[i]; for (let i = 7; i < 41; i++) mid += fdata[i]; for (let i = 41; i < 200; i++) hi += fdata[i];
+    bass /= 6 * 255; mid /= 34 * 255; hi /= 159 * 255;
+  }
+  const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
+  if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  requestAnimationFrame(loop);
+}
+// light controls: they appear when the mouse goes near the bottom edge
+const showUI = () => {
+  document.body.classList.add('ui'); clearTimeout(hideT);
+  hideT = setTimeout(() => { if (dragging || $('ctl').matches(':hover') || $('tune').matches(':hover')) showUI(); else document.body.classList.remove('ui'); }, 2500);
+};
+addEventListener('mousemove', () => { if (playing || liveOn) showUI(); });   // any mouse move reveals the controls, like a video player
+document.addEventListener('fullscreenchange', () => { if (playing || liveOn) showUI(); });
+let toastT = 0;
+function toast(msg, ms = 5000) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms); }
+const toggleFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); };
+function stopPlay() {   // back to the start screen
+  if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+  document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
+  if (document.fullscreenElement) document.exitFullscreen();
+}
+const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
+bar.addEventListener('pointerdown', e => { dragging = true; bar.setPointerCapture(e.pointerId); $('head').style.left = frac(e) * 100 + '%'; });
+bar.addEventListener('pointermove', e => { if (dragging) { $('head').style.left = frac(e) * 100 + '%'; $('tm').textContent = fmt(frac(e) * TOTAL) + ' / ' + fmt(TOTAL); } });
+bar.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; seekTo(frac(e) * TOTAL); });
+$('pp').addEventListener('click', togglePause);
+$('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
+$('stopb').addEventListener('click', stopPlay);
+addEventListener('keydown', e => {
+  if (!playing && !liveOn) return;
+  // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
+  if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
+  if (e.code === 'KeyF') { toggleFullscreen(); return; }
+  if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
+  if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
+  if (liveOn) return;
+  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
+  else if (e.code === 'ArrowRight') seekTo(lastT + 10); else if (e.code === 'ArrowLeft') seekTo(lastT - 10);
+});
+[['u-inten', 'inten'], ['u-kal', 'kal'], ['u-tile', 'tile'], ['u-fb', 'fb']].forEach(([id, k]) => {
+  $(id).addEventListener('input', e => { USER[k] = +e.target.value; });
+  $(id).addEventListener('change', e => e.target.blur());   // keep the keyboard free for pause / seek / fullscreen
+});
+const markSM = () => document.querySelectorAll('#smodes button').forEach(b => b.classList.toggle('on', +b.dataset.sm === USER.style));
+$('smodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { USER.style = +b.dataset.sm; markSM(); } });
+{ const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; } markSM();
+const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
+function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
+$('qual').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
+$('u-q').addEventListener('click', () => { const k = Object.keys(QUAL); setQuality(k[(k.indexOf(quality) + 1) % 3]); });
+const markTM = () => document.querySelectorAll('#tmodes button').forEach(b => b.classList.toggle('on', +b.dataset.tm === USER.force));
+const setTileMode = m => { USER.force = m; markTM(); };
+$('tmodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTileMode(+b.dataset.tm); });
+markTM();
+const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
+const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
+{ const v = lsGet('micdb'); if (typeof v === 'number') MICDB = clamp(v, -12, 24); $('u-mg').value = MICDB; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; }
+$('u-mg').addEventListener('input', e => {
+  MICDB = +e.target.value; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; lsSet('micdb', MICDB);
+  if (micGain) micGain.gain.setTargetAtTime(Math.pow(10, MICDB / 20), ac.currentTime, .05);
+});
+$('u-mg').addEventListener('change', e => e.target.blur());
+function applyTweaks(o) {   // push saved values into USER and into the panel widgets
+  KEYS_U.forEach(k => { if (typeof o[k] === 'number') USER[k] = o[k]; });
+  for (const k in SLID) $(SLID[k]).value = USER[k]; markTM(); markSM();
+  $('u-col').textContent = 'Colour: ' + COLS[USER.col]; $('u-src').textContent = 'Source: ' + (USER.src ? 'on' : 'off');
+}
+const snapTweaks = () => Object.fromEntries(KEYS_U.map(k => [k, USER[k]]));
+let saveT = 0; const autosave = () => { clearTimeout(saveT); saveT = setTimeout(() => lsSet('last', snapTweaks()), 300); };   // the panel remembers where you left it
+$('tune').addEventListener('input', autosave); $('tune').addEventListener('click', autosave);
+$('tune').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.save) { lsSet('slot' + b.dataset.save, snapTweaks()); toast('Saved to preset ' + b.dataset.save, 1500); }
+  else if (b.dataset.load) { const o = lsGet('slot' + b.dataset.load); if (o) { applyTweaks(o); autosave(); toast('Preset ' + b.dataset.load, 1500); } else toast('Preset ' + b.dataset.load + ' is empty — use Save', 2000); }
+});
+{ const o = lsGet('last'); if (o) applyTweaks(o); }
+$('u-col').addEventListener('click', e => { USER.col = (USER.col + 1) % 3; e.target.textContent = 'Colour: ' + COLS[USER.col]; });
+$('u-src').addEventListener('click', e => { USER.src = 1 - USER.src; e.target.textContent = 'Source: ' + (USER.src ? 'on' : 'off'); });
+// mouse / touch on the picture: move = centre of the kaleidoscope, click = ripple, drag = rotate, wheel = zoom
+const wrapEl = $('wrap'); let ptr = null;
+const toP = e => { const r = cv.getBoundingClientRect(); return { x: ((e.clientX - r.left) / r.width - .5) * 16 / 9, y: -((e.clientY - r.top) / r.height - .5) }; };
+wrapEl.addEventListener('pointerdown', e => { if (playing || liveOn) ptr = { x: e.clientX, y: e.clientY, drag: false }; });
+wrapEl.addEventListener('pointermove', e => {
+  if (!(playing || liveOn)) return;
+  if (ptr) {
+    if (!ptr.drag && Math.hypot(e.clientX - ptr.x, e.clientY - ptr.y) > 6) ptr.drag = true;
+    if (ptr.drag) { USER.rot += (e.clientX - ptr.x) / cv.clientWidth * 4; ptr.x = e.clientX; ptr.y = e.clientY; }
+  } else if (e.pointerType === 'mouse') { const p = toP(e); USER.tx = p.x; USER.ty = p.y; }
+});
+addEventListener('pointerup', e => { if (ptr && !ptr.drag) { const p = toP(e); USER.rip = { x: p.x, y: p.y, t0: performance.now() }; } ptr = null; });
+wrapEl.addEventListener('wheel', e => { if (!(playing || liveOn)) return; e.preventDefault(); USER.zoom = clamp(USER.zoom * Math.exp(-e.deltaY * .0012), .5, 2.5); }, { passive: false });
+function drawProfile() {   // the arc's intensity curve, drawn behind the seek bar
+  const c = $('prof'), x = c.getContext('2d'), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
+  x.fillStyle = 'rgba(244,241,234,.28)'; x.beginPath(); x.moveTo(0, h);
+  for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - energy(i / 200) * (h - 8));
+  x.lineTo(w, h); x.fill();
+}
+const updateHint = () => { if (ready) hint.textContent = `Choose a mode · generative: ${MIN} min, sound on`; };
+const chips = [...document.querySelectorAll('#opts button')];
+chips.forEach(b => b.classList.toggle('on', b.dataset.arc === arcName));
+document.getElementById('opts').addEventListener('click', e => {
+  e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
+  setArc(b.dataset.arc); drawProfile(); chips.forEach(c => c.classList.toggle('on', c === b));
+});
+const durBtns = [...document.querySelectorAll('#dur button')], markDur = () => durBtns.forEach(b => b.classList.toggle('on', +b.dataset.min === MIN));
+markDur();
+$('dur').addEventListener('click', e => {
+  e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
+  MIN = +b.dataset.min; TOTAL = MIN * 60; setArc(arcName); markDur(); updateHint();
+});
+document.getElementById('pick').addEventListener('click', e => e.stopPropagation());   // opening the file dialog must not start playback
+const fileIn = document.querySelector('#pick input');
+const loadFile = f => { if (f && f.type.startsWith('image/')) { const url = URL.createObjectURL(f); loadPoster(url, () => URL.revokeObjectURL(url)); } };
+fileIn.addEventListener('change', () => loadFile(fileIn.files[0]));
+addEventListener('dragover', e => e.preventDefault());
+addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+/* ════════════════════════ LIVE MODE (prototype): listen to a tab (e.g. YouTube) and follow the music ════════════════════════
+   Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
+   Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
+let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null;
+const bandsFor = k => {   // bin ranges for the 3 analysis bands + 10 log-spaced bands of the spectral profile
+  const e = []; for (let i = 0; i <= 10; i++) e.push(Math.round(40 * Math.pow(6500 / 40, i / 10) / k));
+  return { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)], p: e };
+};
+// detector settings (tuned on real tracks with tools/sweep.py; see tools/refs.json)
+const DET = { sfTau: 1, ssTau: 12, gapThr: .16, gapDur: 1.5, dwell: 4, dropGap: 2.5, dropDwell: 18, slamBass: .3, slamLv: .05, warm: 25, minFloor: 1.2, minK: 1.6, minDur: 1.5, minDwell: 12, dropMinGap: 0, dropMinProf: 0, bigFloor: 99, bigK: 3, bigDur: 1 };
+const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, minors: 0, pT: 0, bigT: 0, pf: null, ps: null, sinceMinor: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
+async function startLive(mic = Q.get('live') === 'mic') {
+  if (!ready || playing || liveOn) return;
+  const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
+  let stream;
+  try {
+    if (mic) stream = await navigator.mediaDevices.getUserMedia({ audio: audioC });
+    else {
+      if (!navigator.mediaDevices.getDisplayMedia) throw new Error('This browser cannot capture tab audio — use Chrome or Edge on desktop');
+      const ctl = window.CaptureController ? new CaptureController() : null;
+      const p = navigator.mediaDevices.getDisplayMedia({ video: true, audio: audioC, surfaceSwitching: 'exclude', selfBrowserSurface: 'exclude', ...(ctl ? { controller: ctl } : {}) });
+      try { ctl && ctl.setFocusBehavior('no-focus-change'); } catch (e) {}   // stay on this window instead of jumping to the shared tab
+      stream = await p;
+    }
+  } catch (e) { hint.textContent = e.name === 'NotAllowedError' ? 'Cancelled — click again and pick a tab' : e.message; return; }
+  if (!stream.getAudioTracks().length) {
+    stream.getTracks().forEach(t => t.stop());
+    hint.textContent = 'No audio received — in the dialog pick a TAB (not a window) and tick “Share tab audio”'; return;
+  }
+  stream.getVideoTracks().forEach(t => { t.enabled = false; });   // we only want the sound
+  if (ac) ac.close().catch(() => {});
+  ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
+  const src = ac.createMediaStreamSource(stream);
+  analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .3;   // analyser only: no output
+  micGain = ac.createGain(); micGain.gain.value = Math.pow(10, MICDB / 20); src.connect(micGain); micGain.connect(analyser); TD = new Float32Array(analyser.fftSize);
+  document.body.classList.toggle('mic', !!mic);
+  LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
+  LB = bandsFor(k);
+  setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
+  LIVE = newLive();
+  liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99;
+  stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
+  gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
+  requestAnimationFrame(liveLoop);
+}
+function liveStep(dt) {   // causal features from the current spectrum → intensity, tension, drop, state
+  const L = LIVE, ease = tau => 1 - Math.exp(-dt / tau);
+  analyser.getFloatFrequencyData(LF);
+  const band = ([a, b]) => { let x = 0; for (let i = a; i < b; i++) x += Math.pow(10, LF[i] / 20); return x / Math.max(1, b - a); };
+  const raw = { b: band(LB.b), m: band(LB.m), h: band(LB.h) };
+  const n = {}; for (const key in raw) { L.ref[key] = Math.max(raw[key], L.ref[key] * Math.exp(-dt / 30), 1e-5); n[key] = clamp(raw[key] / L.ref[key]); }   // per-band auto-gain, 30 s memory
+  const lvl = .45 * n.b + .35 * n.m + .2 * n.h;
+  L.lv += (lvl - L.lv) * ease(.8); L.ls += (lvl - L.ls) * ease(10);
+  const bright = n.h / (n.b + n.m + n.h + 1e-6);
+  L.bf += (bright - L.bf) * ease(1.5); L.bsl += (bright - L.bsl) * ease(10);
+  // kicks: positive jumps of the bass band
+  const kick = clamp((n.b - L.bassPrev) * 5); L.bassPrev = n.b;
+  L.pulse = Math.max(L.pulse * Math.exp(-dt * 8), kick);
+  L.bassFast += (n.b - L.bassFast) * ease(.3); L.bassLong += (n.b - L.bassLong) * ease(2.5); L.bassSlow += (n.b - L.bassSlow) * ease(6);
+  // build = brightness and level both rising for a while; drop = bass slams back in after a quiet-bass stretch or after a build
+  const rising = (L.bf - L.bsl) > .01 && L.lv > L.ls + .02;
+  L.tension = rising ? Math.min(1, L.tension + dt * .12) : L.tension * Math.exp(-dt * .4);
+  L.sinceDrop += dt; L.age += dt;
+  const slam = n.b > .75 && L.bassSlow < DET.slamBass && L.lv > L.ls + DET.slamLv, afterBuild = L.tension > .35 && L.lv - L.ls > .12 && n.b > .6;
+  let dropped = false;
+  if (L.age > DET.warm && L.sinceDrop > DET.dropDwell && (slam || afterBuild))   // (no drops during the first 25 s: the auto-gain is still settling and fakes them)
+    { L.boost = 1; L.tension = 0; L.sinceDrop = 0; dropped = true; }
+  // section detector: a fast average of (level, brightness, bass) against a slow one; a lasting gap = the music moved on to another part
+  const cur = [L.lv, clamp(L.bf * 2.5), L.bassLong];
+  for (let i = 0; i < 3; i++) { L.sf[i] += (cur[i] - L.sf[i]) * ease(DET.sfTau); L.ss[i] += (cur[i] - L.ss[i]) * ease(L.sinceScene < 5 ? .5 : DET.ssTau); }   // right after a scene change the reference catches up fast, so a ramp isn't read as another change
+  if (L.age < DET.warm) L.ss = L.sf.slice();
+  const gap = Math.abs(L.sf[0] - L.ss[0]) + Math.abs(L.sf[1] - L.ss[1]) + .5 * Math.abs(L.sf[2] - L.ss[2]);
+  L.secT = gap > DET.gapThr ? L.secT + dt : Math.max(0, L.secT - dt); L.sinceScene += dt;
+  // minor changes: how much the SHAPE of the spectrum (10 log bands, in dB) just moved away from its recent average
+  const prof = []; for (let i = 0; i < 10; i++) { let x = 0; const a = LB.p[i], b = Math.max(a + 1, LB.p[i + 1]); for (let j = a; j < b; j++) x += Math.max(-120, LF[j]); prof.push(x / (b - a)); }
+  if (!L.pf) { L.pf = prof.slice(); L.ps = prof.slice(); }
+  let dprof = 0; for (let i = 0; i < 10; i++) { L.pf[i] += (prof[i] - L.pf[i]) * ease(1.5); L.ps[i] += (prof[i] - L.ps[i]) * ease(L.sinceMinor < 4 ? .5 : 10); dprof += Math.abs(L.pf[i] - L.ps[i]) / 10; }
+  L.dm = (L.dm ?? dprof) + (dprof - (L.dm ?? dprof)) * ease(60);   // typical amount of spectral movement in THIS track: busy tracks need a bigger jump to count
+  L.pT = dprof > Math.max(DET.minFloor, DET.minK * L.dm) ? L.pT + dt : Math.max(0, L.pT - dt); L.sinceMinor += dt; L.dprof = dprof;
+  L.bigT = dprof > Math.max(DET.bigFloor, DET.bigK * L.dm) ? L.bigT + dt : Math.max(0, L.bigT - dt);   // a very large jump of the spectral shape is a scene on its own
+  if (L.age > DET.warm && ((dropped && L.sinceScene > DET.dropGap && (gap > DET.dropMinGap || dprof > DET.dropMinProf)) || ((L.secT > DET.gapDur || L.bigT > DET.bigDur) && L.sinceScene > DET.dwell))) {   // new scene: new palette / lead effect / tile grid, with a visible transition
+    L.scenes++; L.kinds[L.scenes] = dropped || L.sf[0] >= L.ss[0] ? 1 : 0;   // (rising = energetic, falling = calm)
+    L.sinceScene = 0; L.secT = 0; L.sinceMinor = 0; L.pT = 0; L.bigT = 0; L.ss = cur.slice();   // reference = where the music is now, not the lagging average
+  }
+  else if (L.age > DET.warm + 5 && L.pT > DET.minDur && L.sinceMinor > DET.minDwell && L.sinceScene > 6) { L.minors++; L.sinceMinor = 0; L.pT = 0; }   // minor: a lighter transition, same scene
+  L.boost *= Math.exp(-dt / 6);
+  L.I = clamp(.12 + .62 * L.lv + .3 * L.tension + .45 * L.boost);
+  { const tgt = lerp(.26, .88, L.I); L.u += (tgt - L.u) * ease(tgt > L.u ? .45 : 2.5); }   // quick to rise on a build / drop, slow to fall: no flicker within a theme
+  // state label: a new state must hold for 3 s before it shows (drops show at once and stay >= 4 s), so a steady passage doesn't flicker
+  const rawSt = L.boost > .5 ? 'drop' : L.tension > .25 ? 'build' : L.bassLong > .3 ? 'groove' : L.lv < .27 ? 'breakdown' : 'calm';
+  if (L.age < 4) L.state = 'listening…';
+  else {
+    L.stT = (L.stT || 0) + dt;
+    if (rawSt === L.state) L.cand = null;
+    else if (rawSt === 'drop' || L.state === 'listening…') { L.state = rawSt; L.stT = 0; L.cand = null; }
+    else if (L.stT > 4) { if (rawSt !== L.cand) { L.cand = rawSt; L.candT = 0; } else if ((L.candT += dt) > 3) { L.state = rawSt; L.stT = 0; L.cand = null; } }
+  }
+  L.bn = n.b; L.mn = n.m; L.hn = n.h;
+}
+function liveLoop() {
+  if (!liveOn) return;
+  const t = ac.currentTime - liveT0, dt = clamp(t - lastT, 0, .1); lastT = t;
+  liveStep(dt); render(t, dt, LIVE.bn, LIVE.mn, LIVE.hn);
+  $('lstate').textContent = LIVE.state; $('lbar').firstElementChild.style.width = (LIVE.I * 100) + '%';
+  analyser.getFloatTimeDomainData(TD);   // input meter: RMS in dBFS (smoothed) and clipping
+  let sq = 0, pk = 0; for (let i = 0; i < TD.length; i++) { const v = TD[i]; sq += v * v; if (Math.abs(v) > pk) pk = Math.abs(v); }
+  const db = 10 * Math.log10(sq / TD.length + 1e-12); METER.db += (db - METER.db) * (1 - Math.exp(-dt / .25)); if (pk >= .98) clipT = t;
+  { const d = METER.db, clip = t - clipT < 1.5, st = clip ? ['clipping — lower the input volume', '#ff4d4d'] : d < -55 ? ['no signal / too quiet', '#ff4d4d'] : d < -40 ? ['low — raise sensitivity', '#ffb020'] : d < -8 ? ['good', '#2cff8a'] : ['loud', '#ffb020'];
+    const m = $('mlev').firstElementChild; m.style.width = clamp((d + 60) / 60) * 100 + '%'; m.style.background = st[1]; $('mtxt').textContent = Math.round(d) + ' dB · ' + st[0]; $('mtxt').style.color = st[1]; }
+  if (Q.has('debug') && Math.floor(t) !== Math.floor(t - dt)) console.log(`LIVE t=${t.toFixed(0)} lv=${LIVE.lv.toFixed(2)} ls=${LIVE.ls.toFixed(2)} bn=${LIVE.bn.toFixed(2)} scene=${LIVE.scenes}/${LIVE.kinds[LIVE.scenes]} gap=${(Math.abs(LIVE.sf[0] - LIVE.ss[0]) + Math.abs(LIVE.sf[1] - LIVE.ss[1])).toFixed(2)} tension=${LIVE.tension.toFixed(2)} boost=${LIVE.boost.toFixed(2)} I=${LIVE.I.toFixed(2)} state=${LIVE.state}`);
+  requestAnimationFrame(liveLoop);
+}
+function stopLive() {
+  if (!liveOn) return; liveOn = false; LIVE = null;
+  if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
+  if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+  document.body.classList.remove('live', 'mic'); micGain = null; METER.db = -90; gate.classList.remove('off'); setArc(arcName); updateHint();
+}
+$('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
+$('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
+{ // tab capture needs desktop Chrome / Edge: say so up front instead of failing after the click
+  const ua = navigator.userAgent, ok = !!(navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) && !/Firefox|Mobi|Android|iPhone|iPad/.test(ua);
+  if (!ok) { $('tabmode').disabled = true; $('streamwarn').textContent = /Firefox/.test(ua) ? 'Not supported in Firefox (no tab audio). Use Chrome / Edge, or Live.' : 'Needs Chrome or Edge on a computer. Use Live instead.'; }
+}
+$('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
+addEventListener('resize', resize);
+$('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
+addEventListener('load', () => {
+  if (!gl) { hint.textContent = 'WebGL2 is not available in this browser'; return; }
+  { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
+  try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
+  resize();
+  loadPoster(IMG, () => {
+    ready = true; updateHint(); drawProfile();
+    const dbg = Q.get('t');
+    if (dbg !== null) {   // silent still: step the feedback loop up to the requested time
+      gate.classList.add('off'); const T = parseFloat(dbg); let t = 0; newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
+      for (; t < T; t += step) render(t, step, 0); render(T, step, 0);
+    }
+  });
+});
+</script>
+<script>const IMG="__POSTER__";</script>
+</body>
+</html>
