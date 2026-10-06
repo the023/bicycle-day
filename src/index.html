@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <title>Bicycle Day — a trip in WebGL</title>
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <style>
   html,body{margin:0;height:100%;background:#000;overflow:hidden;cursor:pointer}
   body.playing:not(.ui),body.live:not(.ui){cursor:none}
@@ -54,10 +54,17 @@
   #lbar i{display:block;height:100%;width:0;background:#ffd60a}
   #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:6px 10px;cursor:pointer}
   #wrap{touch-action:none}
-  #tune{position:fixed;right:20px;top:20px;display:none;flex-direction:column;gap:9px;width:210px;max-height:calc(100vh - 80px);overflow-y:auto;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
+  #tune{position:fixed;right:max(20px,env(safe-area-inset-right));top:calc(72px + env(safe-area-inset-top));display:none;flex-direction:column;gap:9px;width:210px;max-height:calc(100dvh - 160px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
     font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .3s;z-index:6}
-  body.playing #tune,body.live #tune{display:flex}
-  body.ui #tune{opacity:1;pointer-events:auto}
+  body.playing #tune:not([hidden]),body.live #tune:not([hidden]){display:flex}
+  #tune[hidden]{display:none}
+  body.tuning #tune{opacity:1;pointer-events:auto}
+  #actions{position:fixed;right:max(20px,env(safe-area-inset-right));top:calc(16px + env(safe-area-inset-top));display:flex;gap:8px;z-index:8;pointer-events:none}
+  #actions button{min-height:44px;padding:10px 14px;border:1px solid #f4f1ea88;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer;pointer-events:auto}
+  #settings{display:none;visibility:hidden}
+  body.playing #settings,body.live #settings{display:block}
+  body.side-ui #settings,body.tuning #settings,#settings:focus-visible{visibility:visible}
+  body.playing:not(.ui):not(.tuning) #fullscreen,body.live:not(.ui):not(.tuning) #fullscreen{visibility:hidden}
   #tune label{display:flex;flex-direction:column;gap:5px}
   body:not(.mic) .micOnly{display:none}
   #mlev{position:relative;width:110px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
@@ -73,6 +80,33 @@
   #tune button.on{background:#f4f1ea;color:#05030c}
   #tune .prow{display:flex;align-items:center;gap:6px}
   #tune .prow button{flex:1;padding:6px 0}
+  @media (max-width:600px),(max-height:600px){
+    #gate{box-sizing:border-box;justify-content:flex-start;overflow-y:auto;padding:calc(80px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));gap:18px}
+    #gate>*{flex-shrink:0}
+    #gate .sub{text-align:center;letter-spacing:.08em;line-height:1.5}
+    #cards{padding:0;gap:12px;width:100%}
+    .card{box-sizing:border-box;width:min(100%,320px)}
+    #qual{flex-wrap:wrap;justify-content:center}
+    #ctl{flex-wrap:wrap;gap:10px;padding:16px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
+    #bar{min-width:100px}#tm{font-size:10px;letter-spacing:0}#vol{width:70px}
+    #pp,#stopb{width:44px;height:44px}
+    #live{left:max(12px,env(safe-area-inset-left));right:12px;top:calc(72px + env(safe-area-inset-top));flex-wrap:wrap;gap:8px}
+    #lbar{width:70px}#mtxt{min-width:0}
+    #toast{box-sizing:border-box;max-width:calc(100vw - 24px);white-space:normal;text-align:center;line-height:1.5;letter-spacing:.04em}
+  }
+  @media (max-width:600px),(max-height:600px),(hover:none),(pointer:coarse){
+    #actions{top:calc(8px + env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));gap:6px}
+    #actions button{min-height:32px;padding:7px 10px;font-size:10px}
+    body.ui #settings{visibility:visible}
+    #pp,#stopb{width:32px;height:32px}
+    #live{left:max(10px,env(safe-area-inset-left));right:auto;top:calc(8px + env(safe-area-inset-top));gap:6px;opacity:1}
+    #live #lstate,#live #mtxt{display:none}
+    #lbar,#mlev{width:56px;height:3px}
+    body.mic #lbar,body:not(.mic) #mlev{display:none}
+    #lstop{padding:7px 8px;font-size:10px;visibility:hidden;pointer-events:none}
+    body.ui #lstop{visibility:visible;pointer-events:auto}
+    #tune{top:calc(48px + env(safe-area-inset-top));padding:10px;gap:7px}
+  }
 </style>
 </head>
 <body>
@@ -97,7 +131,8 @@
 </div>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
-<div id="tune">
+<div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button></div>
+<div id="tune" hidden>
   <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
   <label title="Shifts the whole animation up or down the intensity curve">Intensity<small>how wild overall: calmer ↔ more effects</small><input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
   <label title="Maximum amount of mirror symmetry">Kaleidoscope<small>mirror symmetry; 0 = never</small><input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
@@ -624,22 +659,45 @@ function loop() {
   }
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
   requestAnimationFrame(loop);
 }
-// light controls: they appear when the mouse goes near the bottom edge
+// Transport follows pointer activity; settings only open by explicit click.
+const setTuning = open => {
+  $('tune').hidden = !open; document.body.classList.toggle('tuning', open);
+  $('settings').setAttribute('aria-expanded', String(open)); $('settings').textContent = open ? 'Close settings' : 'Settings';
+};
+$('settings').addEventListener('click', () => { setTuning($('tune').hidden); showUI(); });
 const showUI = () => {
   document.body.classList.add('ui'); clearTimeout(hideT);
-  hideT = setTimeout(() => { if (dragging || $('ctl').matches(':hover') || $('tune').matches(':hover')) showUI(); else document.body.classList.remove('ui'); }, 2500);
+  hideT = setTimeout(() => {
+    const hovered = matchMedia('(hover:hover)').matches && [$('ctl'), $('actions'), $('live'), $('tune')].some(el => el.matches(':hover'));
+    if (dragging || hovered) showUI(); else document.body.classList.remove('ui', 'side-ui');
+  }, 2500);
 };
-addEventListener('mousemove', () => { if (playing || liveOn) showUI(); });   // any mouse move reveals the controls, like a video player
-document.addEventListener('fullscreenchange', () => { if (playing || liveOn) showUI(); });
+addEventListener('pointermove', e => { if (playing || liveOn) { if (e.clientX > innerWidth - 120) document.body.classList.add('side-ui'); showUI(); } });
+addEventListener('pointerdown', () => { if (playing || liveOn) showUI(); });
+const updateFullscreen = () => {
+  const active = !!document.fullscreenElement; $('fullscreen').textContent = active ? 'Exit fullscreen' : 'Fullscreen';
+  $('fullscreen').setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
+  if (playing || liveOn) showUI();
+};
+document.addEventListener('fullscreenchange', updateFullscreen);
+const resetControls = () => { setTuning(false); document.body.classList.remove('side-ui'); };
+
 let toastT = 0;
 function toast(msg, ms = 5000) { const el = $('toast'); el.textContent = msg; el.classList.add('on'); clearTimeout(toastT); toastT = setTimeout(() => el.classList.remove('on'), ms); }
-const toggleFullscreen = () => { if (document.fullscreenElement) document.exitFullscreen(); else document.documentElement.requestFullscreen().catch(() => {}); };
+const toggleFullscreen = async () => {
+  try {
+    if (document.fullscreenElement) await document.exitFullscreen();
+    else if (document.documentElement.requestFullscreen) await document.documentElement.requestFullscreen();
+    else toast('Fullscreen is not supported by this browser');
+  } catch (e) { toast('Fullscreen unavailable — try opening this page in Chrome'); }
+};
+$('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
   if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
+  resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
@@ -846,7 +904,7 @@ function liveLoop() {
   let sq = 0, pk = 0; for (let i = 0; i < TD.length; i++) { const v = TD[i]; sq += v * v; if (Math.abs(v) > pk) pk = Math.abs(v); }
   const db = 10 * Math.log10(sq / TD.length + 1e-12); METER.db += (db - METER.db) * (1 - Math.exp(-dt / .25)); if (pk >= .98) clipT = t;
   { const d = METER.db, clip = t - clipT < 1.5, st = clip ? ['clipping — lower the input volume', '#ff4d4d'] : d < -55 ? ['no signal / too quiet', '#ff4d4d'] : d < -40 ? ['low — raise sensitivity', '#ffb020'] : d < -8 ? ['good', '#2cff8a'] : ['loud', '#ffb020'];
-    const m = $('mlev').firstElementChild; m.style.width = clamp((d + 60) / 60) * 100 + '%'; m.style.background = st[1]; $('mtxt').textContent = Math.round(d) + ' dB · ' + st[0]; $('mtxt').style.color = st[1]; }
+    const m = $('mlev').firstElementChild; m.style.width = clamp((d + 60) / 60) * 100 + '%'; m.style.background = st[1]; $('mtxt').textContent = Math.round(d) + ' dB · ' + st[0]; $('mtxt').style.color = st[1]; $('mlev').title = $('mtxt').textContent; }
   if (Q.has('debug') && Math.floor(t) !== Math.floor(t - dt)) console.log(`LIVE t=${t.toFixed(0)} lv=${LIVE.lv.toFixed(2)} ls=${LIVE.ls.toFixed(2)} bn=${LIVE.bn.toFixed(2)} scene=${LIVE.scenes}/${LIVE.kinds[LIVE.scenes]} gap=${(Math.abs(LIVE.sf[0] - LIVE.ss[0]) + Math.abs(LIVE.sf[1] - LIVE.ss[1])).toFixed(2)} tension=${LIVE.tension.toFixed(2)} boost=${LIVE.boost.toFixed(2)} I=${LIVE.I.toFixed(2)} state=${LIVE.state}`);
   requestAnimationFrame(liveLoop);
 }
@@ -854,7 +912,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  document.body.classList.remove('live', 'mic'); micGain = null; METER.db = -90; gate.classList.remove('off'); setArc(arcName); updateHint();
+  resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); setArc(arcName); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
