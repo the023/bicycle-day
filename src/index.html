@@ -218,7 +218,7 @@
           <p>Original music, composed by the app. Your images follow the sound.</p>
           <div><span class="field">Length</span><div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div></div>
           <details><summary>Music &amp; journey</summary>
-            <span class="field">Journey</span><div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">hardcore</button></div>
+            <span class="field">Journey</span><div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">extreme</button></div>
             <span class="field">Music</span><div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
           </details>
           <button class="go" id="playgen" disabled>Start trip</button>
@@ -247,7 +247,7 @@
       <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
       <div id="lvl"><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
       <p>Auto follows the music. Assisted adds your effect keys. Manual puts you in control; generated music uses a 20-minute waves piece.</p>
-      <button class="hcb" id="hcgen" title="Stronger visuals and strobe. Look only; music stays the same. Key N.">Hardcore: off</button>
+      <button class="hcb" id="hcgen" title="Stronger visuals and strobe. Look only; music stays the same. Key N.">Extreme: off</button>
       <p id="qnote" role="status"></p>
     </div>
   </section>
@@ -267,12 +267,12 @@
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
   <div class="tmodes tr3" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
   <div class="help">Control level (key M): engine only / engine + effect keys / quiet base + only your keys</div>
-  <div class="tmodes tr5" id="trs" title="Transition time: how long a key press (Z X Q W E R Y U I O P C, hardcore, effect fades) takes to reach its new value. Keys , and ."><button data-tr="0">Instant</button><button data-tr="1">1 s</button><button data-tr="3">3 s</button><button data-tr="5">5 s</button><button data-tr="10">10 s</button></div>
+  <div class="tmodes tr5" id="trs" title="Transition time: how long a key press (Z X Q W E R Y U I O P C, extreme, effect fades) takes to reach its new value. Keys , and ."><button data-tr="0">Instant</button><button data-tr="1">1 s</button><button data-tr="3">3 s</button><button data-tr="5">5 s</button><button data-tr="10">10 s</button></div>
   <div class="help">Transition: how long key changes take to arrive (keys , and .)</div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
-  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button class="hcb" id="u-hc" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Hardcore: off</button>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
 </div>
@@ -858,7 +858,7 @@ const KB = [   // rows of [code, cap, width in key units]; a number = blank spac
   [['ShiftLeft', 'Shift', 2.2], ...'ZXCVBNM'.split('').map(c => ['Key' + c, c]), ['Comma', ','], ['Period', '.']],
   [['Space', 'Space', 6.4], .3, ['ArrowLeft', '←'], ['ArrowUp', '↑'], ['ArrowDown', '↓'], ['ArrowRight', '→']],
 ];
-const KB_CAT = { tr: ['#7db4ff', 'transport'], fx: ['#5cf08a', 'picture effects'], mood: ['#ff6fae', 'moods / strobe / hardcore'], glob: ['#ffc94d', 'amount / colour / settings'], img: ['#4fe0ff', 'images / tile modes'], tool: ['#c9c9d6', 'tools'] };
+const KB_CAT = { tr: ['#7db4ff', 'transport'], fx: ['#5cf08a', 'picture effects'], mood: ['#ff6fae', 'moods / strobe / extreme'], glob: ['#ffc94d', 'amount / colour / settings'], img: ['#4fe0ff', 'images / tile modes'], tool: ['#c9c9d6', 'tools'] };
 const KB_ACT = {
   Escape: [['tr', 'stop']], Space: [['tr', 'pause']], Enter: [null, ['tr', 'pause']], KeyK: [null, ['tr', 'pause']],
   ArrowLeft: [['tr', 'seek −10 s'], ['fx', 'rotate ◂']], ArrowRight: [['tr', 'seek +10 s'], ['fx', 'rotate ▸']], ArrowUp: [null, ['fx', 'zoom in']], ArrowDown: [null, ['fx', 'zoom out']],
@@ -867,7 +867,7 @@ const KB_ACT = {
   KeyQ: [['fx', 'kaleido −']], KeyW: [['fx', 'kaleido +']], KeyE: [['fx', 'tiles −']], KeyR: [['fx', 'tiles +']], KeyY: [['fx', 'trails −']], KeyU: [['fx', 'trails +']], KeyT: [['fx', 'tiles on/off']],
   KeyI: [['glob', 'intens. −']], KeyO: [['glob', 'intens. +']], KeyP: [['glob', 'style']], KeyC: [['glob', 'colour'], ['glob', 'palette']], KeyZ: [['glob', 'effects −']], KeyX: [['glob', 'effects +']],
   Semicolon: [['img', 'auto image']], KeyM: [['glob', 'level']], Comma: [['glob', 'transition −']], Period: [['glob', 'transition +']],
-  KeyJ: [['mood', 'grid (hold)']], KeyN: [['mood', 'hardcore']],
+  KeyJ: [['mood', 'grid (hold)']], KeyN: [['mood', 'extreme']],
   KeyB: [['tool', 'bookmark']], KeyL: [['tool', 'live code']], KeyH: [['tool', 'help']], KeyF: [['tool', 'fullscreen']],
 };
 function ctrlHelp() {
@@ -1696,8 +1696,8 @@ function startLocal() {
 }
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());
-function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Hardcore: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
-function setHC(on) { HCX = on ?? !(HCX ?? hcOn()); markHC(); if (CT.helpOn) ctrlHelp(); if (playing || liveOn) toast(CTRL ? 'Hardcore does not apply in manual control' : 'Hardcore ' + (HCX ? 'on' : 'off') + '  ·  N', 1400); }
+function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Extreme: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
+function setHC(on) { HCX = on ?? !(HCX ?? hcOn()); markHC(); if (CT.helpOn) ctrlHelp(); if (playing || liveOn) toast(CTRL ? 'Extreme does not apply in manual control' : 'Extreme ' + (HCX ? 'on' : 'off') + '  ·  N', 1400); }
 document.querySelectorAll('.hcb').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); setHC(); }));
 lfile.addEventListener('change', () => { if (lfile.files[0]) loadLocal(lfile.files[0]); });
 $('playlocal').addEventListener('click', e => { e.stopPropagation(); startLocal(); });
