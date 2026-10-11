@@ -266,19 +266,19 @@
   <label title="Shifts the whole animation up or down the intensity curve">Intensity<small>how wild overall: calmer ↔ more effects</small><input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
   <label title="Maximum amount of mirror symmetry">Kaleidoscope<small>mirror symmetry; 0 = never</small><input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
   <label title="Grid-of-tiles effect: each square turns or shifts on its own">Tiles<small>grid of rotating squares: 0 = never, 2 = a lot</small><input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
-  <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
+  <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Key T cycles."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
   <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
   <div class="tmodes tr3" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
   <div class="help">Control level (key M): engine only / engine + effect keys / quiet base + only your keys</div>
-  <div class="tmodes tr5" id="trs" title="Transition time: how long a key press (Z X Q W E R Y U I O P C, extreme, effect fades) takes to reach its new value. Keys , and ."><button data-tr="0">Instant</button><button data-tr="1">1 s</button><button data-tr="3">3 s</button><button data-tr="5">5 s</button><button data-tr="10">10 s</button></div>
+  <div class="tmodes tr5" id="trs" title="Transition time: how long a key change takes to reach its new value. Keys , and ."><button data-tr="0">Instant</button><button data-tr="1">1 s</button><button data-tr="3">3 s</button><button data-tr="5">5 s</button><button data-tr="10">10 s</button></div>
   <div class="help">Transition: how long key changes take to arrive (keys , and .)</div>
-  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
+  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · T cycles tile mode · 1-8 presets (Shift 1-8 save) · [ ] images · Shift+Arrows seek</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
-  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
-  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
+  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
+  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button><button data-save="4">4</button><button data-save="5">5</button><button data-save="6">6</button><button data-save="7">7</button><button data-save="8">8</button></div>
 </div>
 <div id="thumbs"></div>
 <div id="toast"></div>
@@ -810,7 +810,7 @@ const CT_KEYS = [   // [key code, key cap, label, FX name, mode ('t' toggle, 'h'
   ['KeyR', 'R', 'melt', 'melt', 't', .8, .8], ['KeyY', 'Y', 'tiles', 'tiles: checker', 't', .5, .5], ['KeyU', 'U', 'Kali', 'style: Kali', 't', .7, .7],
   ['KeyI', 'I', 'Julia', 'style: Julia', 't', .7, .7], ['KeyO', 'O', 'tunnel', 'tunnel', 't', .8, .8], ['KeyP', 'P', 'stretch', 'source stretch', 't', .8, .8],
   ['KeyA', 'A', 'dark', 'mood: dark', 't', .6, .6], ['KeyS', 'S', 'black and white', 'mood: black and white', 't', .6, .6], ['KeyD', 'D', 'blaze', 'mood: blaze', 't', .5, .8],
-  ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['KeyJ', 'J', 'strobe grid (hold)', 'strobe grid', 'h', 0, 0], ['Space', 'Space', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
+  ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['KeyJ', 'J', 'strobe grid (hold)', 'strobe grid', 'h', 0, 0], ['Enter', 'Enter', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
 ].map(([code, key, label, fx, mode, rin, rout]) => ({ code, key, label, fx: FX.find(f => f.name === fx), mode, rin, rout, on: false, r: 0, age: 0, mood: /^mood/.test(fx) }));
 const ASSIST_T = 4.5;   // assisted level: a toggled effect switches itself off after this many seconds
 const CT = { I: .5, Ie: .5, pal: 0, palK: 0, palAge: 0, c: PALS[0].c.slice(), d: PALS[0].d.slice(), ha: 1, held: new Set(), helpOn: false };   // pal 0 = original colours, 1..6 = PALS[0..5]
@@ -818,8 +818,7 @@ const QUIET = { warp: .12, kal: 0, fold: 6, fb: 0, pal: 0, side: 0, breath: 1.2,
 function ctrlParams(P, t, dt) {   // level assisted (CL 1): add the effects' deltas to the engine's P; level manual (CL 2): replace P by the quiet base first
   const as = CL === 1, keep = { pulse: P.pulse, rot: P.rot - USER.rot, hue: P.hue, srcZ: P.srcZ, srcRot: P.srcRot };
   const qb = { ...P, ...QUIET, palC: CT.c, palD: CT.d, ha: CT.ha, tilt: [0, 0] };   // the scratch every effect runs on (the same numbers P gets in manual)
-  CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
-  USER.zoom = clamp(USER.zoom, .5, 2.5);
+  // arrows handled per-frame below (all levels)
   if (!as) {
     Object.assign(P, QUIET, { palC: CT.c, palD: CT.d, ha: CT.ha }); P.pulse = keep.pulse * .6; P.hue = keep.hue; P.srcZ = keep.srcZ; P.srcRot = keep.srcRot;
     P.rot = keep.rot * .5 + USER.rot; P.zoom = USER.zoom * (1 + .015 * Math.sin(t * .23)); P.tilt = [.04 * Math.sin(t * .11), .04 * Math.cos(t * .087)];
@@ -864,32 +863,38 @@ const KB = [   // rows of [code, cap, width in key units]; a number = blank spac
 ];
 const KB_CAT = { tr: ['#7db4ff', 'transport'], fx: ['#5cf08a', 'picture effects'], mood: ['#ff6fae', 'moods / strobe / extreme'], glob: ['#ffc94d', 'amount / colour / settings'], img: ['#4fe0ff', 'images / tile modes'], tool: ['#c9c9d6', 'tools'] };
 const KB_ACT = {
-  Escape: [['tr', 'stop']], Space: [['tr', 'pause']], Enter: [null, ['tr', 'pause']], KeyK: [null, ['tr', 'pause']],
-  ArrowLeft: [['tr', 'seek −10 s'], ['fx', 'rotate ◂']], ArrowRight: [['tr', 'seek +10 s'], ['fx', 'rotate ▸']], ArrowUp: [null, ['fx', 'zoom in']], ArrowDown: [null, ['fx', 'zoom out']],
-  Digit1: [['img', 'checker']], Digit2: [['img', 'wave']], Digit3: [['img', 'shatter']], ShiftLeft: [['img', 'Shift+1-5 image']],
-  BracketLeft: [['img', 'prev image']], BracketRight: [['img', 'next image']], KeyV: [['img', 'next image']],
-  KeyQ: [['fx', 'kaleido −']], KeyW: [['fx', 'kaleido +']], KeyE: [['fx', 'tiles −']], KeyR: [['fx', 'tiles +']], KeyY: [['fx', 'trails −']], KeyU: [['fx', 'trails +']], KeyT: [['fx', 'tiles on/off']],
-  KeyI: [['glob', 'intens. −']], KeyO: [['glob', 'intens. +']], KeyP: [['glob', 'style']], KeyC: [['glob', 'colour'], ['glob', 'palette']], KeyZ: [['glob', 'effects −']], KeyX: [['glob', 'effects +']],
-  Semicolon: [['img', 'auto image']], KeyM: [['glob', 'level']], Comma: [['glob', 'transition −']], Period: [['glob', 'transition +']],
-  KeyJ: [['mood', 'grid (hold)']], KeyN: [['mood', 'extreme']],
-  KeyB: [['tool', 'bookmark']], KeyL: [['tool', 'live code']], KeyH: [['tool', 'help']], KeyF: [['tool', 'fullscreen']],
+  Escape: [0, 'tr', 'stop'], Space: [0, 'tr', 'pause'], Enter: [1, 'mood', 'surge (hold)'],
+  ArrowLeft: [0, 'fx', 'rotate ◂ (held)'], ArrowRight: [0, 'fx', 'rotate ▸ (held)'], ArrowUp: [0, 'fx', 'zoom in (held)'], ArrowDown: [0, 'fx', 'zoom out (held)'],
+  BracketLeft: [0, 'img', 'prev image'], BracketRight: [0, 'img', 'next image'], KeyV: [0, 'img', 'next image'],
+  KeyT: [0, 'fx', 'tile mode cycle'],
+  KeyQ: [1, 'fx', 'warp'], KeyW: [1, 'fx', 'kaleido'], KeyE: [1, 'fx', 'trails'], KeyR: [1, 'fx', 'melt'], KeyY: [1, 'fx', 'tiles'], KeyU: [1, 'fx', 'Kali'], KeyI: [1, 'fx', 'Julia'], KeyO: [1, 'fx', 'tunnel'], KeyP: [1, 'fx', 'stretch'],
+  KeyA: [1, 'mood', 'dark'], KeyS: [1, 'mood', 'b&w'], KeyD: [1, 'mood', 'blaze'], KeyG: [1, 'mood', 'strobe (hold)'], KeyJ: [0, 'mood', 'grid (hold)'], KeyN: [0, 'mood', 'extreme'],
+  KeyZ: [0, 'glob', 'amount −'], KeyX: [0, 'glob', 'amount +'], KeyC: [0, 'glob', 'palette'], Semicolon: [0, 'img', 'auto image'], KeyM: [0, 'glob', 'level'], Comma: [0, 'glob', 'transition −'], Period: [0, 'glob', 'transition +'],
+  KeyB: [0, 'tool', 'bookmark'], KeyL: [0, 'tool', 'live code'], KeyH: [0, 'tool', 'help'], KeyF: [0, 'tool', 'fullscreen'],
 };
+for (let _d = 1; _d <= 8; _d++) KB_ACT['Digit' + _d] = [0, 'glob', 'preset ' + _d];
 function ctrlHelp() {
-  const ct = c => CL ? CT_KEYS.find(x => x.code === (c === 'KeyT' ? 'KeyY' : c)) : null;
+  const ct = c => CL ? CT_KEYS.find(x => x.code === c) : null;
   const meaning = c => {
     const e = ct(c);
-    if (e) return { cat: e.mood || e.rin === 0 || c === 'Space' ? 'mood' : 'fx', label: e.label.replace(' (hold)', ' hold').replace('kaleidoscope', 'kaleido').replace('black and white', 'b&w'), on: e.on || e.r > .05 };
-    const a = KB_ACT[c]; let m = a ? (CL && a.length > 1 ? a[1] : a[0]) : null; if (!m) return null;
-    let label = m[1], on = false;
+    if (e) { if (CL < 1) return null; return { cat: e.mood || e.rin === 0 ? 'mood' : 'fx', label: e.label.replace(' (hold)', ' hold').replace('kaleidoscope', 'kaleido').replace('black and white', 'b&w'), on: e.on || e.r > .05 }; }
+    const row = KB_ACT[c]; if (!row) return null; const [minLevel, cat, base] = row; if (CL < minLevel) return null;
+    let label = base, on = false;
     if (c === 'KeyZ' || c === 'KeyX') label = (CL === 2 ? 'intens. ' : 'effects ') + (c === 'KeyZ' ? '−' : '+');
-    if (c === 'Semicolon') { label = 'auto img: ' + aiTxt(USER.auto); on = USER.auto !== 0; } if (c === 'KeyC') on = !!CT.pal; if (c === 'KeyN') on = hcOn(); if (c === 'KeyL') on = !!CODE.mode; if (c === 'KeyM') { label = LVL[CL]; on = CL > 0; }
-    if (c === 'KeyH') on = true; if (c === 'KeyC' && CL === 0) label = 'colour: ' + COLS[USER.col];
-    return { cat: m[0], label, on };
+    if (c === 'Semicolon') { label = 'auto img: ' + aiTxt(USER.auto); on = USER.auto !== 0; }
+    if (c === 'KeyC') on = !!CT.pal;
+    if (c === 'KeyN') on = hcOn();
+    if (c === 'KeyL') on = !!CODE.mode;
+    if (c === 'KeyM') { label = LVL[CL]; on = CL > 0; }
+    if (c === 'KeyH') on = true;
+    if (c === 'KeyT') on = USER.force >= 0;
+    if (/^Digit[1-8]$/.test(c)) { const o = lsGet('slot' + c.slice(5)); on = !!o; }
+    return { cat, label, on };
   };
   const cap = (c, txt, w = 1) => { const m = meaning(c), col = m ? KB_CAT[m.cat][0] : '#888'; return `<div class="kc${m ? '' : ' dim'}${m && m.on ? ' on' : ''}" style="--c:${col};--w:${w}"><b>${txt}</b><span>${m ? m.label : ''}</span></div>`; };
   const kb = KB.map(r => `<div class="kr">${r.map(k => typeof k === 'number' ? `<div style="width:${k * 76}px"></div>` : cap(k[0], k[1], k[2])).join('')}</div>`).join('');
   const lg = Object.values(KB_CAT).map(([c, n]) => `<span style="--c:${c}"><i></i>${n}</span>`).join('');
-  const note = ['Auto: the engine alone; Q W / E R / Y U / I O / P / C / Z X are the Settings sliders.', 'Assisted: engine + effect keys; an effect fades out by itself after ' + ASSIST_T + ' s (held keys stay while held). Lit = on.', 'Manual: a quiet base + only what you toggle (stays on until switched off). Lit = on.'][CL];
+  const note = ['Auto: engine only; Z X effects, W/E/Y/T (Shift/Alt) amounts, T cycles tile mode, 1-8 presets.', 'Assisted: engine + effect keys (Q W E R Y U I O P, A S D, G (hold), J (hold), Enter surge) that fade out by themselves. Lit = on.', 'Manual: quiet base + only what you toggle (stays on until switched off). Lit = on.'][CL];
   $('help').innerHTML = `<div class="box"><h3>Keys · control level ${LVL[CL]} (M) · transition ${USER.trans ? USER.trans + ' s' : 'instant'} (, .)</h3><div class="kb">${kb}</div><div class="lg">${lg}</div>
     <div class="n">${note} Dim = unused. Keys work at any time while playing. ${liveOn ? 'Live / mic: no seek, pause or tiles keys.' : ''}</div>
     <div class="n tl"><kbd>mouse</kbd> move = kaleidoscope centre · click = ripple · drag = rotate · wheel = zoom</div>
@@ -898,7 +903,7 @@ function ctrlHelp() {
 const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
   CT.helpOn = on ?? !CT.helpOn; $('help').classList.toggle('on', CT.helpOn); if (CT.helpOn) ctrlHelp(); };
 function ctrlKey(e) {   // levels assisted / manual: returns true when the key belongs to the effect keys
-  const el = CT_KEYS.find(x => x.code === e.code || (e.code === 'KeyT' && x.code === 'KeyY'));
+  const el = CT_KEYS.find(x => x.code === e.code);
   if (el) {
     e.preventDefault(); if (e.repeat) return true;
     if (el.mode === 't') { el.on = !el.on; el.age = 0; toast(el.label + (el.on ? (CL === 1 ? ' on (fades in ' + ASSIST_T + ' s)' : ' on') : ' off'), 1200); } else el.on = true;
@@ -908,7 +913,6 @@ function ctrlKey(e) {   // levels assisted / manual: returns true when the key b
   if (e.code === 'KeyZ' || e.code === 'KeyX') { CT.I = clamp(Math.round((CT.I + (e.code === 'KeyX' ? .1 : -.1)) * 10) / 10); toast('Intensity ' + Math.round(CT.I * 100) + '%', 1200); }
   else if (e.code === 'KeyC') { if (CL === 1 && !CT.pal && CT.palK < .02 && lastP) { CT.c = lastP.palC.slice(); CT.d = lastP.palD.slice(); CT.ha = lastP.ha; } CT.palAge = 0; CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); }
   else if (e.code === 'KeyH') ctrlHelpToggle();
-  else if (e.code === 'KeyK' || e.code === 'Enter') togglePause();
   else if (/^Arrow(Up|Down|Left|Right)$/.test(e.code)) CT.held.add(e.code);
   else return false;
   e.preventDefault(); if (CT.helpOn) ctrlHelp(); return true;
@@ -928,7 +932,7 @@ function setLevel(l, save = true, quiet = false) {
   if (save) lsSet('level', l);
   document.querySelectorAll('#lvl button,#lvls button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
   markHC();
-  if (!quiet) toast('Control: ' + LVL[l] + ['  ·  engine only, Z X Q W E R Y U I O P C are the sliders', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500);
+  if (!quiet) toast('Control: ' + LVL[l] + ['  ·  engine only; Z X effects, W/E/Y/T amounts (Shift/Alt), T tile mode, 1-8 presets', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500);
 }
 // live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
 // overlay = DOM box bottom-left; crazy = the same text drawn on a 2D canvas that FS_SCENE mixes into the SOURCE sampling (uCode), so warp, kaleidoscope, tiles, trails, palette all deform it.
@@ -1042,6 +1046,16 @@ function render(t, dt, bass, mid = 0, hi = 0) {
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(UE.monoK, md.bw), tile, tileN, tileMode,
     kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: hk * smooth(.5, .7, sg) };
   if (UE.fx !== 1) { const f = UE.fx; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
+  // arrow rotate / zoom holds (all levels, independent of control params)
+  CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
+  USER.zoom = clamp(USER.zoom, .5, 2.5);
+  // in auto level the engine still honours the palette key (CT.pal), eased gently
+  if (!SHOW && !CL) {
+    const ez = 1 - Math.exp(-dt / Math.max(.5, (USER.trans || 1) / 3));
+    const targetK = CT.pal ? .8 : 0; CT.palK += (targetK - CT.palK) * ez;
+    if (CT.pal) { const pi = CT.pal - 1, ez2 = 1 - Math.exp(-dt / Math.max(.5, USER.trans / 3) * 2); for (let i = 0; i < 3; i++) { CT.c[i] += (PALS[pi].c[i] - CT.c[i]) * ez2; CT.d[i] += (PALS[pi].d[i] - CT.d[i]) * ez2; } CT.ha += (PALS[pi].ha - CT.ha) * ez2; }
+    const w = clamp(CT.palK * 2); if (CT.pal && w > 0) { P.palC = P.palC.map((v, i) => lerp(v, CT.c[i], w)); P.palD = P.palD.map((v, i) => lerp(v, CT.d[i], w)); P.ha = lerp(P.ha, CT.ha, w); P.pal = clamp(P.pal + CT.palK); }
+  }
   if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
   if (GRID.held) P.cells = 1;   // J held (level auto)
   lastP = P;   // for the B snapshot
@@ -1237,7 +1251,7 @@ function start() {
   if (CTRL && !LOC && !ARCSWAP) enterCtrl();   // manual + generated music
   begin(0, true); playing = true; homeGate(false); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
-  if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Space = surge  ·  K = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
+  if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Enter = surge  ·  Space = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  Shift+← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
   requestAnimationFrame(loop);
 }
 function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); } }
@@ -1320,8 +1334,7 @@ $('pp').addEventListener('click', togglePause);
 $('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
 $('stopb').addEventListener('click', stopPlay);
 $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopPlay(); });   // same as Esc
-const TKEYS = { KeyZ: ['fx', -1, 'Effects'], KeyX: ['fx', 1, 'Effects'], KeyQ: ['kal', -1, 'Kaleidoscope'], KeyW: ['kal', 1, 'Kaleidoscope'], KeyE: ['tile', -1, 'Tiles'], KeyR: ['tile', 1, 'Tiles'],
-  KeyY: ['fb', -1, 'Trails'], KeyU: ['fb', 1, 'Trails'], KeyI: ['inten', -1, 'Intensity'], KeyO: ['inten', 1, 'Intensity'] };   // left key = less, right key = more
+const TKEYS = { KeyZ: ['fx', -1, 'Effects'], KeyX: ['fx', 1, 'Effects'] };   // left key = less, right key = more | (amounts for W/E/Y/T moved to Shift/Alt modifiers; Q..P removed)
 const trTxt = () => USER.trans ? ' → ' + USER.trans + ' s' : '';
 const AIS = [0, 30, 60, -1], aiTxt = v => v === 0 ? 'off' : v < 0 ? 'each scene' : v + ' s';
 const markAI = () => document.querySelectorAll('#ais button').forEach(b => b.classList.toggle('on', +b.dataset.ai === USER.auto));
@@ -1332,10 +1345,6 @@ function setTrans(v, quiet) { USER.trans = v; markTR(); autosave(); if (CT.helpO
 function tweakKey(e) {   // keyboard twins of the #tune sliders (non-controlled modes); returns true when the key was used
   const d = TKEYS[e.code];
   if (d) { const el = $(SLID[d[0]]), v = Math.round(clamp(USER[d[0]] + d[1] * .1, +el.min, +el.max) * 100) / 100; USER[d[0]] = v; el.value = v; autosave(); toast(d[2] + ' ' + Math.round(v * 100) + ' %' + trTxt(), 1200); return true; }
-  if (e.code === 'Semicolon') { setAuto(AIS[(Math.max(0, AIS.indexOf(USER.auto)) + 1) % AIS.length]); return true; }   // ; cycles the auto-image setting
-  if (e.code === 'Comma' || e.code === 'Period') { const i = TRS.indexOf(USER.trans), j = clamp((i < 0 ? 2 : i) + (e.code === 'Period' ? 1 : -1), 0, TRS.length - 1); setTrans(TRS[j]); return true; }   // , shorter / . longer transition
-  if (e.code === 'KeyP') { USER.style = (USER.style + 1) % 4; markSM(); autosave(); toast('Style: ' + ['none', 'Kali', 'Julia', 'auto'][USER.style] + trTxt(), 1200); return true; }
-  if (e.code === 'KeyC') { $('u-col').click(); toast('Colour: ' + COLS[USER.col] + trTxt(), 1200); return true; }
   return false;
 }
 addEventListener('keydown', e => {
@@ -1350,17 +1359,52 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setHC(); return; }   // hardcore look on / off, any source and level
   if (e.code === 'KeyM' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setLevel((CL + 1) % 3); return; }   // control level: auto / assisted / manual
   if (CL && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
-  if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
-  if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
+  const isMod = e.shiftKey || e.altKey || e.ctrlKey || e.metaKey;
+  // tile mode cycle on plain T
+  if (e.code === 'KeyT' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    const seq = [-1, 0, 1, 2, -1]; // off -> checker -> wave -> shatter -> off
+    const cur = USER.force;
+    const idx = seq.indexOf(cur); const next = seq[idx >= 0 ? idx + 1 : 0];
+    setTileMode(next); autosave(); toast(next < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][next], 1500); return;
+  }
+  // amount keys: Shift (down) / Alt (up)
+  if (!e.ctrlKey && !e.metaKey && (e.shiftKey || e.altKey) && ['KeyW', 'KeyE', 'KeyY', 'KeyT'].includes(e.code)) {
+    const field = e.code === 'KeyW' ? 'kal' : (e.code === 'KeyE' ? 'fb' : 'tile');
+    const el = $(SLID[field]); const delta = e.shiftKey ? -0.1 : +0.1; const v = Math.round(clamp(USER[field] + delta, +el.min, +el.max) * 100) / 100;
+    USER[field] = v; el.value = v; autosave(); e.preventDefault(); toast((field === 'kal' ? 'Kaleidoscope' : field === 'fb' ? 'Trails' : 'Tiles') + ' ' + Math.round(v * 100) + ' %' + trTxt(), 1200);
+    if (CT.helpOn) ctrlHelp(); return;
+  }
   if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: add more in Settings', 2000); return; }   // next image, every mode and level
   if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
-  if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
   if (e.code === 'KeyJ' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }   // strobe grid while held
-  if (CL < 2 && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;   // Z X effects, Q W / E R / Y U / I O sliders, P style, C colour
+  // Comma / Period transition time in all levels
+  if (!isMod && (e.code === 'Comma' || e.code === 'Period')) { const i = TRS.indexOf(USER.trans), j = clamp((i < 0 ? 2 : i) + (e.code === 'Period' ? 1 : -1), 0, TRS.length - 1); setTrans(TRS[j]); if (CT.helpOn) ctrlHelp(); return; }
+  // Semicolon auto image in all levels
+  if (!isMod && e.code === 'Semicolon') { setAuto(AIS[(Math.max(0, AIS.indexOf(USER.auto)) + 1) % AIS.length]); if (CT.helpOn) ctrlHelp(); return; }
+  // C palette cycle all levels
+  if (!isMod && e.code === 'KeyC') { CT.palAge = 0; CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); if (CT.helpOn) ctrlHelp(); return; }
+  if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyC') { CT.palAge = 0; CT.pal = (CT.pal + 6) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); if (CT.helpOn) ctrlHelp(); return; }
+  // Presets on digit row
+  if (/^Digit[1-8]$/.test(e.code) && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    const n = +e.code.slice(5);
+    if (e.shiftKey) { lsSet('slot' + n, snapTweaks()); toast('Preset ' + n + ' saved', 1500); }
+    else { const o = lsGet('slot' + n); if (o) { applyTweaks(o); autosave(); toast('Preset ' + n + ' loaded', 1500); } else toast('Preset ' + n + ' is empty', 2000); }
+    if (CT.helpOn) ctrlHelp(); return;
+  }
+  // Z/X amount per level (tweakKey: levels 0-1 global effects)
+  if (!isMod && (e.code === 'KeyZ' || e.code === 'KeyX') && CL < 2 && tweakKey(e)) return;
+  // ctrlKey for levels 1-2 already handled effect toggles earlier; if Z/X in manual, ctrlKey handled above
+  if (CL === 2 && !isMod && (e.code === 'KeyZ' || e.code === 'KeyX')) return;
+  if (e.code === 'KeyJ' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }
+  if (CL < 2 && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;
   if (liveOn) return;
   if (SHOW && (e.code === 'KeyN' || e.code === 'KeyP')) { seekTo(fxStart(fxIndex(lastT) + (e.code === 'KeyN' ? 1 : -1))); return; }
-  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-  else if (e.code === 'ArrowRight') seekTo(lastT + 10); else if (e.code === 'ArrowLeft') seekTo(lastT - 10);
+  // Space pause/resume all levels
+  if (!isMod && e.code === 'Space') { e.preventDefault(); togglePause(); return; }
+  // arrows held rotate/zoom (all levels)
+  if (!isMod && /^Arrow(Up|Down|Left|Right)$/.test(e.code)) { CT.held.add(e.code); e.preventDefault(); return; }
+  // shift+arrows seek
+  if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && !liveOn) { seekTo(lastT + (e.code === 'ArrowRight' ? 10 : -10)); return; }
 });
 [['u-fx', 'fx'], ['u-inten', 'inten'], ['u-kal', 'kal'], ['u-tile', 'tile'], ['u-fb', 'fb']].forEach(([id, k]) => {
   $(id).addEventListener('input', e => { USER[k] = +e.target.value; snapUser(k); });   // (a dragged slider snaps, only keys ease)
@@ -1733,7 +1777,7 @@ addEventListener('resize', resize);
 $('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
 $('lvl').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 $('lvls').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
-setLevel(Q.has('level') ? Math.max(0, ['auto', 'assisted', 'manual'].indexOf(Q.get('level'))) : CTRL_URL ? 2 : [0, 1, 2].includes(lsGet('level')) ? lsGet('level') : 0, false, true);   // (a URL level is not saved)
+setLevel(Q.has('level') ? (() => { const v = Q.get('level'); if (v === '0' || v === 'auto') return 0; if (v === '1' || v === 'assisted') return 1; if (v === '2' || v === 'manual') return 2; const i = ['auto', 'assisted', 'manual'].indexOf(v); return i < 0 ? 0 : i; })() : CTRL_URL ? 2 : [0, 1, 2].includes(lsGet('level')) ? lsGet('level') : 0, false, true);   // (a URL level is not saved)   // accepts both numeric and word levels for tests
 // Home uses only a CSS logo animation: no audio clock, render history or user image state.
 function homePanel(name, focus = false) {
   const drawer = $('home-drawer'); drawer.hidden = !name;
