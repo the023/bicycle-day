@@ -10,6 +10,7 @@ const GALLERY = [
   ['bosch-garden-of-earthly-delights.jpg', 'Bosch · Garden of Earthly Delights'],
   ['huys-temptation-of-saint-anthony.jpg', 'Huys · Temptation of Saint Anthony'],
   ['bruegel-fall-of-the-rebel-angels.jpg', 'Bruegel · Fall of the Rebel Angels'],
+  ['hirschl-souls-at-the-acheron.jpg', 'Hirschl · Souls at the Acheron'],
 ];
 const gallery = GALLERY.map(([file, title]) => {
   let bytes;

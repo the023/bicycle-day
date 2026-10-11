@@ -2,7 +2,7 @@
 
 A generative, psychedelic animation built from your images: a WebGL2 shader (warp, kaleidoscope, feedback trails, colour cycling, fractal styles) driven by sound. The sound is either music the app composes itself (Web Audio synth) or music you bring (a file, another browser tab, the microphone). Single HTML file, no dependencies, nothing is uploaded.
 
-The default picture is the Bicycle Day logo. A built-in **gallery** (the 1943 Bicycle Day poster and four public-domain paintings) and your own images can be added, up to 5 at once.
+The default picture is the Bicycle Day logo. A built-in **gallery** (the 1943 Bicycle Day poster and five public-domain paintings) and your own images can be added, up to 5 at once.
 
 ## Run
 
@@ -120,3 +120,4 @@ MIT, see [`LICENSE`](LICENSE). The logo is part of this project. Images you load
 | `bosch-garden-of-earthly-delights.jpg` | Hieronymus Bosch, *The Garden of Earthly Delights* (detail) |
 | `huys-temptation-of-saint-anthony.jpg` | Pieter Huys, *The Temptation of Saint Anthony* (Louvre) |
 | `bruegel-fall-of-the-rebel-angels.jpg` | Pieter Bruegel the Elder, *The Fall of the Rebel Angels* (1562) |
+| `hirschl-souls-at-the-acheron.jpg` | Adolf Hirémy-Hirschl, *Die Seelen am Acheron* (1898) |
