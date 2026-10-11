@@ -169,6 +169,7 @@
 <div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
 <div id="tune" hidden>
   <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
+  <label title="Master amount of all deformation effects: 0 = the plain image, 1 = normal, above = stronger. Keys Z / X.">Effects<small>0 = original image, 1 = normal, more = stronger</small><input type="range" id="u-fx" min="0" max="1.5" step=".05" value="1"></label>
   <label title="Shifts the whole animation up or down the intensity curve">Intensity<small>how wild overall: calmer ↔ more effects</small><input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
   <label title="Maximum amount of mirror symmetry">Kaleidoscope<small>mirror symmetry; 0 = never</small><input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
   <label title="Grid-of-tiles effect: each square turns or shifts on its own">Tiles<small>grid of rotating squares: 0 = never, 2 = a lot</small><input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
@@ -548,7 +549,7 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 const METER = { db: -90 };
 let micGain = null, TD = null, MICDB = 0, clipT = 0;
 // user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
-const USER = { style: 0, inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
+const USER = { style: 0, fx: 1, inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
 // palettes: cosine palettes (frequency, phase) + how much the global hue drift may rotate them; a new one on every drop / window
 const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4], d: [0, .15, .2], ha: .3 }, { c: [2, 1, 0], d: [.5, .2, .25], ha: .3 }, { c: [1, 1, .5], d: [.8, .9, .3], ha: .3 }, { c: [1.5, 1.5, 1.5], d: [0, .5, .5], ha: .3 }, { c: [1, 1, 1], d: [.5, .2, .8], ha: .3 }];
 // per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
@@ -680,10 +681,10 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
     <div class="g">${CT_KEYS.map(row).join('')}${k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom')}${k('Enter', 'pause')}</div>` : '';
   $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
     <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('H', 'this help')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
-    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
+    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
     <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
-    <div class="n">In live / mic mode only F, Esc, H, B, T, 1-3 and the image keys apply. Click anywhere to close.</div></div>`;
+    <div class="n">In live / mic mode only F, Esc, H, B, T, 1-3, the image keys and the slider keys (Z X Q W E R Y U I O P C) apply. Click anywhere to close.</div></div>`;
 }
 const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
   CT.helpOn = on ?? !CT.helpOn; $('help').classList.toggle('on', CT.helpOn); if (CT.helpOn) ctrlHelp(); };
@@ -772,6 +773,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const P = { t, warp: wr, kal, fold, fb: fb * (1 - .75 * (Q.get('tile') ? 1 : tile)), fbHue: USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha, hue: hue + LOOK.hj, pal: pal * LOOK.p, side, breath: breath * op, melt: melt * op * (.5 + sg), zoom, rot: rotA + USER.rot, ab, pulse, bright, anchor, tilt,
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(USER.col === 2 ? 1 : 0, md.bw), tile, tileN, tileMode,
     kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate };
+  if (USER.fx !== 1) { const f = USER.fx; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
   if (SHOW) showcaseParams(P, t); else if (CTRL && !LIVE) ctrlParams(P, t, dt);
   lastP = P;   // for the B snapshot
   // pass 1 → offscreen (with feedback from the previous frame)
@@ -1027,6 +1029,15 @@ $('pp').addEventListener('click', togglePause);
 $('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
 $('stopb').addEventListener('click', stopPlay);
 $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopPlay(); });   // same as Esc
+const TKEYS = { KeyZ: ['fx', -1, 'Effects'], KeyX: ['fx', 1, 'Effects'], KeyQ: ['kal', -1, 'Kaleidoscope'], KeyW: ['kal', 1, 'Kaleidoscope'], KeyE: ['tile', -1, 'Tiles'], KeyR: ['tile', 1, 'Tiles'],
+  KeyY: ['fb', -1, 'Trails'], KeyU: ['fb', 1, 'Trails'], KeyI: ['inten', -1, 'Intensity'], KeyO: ['inten', 1, 'Intensity'] };   // left key = less, right key = more
+function tweakKey(e) {   // keyboard twins of the #tune sliders (non-controlled modes); returns true when the key was used
+  const d = TKEYS[e.code];
+  if (d) { const el = $(SLID[d[0]]), v = Math.round(clamp(USER[d[0]] + d[1] * .1, +el.min, +el.max) * 100) / 100; USER[d[0]] = v; el.value = v; autosave(); toast(d[2] + ' ' + Math.round(v * 100) + ' %', 1200); return true; }
+  if (e.code === 'KeyP') { USER.style = (USER.style + 1) % 4; markSM(); autosave(); toast('Style: ' + ['none', 'Kali', 'Julia', 'auto'][USER.style], 1200); return true; }
+  if (e.code === 'KeyC') { $('u-col').click(); toast('Colour: ' + COLS[USER.col], 1200); return true; }
+  return false;
+}
 addEventListener('keydown', e => {
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
@@ -1039,18 +1050,19 @@ addEventListener('keydown', e => {
   if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
   if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
   if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
+  if (!CTRL && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;   // Z X effects, Q W / E R / Y U / I O sliders, P style, C colour
   if (liveOn) return;
   if (SHOW && (e.code === 'KeyN' || e.code === 'KeyP')) { seekTo(fxStart(fxIndex(lastT) + (e.code === 'KeyN' ? 1 : -1))); return; }
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
   else if (e.code === 'ArrowRight') seekTo(lastT + 10); else if (e.code === 'ArrowLeft') seekTo(lastT - 10);
 });
-[['u-inten', 'inten'], ['u-kal', 'kal'], ['u-tile', 'tile'], ['u-fb', 'fb']].forEach(([id, k]) => {
+[['u-fx', 'fx'], ['u-inten', 'inten'], ['u-kal', 'kal'], ['u-tile', 'tile'], ['u-fb', 'fb']].forEach(([id, k]) => {
   $(id).addEventListener('input', e => { USER[k] = +e.target.value; });
   $(id).addEventListener('change', e => e.target.blur());   // keep the keyboard free for pause / seek / fullscreen
 });
 const markSM = () => document.querySelectorAll('#smodes button').forEach(b => b.classList.toggle('on', +b.dataset.sm === USER.style));
 $('smodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { USER.style = +b.dataset.sm; markSM(); } });
-{ const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; } markSM();
+if (Q.has('fx')) { USER.fx = +Q.get('fx'); $('u-fx').value = USER.fx; } { const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; } markSM();
 const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
 function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
 $('helpbtn').addEventListener('click', e => { e.stopPropagation(); ctrlHelpToggle(true); });
@@ -1061,7 +1073,7 @@ const markTM = () => document.querySelectorAll('#tmodes button').forEach(b => b.
 const setTileMode = m => { USER.force = m; markTM(); };
 $('tmodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTileMode(+b.dataset.tm); });
 markTM();
-const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
+const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['fx', 'inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { fx: 'u-fx', inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
 { const v = lsGet('micdb'); if (typeof v === 'number') MICDB = clamp(v, -12, 24); $('u-mg').value = MICDB; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; }

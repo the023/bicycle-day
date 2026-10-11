@@ -45,6 +45,9 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 | H | help overlay |
 | B | bookmark this moment: downloads `bicycle-bd-<seed>-<sec>s.json` (state, render values, thumbnail) and keeps it in localStorage — give the file/ID to the developer |
 | T / 1 2 3 | tiles on-off / tile mode (again = auto) |
+| Z / X | **effects down / up** (0 = original image, 100 % = normal, up to 150 %), same as the Effects slider |
+| Q W · E R · Y U · I O | kaleidoscope · tiles amount · trails · intensity: − / + by 10 % (Settings sliders) |
+| P / C | cycle style (none, Kali, Julia, auto) / colour (auto, frozen, b&w) |
 | [ ] V / Shift+1..5 | previous-next image / image number |
 | mouse | move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom |
 
