@@ -957,11 +957,14 @@ async function analyseLocal(buf, progress) {
     const ref = new Float32Array(nf); for (let f = 0; f < nf; f++) { const j = Math.floor(f / bl); let m = 1e-5; for (let q = Math.max(0, j - 30); q <= Math.min(nb - 1, j + 30); q++) m = Math.max(m, mx[q]); ref[f] = m; }
     const rs = zp(ref, 3, fps); return r.map((v, f) => clamp(v / rs[f]));
   });
+  // absolute loudness over the WHOLE track (raw energy vs its 95th percentile): a calm intro stays calm next to the loud parts, whatever the local auto-gain says
+  const rl = zp(rawB[0].map((b, f) => .45 * b + .35 * rawB[1][f] + .2 * rawB[2][f]), 1, fps), srt = Float32Array.from(rl).sort(), ref95 = Math.max(1e-6, srt[Math.floor(.95 * (nf - 1))]);
+  const ag = rl.map(v => clamp(Math.pow(v / ref95, 1.3) * 1.6));   // 0 quiet .. 1 as loud as the loud parts
   const [nB, nM, nH] = n, lvl = nB.map((b, f) => .45 * b + .35 * nM[f] + .2 * nH[f]), bri = nB.map((b, f) => nH[f] / (b + nM[f] + nH[f] + 1e-6));
   const lv = zp(lvl, .8, fps), ls = zp(lvl, 10, fps), bf = zp(bri, 1.5, fps), bsl = zp(bri, 10, fps), bLong = zp(nB, 2.5, fps), bSlow = zp(nB, 6, fps);
   const kick = nB.map((b, f) => clamp((b - (f ? nB[f - 1] : b)) * 5));
   const D = { ...DET, warm: 6 }, dt = 1 / fps, ease = tau => 1 - Math.exp(-dt / tau);   // the auto-gain is exact here, so the detectors can start after 6 s instead of 25
-  const P = { buf, dur: buf.duration, fps, nf, off: N / 2 / sr, u: new Float32Array(nf), kick, bn: nB, mn: nM, hn: nH, tens: new Float32Array(nf), boo: new Float32Array(nf), st: new Uint8Array(nf), sceneT: [], minorT: [], kinds: [1] };
+  const P = { buf, dur: buf.duration, fps, nf, off: N / 2 / sr, u: new Float32Array(nf), kick, bn: nB, mn: nM, hn: nH, tens: new Float32Array(nf), boo: new Float32Array(nf), st: new Uint8Array(nf), sceneT: [], minorT: [], kinds: [ag.subarray(0, Math.round(10 * fps)).reduce((a, b) => a + b, 0) / Math.round(10 * fps) < .3 ? 0 : 1] };
   let tension = 0, sinceDrop = 99, boost = 0, sinceScene = 0, sinceMinor = 0, secT = 0, pT = 0, bigT = 0, dm = null, u = -1, stT = 0, st = 0, cand = -1, candT = 0, sf = [0, 0, 0], ss = [0, 0, 0], pf = null, ps = null;
   for (let f = 0; f < nf; f++) {
     const t = f * dt, age = t;
@@ -980,13 +983,14 @@ async function analyseLocal(buf, progress) {
     pT = dprof > Math.max(D.minFloor, D.minK * dm) ? pT + dt : Math.max(0, pT - dt); sinceMinor += dt;
     bigT = dprof > Math.max(D.bigFloor, D.bigK * dm) ? bigT + dt : Math.max(0, bigT - dt);
     if (age > D.warm && ((dropped && sinceScene > D.dropGap && (gap > D.dropMinGap || dprof > D.dropMinProf)) || ((secT > D.gapDur || bigT > D.bigDur) && sinceScene > D.dwell))) {
+      if (ag[f] > .3) {   // (no scene punches inside a quiet stretch)
       P.sceneT.push(Math.max(P.sceneT.at(-1) ?? 0, t - (dropped ? 0 : Math.min(3, Math.max(secT, bigT)))));   // back-dated: the change began when the gap began, not when it was confirmed
-      P.kinds.push(dropped || sf[0] >= ss[0] ? 1 : 0); sinceScene = 0; secT = 0; sinceMinor = 0; pT = 0; bigT = 0; ss = cur.slice();
+      P.kinds.push(dropped || sf[0] >= ss[0] ? 1 : 0); } sinceScene = 0; secT = 0; sinceMinor = 0; pT = 0; bigT = 0; ss = cur.slice();
     }
-    else if (age > D.warm + 5 && pT > D.minDur && sinceMinor > D.minDwell && sinceScene > 6) { P.minorT.push(Math.max(P.minorT.at(-1) ?? 0, t - Math.min(3, pT))); sinceMinor = 0; pT = 0; }
+    else if (age > D.warm + 5 && ag[f] > .3 && pT > D.minDur && sinceMinor > D.minDwell && sinceScene > 6) { P.minorT.push(Math.max(P.minorT.at(-1) ?? 0, t - Math.min(3, pT))); sinceMinor = 0; pT = 0; }
     boost *= Math.exp(-dt / 6);
-    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost), tgt = lerp(.26, .88, I); u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);
-    P.u[f] = u; P.tens[f] = tension; P.boo[f] = boost;
+    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost) * Math.min(1, ag[f] * 1.5), tgt = lerp(.04, .88, I) * smooth(0, 6, t);  u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);   // I scaled by absolute loudness; fades in over the first 6 s
+    P.u[f] = u; const gq = Math.min(1, ag[f] * 1.5); P.tens[f] = tension * gq; P.boo[f] = boost * gq;   // no tile bursts / tension look in a quiet stretch
     const rawSt = boost > .5 ? 1 : tension > .25 ? 2 : bLong[f] > .3 ? 3 : lv[f] < .27 ? 4 : 5;   // state label with the same hold rules as live
     if (age < 4) st = 0; else { stT += dt;
       if (rawSt === st) cand = -1; else if (rawSt === 1 || st === 0) { st = rawSt; stT = 0; cand = -1; }
