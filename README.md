@@ -1,5 +1,7 @@
 # Bicycle Day
 
+**▶ Try it now: https://the023.github.io/bicycle-day/** — nothing to install; runs in your browser.
+
 A generative, psychedelic animation built from your images: a WebGL2 shader (warp, kaleidoscope, feedback trails, colour cycling, fractal styles) driven by sound. The sound is either music the app composes itself (Web Audio synth) or music you bring (a file, another browser tab, the microphone). Single HTML file, no dependencies, nothing is uploaded.
 
 The default picture is the Bicycle Day logo. A built-in **gallery** (the 1943 Bicycle Day poster and five public-domain paintings) and your own images can be added, up to 5 at once.
@@ -13,6 +15,7 @@ xdg-open dist/bicycle-day.html   # or double-click it
 
 `dist/bicycle-day.html` is committed, so you can also open it without building (Node ≥ 18 is only needed for the build).
 Chrome / Edge / Firefox / Safari with WebGL2, sound on. Tab-audio capture (Stream) needs desktop Chrome or Edge.
+Source and issues: https://github.com/the023/bicycle-day
 
 ## Start screen
 
