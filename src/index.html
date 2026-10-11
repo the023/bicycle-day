@@ -74,7 +74,7 @@
   .card .go:hover:not(:disabled){background:#fff}
   .card .go:disabled{opacity:.35;cursor:not-allowed}
   #opts button,#dur button,#mus button,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
-  #hclocal{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}#hclocal.on{background:#f4f1ea;color:#05030c}
+  .hcb{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}#hclocal.on{background:#f4f1ea;color:#05030c}
   #opts button.on,#dur button.on,#mus button.on{background:#f4f1ea;color:#05030c}
   #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#ffd60a}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
@@ -161,13 +161,13 @@
       <div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
       <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
       <div class="imgs" id="gimgs"></div>
-      <button class="go" id="playgen">▶ Play</button></div>
+      <button class="hcb" id="hcgen" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="playgen">▶ Play</button></div>
     <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
-      <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">● Listen to a tab</button></div>
+      <i class="warn" id="streamwarn"></i><button class="hcb" id="hcstream" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="tabmode">● Listen to a tab</button></div>
     <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
-      <button class="go" id="micmode">● Use the microphone</button></div>
+      <button class="hcb" id="hclive" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="micmode">● Use the microphone</button></div>
     <div class="card" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn" id="localnote"></i>
-      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button id="hclocal" title="Hardcore look: strobe grid, surges, big punches">Hardcore: off</button><button class="go" id="playlocal" disabled>▶ Play</button></div>
+      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button class="hcb" id="hclocal" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="playlocal" disabled>▶ Play</button></div>
   </div>
   <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
   <div id="lvl" title="How much you steer the picture: Auto = the engine alone; Assisted = engine + effect keys that fade by themselves; Manual = quiet base + only what you toggle. Key M."><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
@@ -190,7 +190,7 @@
   <div class="tmodes" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Control: Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
-  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button class="hcb" id="u-hc" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Hardcore: off</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
 </div>
@@ -610,8 +610,10 @@ const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], 
 let TL = null, TLph = null, TLtot = 0, TLhc = false;
 // slow start (generated mode): the moves that don't follow the arc (surges, moods, zoom swing, scene punches) fade in over the first quarter of the piece (20 s..3 min)
 // hardcore (arc 'hardcore', ?hc=1, or the Local card's toggle): no calm start, scenes every 8 s, minor changes every 2 s, frequent surges / moods, strobe grid at the peaks
-let HCLOC = false;
-const hcOn = () => !CTRL && !SHOW && (LOC ? HCLOC || Q.get('hc') === '1' : !LIVE && ((arcName === 'hardcore' && !ARC.piano) || Q.get('hc') === '1'));
+// the look works with every source (generated, local, stream, mic) and control level auto / assisted (manual replaces the engine's look, so it doesn't apply there);
+// HCX = the user's choice (cards, Settings chip, key N; null = the default: arc 'hardcore' / ?hc=1). It only changes the look factors, never the music or the arc.
+let HCX = null;
+const hcOn = () => !CTRL && !SHOW && (HCX ?? (Q.get('hc') === '1' || (!LOC && !LIVE && arcName === 'hardcore' && !ARC.piano)));
 const HCspin = t => .7 + .5 * Math.sin(t * .9 + PH);   // hardcore spin speed (rad/s), a pure function of t (mirrored in integrateTo / integrateLocal)
 const opening = u => LIVE || hcOn() ? 1 : smooth(.02, .2, u) ** 2;   // generated mode: deformation (warp, breath, pulse, spin, zoom wobble, fringing, melt, stretch) ramps up over the first 20 % of the arc
 const rampT = () => hcOn() ? 3 : clamp(TOTAL * .25, 20, 180), calm = t => LIVE || hcOn() ? 1 : smooth(6, rampT(), t);
@@ -749,7 +751,7 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
     <div class="g">${CT_KEYS.map(row).join('')}${CL === 2 ? k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%') : k('Z / X', 'effects amount ' + Math.round(USER.fx * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom (no seek)')}${k('K / Enter', 'pause')}</div>` : '<div class="n">Auto: the engine alone; Q W / E R / Y U / I O / P / C / Z X are the Settings sliders below.</div>');
   $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
     <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding: off / overlay / crazy (text inside the picture)')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
-    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image (every level)')}${k('M', 'control level: auto / assisted / manual')}${k('Shift+1..5', 'image number')}</div>
+    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image (every level)')}${k('M', 'control level: auto / assisted / manual')}${k('N', 'hardcore look on / off (look only, not in manual)')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
     <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>Showcase: hover the right edge for the effect list, click one to jump to it</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
     <div class="n">In live / mic mode only F, Esc, H, M, L, B, T, 1-3, the image keys and the slider / effect keys apply. Click anywhere to close.</div></div>`;
@@ -786,6 +788,7 @@ function setLevel(l, save = true, quiet = false) {
   if (SHOW) l = 0; CL = l; CTRL = l === 2; resetFx(); ctrlHelpToggle(CT.helpOn);
   if (save) lsSet('level', l);
   document.querySelectorAll('#lvl button,#lvls button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
+  markHC();
   if (!quiet) toast('Control: ' + LVL[l] + ['  ·  engine only, Z X Q W E R Y U I O P C are the sliders', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500);
 }
 // live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
@@ -856,7 +859,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const leadTile = hsh(scene, 3) < .5, st = LIVE ? LIVE.state : '', sv = LIVE_LOOK[st] || [1, 1, 1, 1], base = kindOf(scene) ? [1, 1.1, 1, 1] : [.35, .8, .7, .7];
   const tg = base.map((b, i) => b * (1 + .3 * (sv[i] - 1)));   // the section sets the look; the instantaneous state only nudges it
   if (st === 'drop' && leadTile) tg[0] *= .35;
-  const hcPal = HC && !LOC, PL = PALS[Q.has('pal') ? +Q.get('pal') : hcPal ? palIdx(1000 + (bi >> 2)) : palIdx(scene)], ez = 1 - Math.exp(-dt / (HC ? .3 : 1.2));   // hardcore: the palette flips every 4 beats, quickly
+  const hcPal = HC && !LOC, PL = PALS[Q.has('pal') ? +Q.get('pal') : hcPal ? palIdx(1000 + (LIVE ? Math.floor(t / 2) : bi >> 2)) : palIdx(scene)], ez = 1 - Math.exp(-dt / (HC ? .3 : 1.2));   // hardcore: the palette flips every 4 beats, quickly
   LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez; LOOK.hj += (hsh(tk, 7) * 2 - LOOK.hj) * (1 - Math.exp(-dt / 1.5));   // hue offset re-rolled on every minor change
   // styles (opt-in): auto picks one per scene (20 % none); calm sections get a lighter touch
   const sIdx = USER.style === 3 ? [0, 1, 2, 1, 2][Math.floor(hsh(LIVE ? scene : wi, 8) * 5)] : USER.style, sAmt = USER.style === 3 ? (kindOf(scene) ? .55 : .3) : .5;
@@ -1111,7 +1114,7 @@ function loop() {
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
   requestAnimationFrame(loop);
 }
 // Transport follows pointer activity; settings only open by explicit click.
@@ -1149,7 +1152,7 @@ const toggleFullscreen = async () => {
 $('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
   if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
+  HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
@@ -1188,6 +1191,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
   if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // mark this moment ("bad")
   if (e.code === 'KeyL' && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) codeToggle(); return; }   // live-coding overlay, every mode
+  if (e.code === 'KeyN' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setHC(); return; }   // hardcore look on / off, any source and level
   if (e.code === 'KeyM' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setLevel((CL + 1) % 3); return; }   // control level: auto / assisted / manual
   if (CL && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
   if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
@@ -1286,7 +1290,7 @@ const chips = [...document.querySelectorAll('#opts button')];
 chips.forEach(b => b.classList.toggle('on', b.dataset.arc === arcName));
 document.getElementById('opts').addEventListener('click', e => {
   e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
-  arcName = b.dataset.arc; applyArc(); drawProfile(); chips.forEach(c => c.classList.toggle('on', c === b));
+  arcName = b.dataset.arc; applyArc(); drawProfile(); markHC(); chips.forEach(c => c.classList.toggle('on', c === b));
 });
 const musBtns = [...document.querySelectorAll('#mus button')], markMus = () => { musBtns.forEach(b => b.classList.toggle('on', b.dataset.music === MUSIC)); $('opts').style.opacity = MUSIC === 'ambient' ? 1 : .35; };
 markMus();
@@ -1418,7 +1422,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); applyArc(); updateHint();
+  HCX = null; markHC(); resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
@@ -1539,7 +1543,9 @@ function startLocal() {
 }
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());
-$('hclocal').addEventListener('click', e => { e.stopPropagation(); HCLOC = !HCLOC; e.target.textContent = 'Hardcore: ' + (HCLOC ? 'on' : 'off'); e.target.classList.toggle('on', HCLOC); });
+function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Hardcore: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
+function setHC(on) { HCX = on ?? !(HCX ?? hcOn()); markHC(); if (playing || liveOn) toast(CTRL ? 'Hardcore does not apply in manual control' : 'Hardcore ' + (HCX ? 'on' : 'off') + '  ·  N', 1400); }
+document.querySelectorAll('.hcb').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); setHC(); }));
 lfile.addEventListener('change', () => { if (lfile.files[0]) loadLocal(lfile.files[0]); });
 $('playlocal').addEventListener('click', e => { e.stopPropagation(); startLocal(); });
 addEventListener('resize', resize);

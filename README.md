@@ -53,6 +53,7 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 | P / C | cycle style (none, Kali, Julia, auto) / colour (auto, frozen, b&w) |
 | [ ] / V / Shift+1..5 | previous / next image, next image (all levels), image number |
 | M | control level: auto / assisted / manual |
+| N | hardcore look on / off during play, any source (generated, local, stream, mic) and level auto / assisted (look only, the music is not changed; not in manual). Also *Hardcore* toggles on the Generative / Stream / Live / Local cards and in Settings |
 | mouse | move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom |
 
 **Control level** (key **M**, chips *Control: Auto / Assisted / Manual* on the start screen and in Settings, remembered; `?level=auto|assisted|manual`, `?ctrl=1` = manual): works with every music source (generated, stream, mic, local).
