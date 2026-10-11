@@ -1036,6 +1036,7 @@ const KB_ACT = {
   KeyB: [0, 'tool', 'bookmark'], KeyL: [0, 'tool', 'live code'], KeyH: [0, 'tool', 'help'], KeyF: [0, 'tool', 'fullscreen'],
 };
 for (let _d = 1; _d <= 8; _d++) KB_ACT['Digit' + _d] = [0, 'glob', 'preset ' + _d];
+const AMT = new Set(['KeyW', 'KeyE', 'KeyY', 'KeyT']);   // keys with Shift (less) / Alt (more) amounts (Z X are the amount keys themselves)
 function ctrlHelp() {
   const ct = c => CL ? CT_KEYS.find(x => x.code === c) : null;
   const meaning = c => {
@@ -1043,7 +1044,6 @@ function ctrlHelp() {
     if (e) { if (CL < 1) return null; return { cat: e.mood || e.rin === 0 ? 'mood' : 'fx', label: e.label.replace(' (hold)', ' hold').replace('kaleidoscope', 'kaleido').replace('black and white', 'b&w'), on: e.on || e.r > .05 }; }
     const row = KB_ACT[c]; if (!row) return null; const [minLevel, cat, base] = row; if (CL < minLevel) return null;
     let label = base, on = false;
-    if (c === 'KeyZ' || c === 'KeyX') label = (CL === 2 ? 'intens. ' : 'effects ') + (c === 'KeyZ' ? '−' : '+');
     if (c === 'Semicolon') { label = 'auto img: ' + aiTxt(USER.auto); on = USER.auto !== 0; }
     if (c === 'KeyC') on = !!CT.pal;
     if (c === 'KeyN') on = hcOn();
@@ -1054,12 +1054,12 @@ function ctrlHelp() {
     if (/^Digit[1-8]$/.test(c)) { const o = lsGet('slot' + c.slice(5)); on = !!o; }
     return { cat, label, on };
   };
-  const cap = (c, txt, w = 1) => { const m = meaning(c), col = m ? KB_CAT[m.cat][0] : '#888'; return `<div class="kc${m ? '' : ' dim'}${m && m.on ? ' on' : ''}" style="--c:${col};--w:${w}"><b>${txt}</b><span>${m ? m.label : ''}</span></div>`; };
+  const cap = (c, txt, w = 1) => { const m = meaning(c), col = m ? KB_CAT[m.cat][0] : '#888'; return `<div class="kc${m ? '' : ' dim'}${m && m.on ? ' on' : ''}" style="--c:${col};--w:${w}"><b>${txt}</b><span>${m ? m.label : ''}${m && AMT.has(c) ? '<br>⇧− Alt+' : ''}</span></div>`; };
   const kb = KB.map(r => `<div class="kr">${r.map(k => typeof k === 'number' ? `<div style="width:${k * 76}px"></div>` : cap(k[0], k[1], k[2])).join('')}</div>`).join('');
   const lg = Object.values(KB_CAT).map(([c, n]) => `<span style="--c:${c}"><i></i>${n}</span>`).join('');
   const note = ['Auto: engine only; Z X effects, W/E/Y/T (Shift/Alt) amounts, T cycles tile mode, 1-8 presets.', 'Assisted: engine + effect keys (Q W E R Y U I O P, A S D, G (hold), J (hold), Enter surge) that fade out by themselves. Lit = on.', 'Manual: quiet base + only what you toggle (stays on until switched off). Lit = on.'][CL];
   $('help').innerHTML = `<div class="box"><h3>Keys · control level ${LVL[CL]} (M) · transition ${USER.trans ? USER.trans + ' s' : 'instant'} (, .)</h3><div class="kb">${kb}</div><div class="lg">${lg}</div>
-    <div class="n">${note} Dim = unused. Keys work at any time while playing. ${liveOn ? 'Live / mic: no seek, pause or tiles keys.' : ''}</div>
+    <div class="n">${note} Shift+key = less, Alt+key = more (W E Y T); Shift+← → = seek ±10 s. Dim = unused. Keys work at any time while playing. ${liveOn ? 'Live / mic: no seek, pause or tiles keys.' : ''}</div>
     <div class="n tl"><kbd>mouse</kbd> move = kaleidoscope centre · click = ripple · drag = rotate · wheel = zoom</div>
     <div class="n tl"><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery (N / P next / previous, hover the right edge for the list) · <kbd>?arc=hardcore</kbd> <kbd>?hc=1</kbd> · <kbd>?t=&lt;sec&gt;&amp;seed=&lt;n&gt;</kbd> one still (the <kbd>B</kbd> .json has the exact link, the .png the frame) · click anywhere or Esc to close</div></div>`;
 }
