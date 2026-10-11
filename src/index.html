@@ -98,10 +98,12 @@
   #home-drawer details .field{margin-top:16px}
   #qual,#lvl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:18px 0}
   #qual span,#lvl span{width:100%;color:#a8b1ab;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
-  #qual button,#lvl button,#opts button,#dur button,#mus button,#lpick,.hcb{font:500 11px/1.2 "Helvetica Neue",Arial,sans-serif;color:#f4f1ea;background:none;border:1px solid #f4f1ea33;border-radius:99px;padding:9px 12px;cursor:pointer}
-  #qual button.on,#lvl button.on,#opts button.on,#dur button.on,#mus button.on,#hclocal.on{background:#c5e1ad;color:#0a130d;border-color:#c5e1ad}
-  #lpick{display:block;text-align:center;font-size:13px;padding:13px}
-  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#c5e1ad}
+  #qual button,#lvl button,#opts button,#dur button,#mus button,#lpick,#nextpick,.hcb{font:500 11px/1.2 "Helvetica Neue",Arial,sans-serif;color:#f4f1ea;background:none;border:1px solid #f4f1ea33;border-radius:99px;padding:9px 12px;cursor:pointer}  #qual button.on,#lvl button.on,#opts button.on,#dur button.on,#mus button.on,#hclocal.on{background:#c5e1ad;color:#0a130d;border-color:#c5e1ad}
+  #lpick,#nextpick{display:block;text-align:center;font-size:13px;padding:13px}
+  #nextrow{display:flex;align-items:center;gap:8px;margin-top:6px;min-height:18px;font-size:12px;color:#f4f1ea}
+  #nextname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+  #nextclear{background:none;border:none;color:#f4f1ea;cursor:pointer;font-size:14px;padding:0 4px;opacity:.6}
+  #nextclear:hover{opacity:1}  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#c5e1ad}
   #home-drawer #qnote{color:#e5c467;font-size:12px;margin-top:12px}
   #home-drawer .imgs{justify-content:flex-start;margin:24px 0;gap:16px}
   #home-drawer .imgs .im,#home-drawer .imgs label{width:52px;height:52px}
@@ -226,6 +228,8 @@
         <div class="card" id="c-local" hidden>
           <p>Pick an audio file. The app analyses it, then plays it with visuals.</p>
           <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label>
+          <label id="nextpick">Next track (optional)<input type="file" accept="audio/*" hidden></label>
+          <div id="nextrow"><span id="nextname"></span><button id="nextclear" type="button" aria-label="Clear next track" title="Clear" style="display:none">✕</button></div>
           <i class="warn" id="localnote" role="status"></i><button class="go" id="playlocal" disabled>Play file</button>
         </div>
         <div class="card" id="c-stream" hidden>
@@ -1587,7 +1591,7 @@ $('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
 /* ════════════════════════ LOCAL MODE: play an audio file; the whole file is analysed first (offline, so it can look ahead) ════════════════════════
    Same features and section/drop detector as liveStep(), but zero-phase smoothing and back-dated scene starts. The result is a timeline sampled at the audio clock
    time t (localView), written into the LIVE-shaped object so render() runs its live look path unchanged: the picture stays a pure function of t. */
-let LOC = null, localData = null, FFT = null;
+let LOC = null, localData = null, FFT = null, NEXT = null;
 const LST = ['', 'drop', 'build', 'groove', 'breakdown', 'calm'];
 const zp = (a, tau, fps) => { const k = 1 - Math.exp(-1 / (tau * fps)), o = new Float32Array(a.length); let y = a[0]; for (let i = 0; i < a.length; i++) { y += (a[i] - y) * k; o[i] = y; } for (let i = a.length - 1; i >= 0; i--) { y += (o[i] - y) * k; o[i] = y; } return o; };   // forward + backward EMA = no lag
 function fft(re, im) {   // in-place radix-2
@@ -1694,6 +1698,10 @@ function startLocal() {
   if (!localData || playing || !ready || liveOn) return;
   LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); start();
 }
+const nfile = document.querySelector('#nextpick input');
+$('nextpick').addEventListener('click', e => e.stopPropagation());
+nfile.addEventListener('change', () => { const f = nfile.files && nfile.files[0]; if (f) { NEXT = f; $('nextname').textContent = f.name; $('nextclear').style.display = ''; } });
+$('nextclear').addEventListener('click', e => { e.stopPropagation(); NEXT = null; nfile.value = ''; $('nextname').textContent = ''; $('nextclear').style.display = 'none'; });
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());
 function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Hardcore: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
