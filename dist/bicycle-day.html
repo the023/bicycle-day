@@ -36,9 +36,9 @@
   .card .go{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
   .card .go:hover:not(:disabled){background:#fff}
   .card .go:disabled{opacity:.35;cursor:not-allowed}
-  #opts button,#dur button,#pick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
+  #opts button,#dur button,#pick,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
   #opts button.on,#dur button.on{background:#f4f1ea;color:#05030c}
-  #pick:hover,#opts button:hover,#dur button:hover{border-color:#ffd60a}
+  #pick:hover,#lpick:hover,#opts button:hover,#dur button:hover{border-color:#ffd60a}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
     font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
   body.playing #ctl{display:flex}
@@ -123,7 +123,8 @@
       <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">● Listen to a tab</button></div>
     <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
       <button class="go" id="micmode">● Use the microphone</button></div>
-    <div class="card off" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn">Coming soon</i></div>
+    <div class="card" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn" id="localnote"></i>
+      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button class="go" id="playlocal" disabled>▶ Play</button></div>
   </div>
   <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
   <div class="sub" id="qnote"></div>
@@ -625,7 +626,8 @@ function newSeed() {   // one seed drives all the randomness of a play (notes, d
   rng = mulberry32(seedUsed); PH = rng() * 6.283; rotDir = rng() < .5 ? -1 : 1;
   const h = Q.get('hue'); hueBase = h === 'random' ? rng() * 6.283 : (parseFloat(h) || 0);
 }
-function integrateTo(off) {   // fast-forward the drifting state (hue, spin) to a given time; mirrors render()
+function integrateTo(off) {
+  if (LOC) return integrateLocal(off);   // fast-forward the drifting state (hue, spin) to a given time; mirrors render()
   hue = hueBase; rotA = 0;
   for (let s = 0; s < off; s += .5) { const u = s / TOTAL, e = score(u); hue += e[4] * .5; rotA += .5 * rotDir * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)); }
 }
@@ -637,7 +639,7 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
   bi = 0; bassE = 0; lastT = off; integrateTo(off); paused = false; setPP();
-  pump = buildAudio(ac, t0, off); pump(); pumpId = setInterval(pump, 1000);
+  pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); pump(); pumpId = setInterval(pump, 1000);
 }
 function start() {
   if (playing || !ready || liveOn) return;
@@ -652,14 +654,15 @@ function loop() {
   if (!playing) return;
   const t = Math.max(0, ac.currentTime - t0 - lat), dt = clamp(t - lastT, 0, .1); lastT = t;
   let bass = 0, mid = 0, hi = 0;
-  if (analyser) {
+  if (LOC) { localView(Math.min(t, TOTAL)); bass = LIVE.bn; mid = LIVE.mn; hi = LIVE.hn; }   // local file: features come from the precomputed timeline
+  else if (analyser) {
     analyser.getByteFrequencyData(fdata);
     for (let i = 1; i < 7; i++) bass += fdata[i]; for (let i = 7; i < 41; i++) mid += fdata[i]; for (let i = 41; i < 200; i++) hi += fdata[i];
     bass /= 6 * 255; mid /= 34 * 255; hi /= 159 * 255;
   }
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
   requestAnimationFrame(loop);
 }
 // Transport follows pointer activity; settings only open by explicit click.
@@ -697,7 +700,7 @@ const toggleFullscreen = async () => {
 $('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
   if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
+  leaveLocal(); resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
@@ -774,7 +777,7 @@ wrapEl.addEventListener('wheel', e => { if (!(playing || liveOn)) return; e.prev
 function drawProfile() {   // the arc's intensity curve, drawn behind the seek bar
   const c = $('prof'), x = c.getContext('2d'), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
   x.fillStyle = 'rgba(244,241,234,.28)'; x.beginPath(); x.moveTo(0, h);
-  for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - energy(i / 200) * (h - 8));
+  for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - (LOC ? energy(LOC.u[Math.min(LOC.nf - 1, Math.floor(i / 200 * LOC.nf))]) : energy(i / 200)) * (h - 8));
   x.lineTo(w, h); x.fill();
 }
 const updateHint = () => { if (ready) hint.textContent = `Choose a mode · generative: ${MIN} min, sound on`; };
@@ -921,6 +924,116 @@ $('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(tru
   if (!ok) { $('tabmode').disabled = true; $('streamwarn').textContent = /Firefox/.test(ua) ? 'Not supported in Firefox (no tab audio). Use Chrome / Edge, or Live.' : 'Needs Chrome or Edge on a computer. Use Live instead.'; }
 }
 $('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
+/* ════════════════════════ LOCAL MODE: play an audio file; the whole file is analysed first (offline, so it can look ahead) ════════════════════════
+   Same features and section/drop detector as liveStep(), but zero-phase smoothing and back-dated scene starts. The result is a timeline sampled at the audio clock
+   time t (localView), written into the LIVE-shaped object so render() runs its live look path unchanged: the picture stays a pure function of t. */
+let LOC = null, localData = null, FFT = null;
+const LST = ['', 'drop', 'build', 'groove', 'breakdown', 'calm'];
+const zp = (a, tau, fps) => { const k = 1 - Math.exp(-1 / (tau * fps)), o = new Float32Array(a.length); let y = a[0]; for (let i = 0; i < a.length; i++) { y += (a[i] - y) * k; o[i] = y; } for (let i = a.length - 1; i >= 0; i--) { y += (o[i] - y) * k; o[i] = y; } return o; };   // forward + backward EMA = no lag
+function fft(re, im) {   // in-place radix-2
+  const n = re.length; if (!FFT || FFT.n !== n) { const rv = new Uint16Array(n), b = Math.log2(n); for (let i = 0; i < n; i++) { let r = 0; for (let j = 0; j < b; j++) r |= ((i >> j) & 1) << (b - 1 - j); rv[i] = r; } FFT = { n, rv, c: Float64Array.from({ length: n / 2 }, (_, i) => Math.cos(2 * Math.PI * i / n)), s: Float64Array.from({ length: n / 2 }, (_, i) => -Math.sin(2 * Math.PI * i / n)) }; }
+  for (let i = 0; i < n; i++) { const j = FFT.rv[i]; if (j > i) { let x = re[i]; re[i] = re[j]; re[j] = x; x = im[i]; im[i] = im[j]; im[j] = x; } }
+  for (let len = 2; len <= n; len <<= 1) for (let i = 0; i < n; i += len) for (let k = 0, h = len >> 1, st = n / len; k < h; k++) {
+    const c = FFT.c[k * st], s = FFT.s[k * st], a = i + k, b = a + h, xr = re[b] * c - im[b] * s, xi = re[b] * s + im[b] * c;
+    re[b] = re[a] - xr; im[b] = im[a] - xi; re[a] += xr; im[a] += xi;
+  }
+}
+async function analyseLocal(buf, progress) {
+  const sr = buf.sampleRate, N = 2048, hop = Math.round(sr / 40), fps = sr / hop, nf = Math.max(2, Math.floor((buf.length - N) / hop) + 1), B = bandsFor(sr / N);
+  const ch = [...Array(buf.numberOfChannels).keys()].map(c => buf.getChannelData(c)), re = new Float64Array(N), im = new Float64Array(N), win = Float64Array.from({ length: N }, (_, i) => .5 - .5 * Math.cos(2 * Math.PI * i / N));
+  const rawB = [new Float32Array(nf), new Float32Array(nf), new Float32Array(nf)], prof = new Float32Array(nf * 10), mag = new Float64Array(N / 2);
+  for (let f = 0; f < nf; f++) {
+    for (let j = 0; j < N; j++) { let x = 0; const p = f * hop + j; if (p < buf.length) for (const c of ch) x += c[p]; re[j] = x / ch.length * win[j]; im[j] = 0; }
+    fft(re, im); for (let k = 0; k < N / 2; k++) mag[k] = Math.hypot(re[k], im[k]) / N;
+    [B.b, B.m, B.h].forEach(([a, b], r) => { let x = 0; for (let k = a; k < b; k++) x += mag[k]; rawB[r][f] = x / Math.max(1, b - a); });
+    for (let i = 0; i < 10; i++) { let x = 0; const a = B.p[i], b = Math.max(a + 1, B.p[i + 1]); for (let k = a; k < b; k++) x += Math.max(-120, 20 * Math.log10(mag[k] + 1e-9)); prof[f * 10 + i] = x / (b - a); }
+    if (f % 300 === 299) { progress(f / nf); await new Promise(r => setTimeout(r)); }
+  }
+  // per-band auto-gain: the loudest value within +-30 s (the live one only has the past)
+  const bl = Math.round(fps), nb = Math.ceil(nf / bl), n = rawB.map(r => {
+    const mx = new Float32Array(nb); for (let f = 0; f < nf; f++) mx[Math.floor(f / bl)] = Math.max(mx[Math.floor(f / bl)], r[f]);
+    const ref = new Float32Array(nf); for (let f = 0; f < nf; f++) { const j = Math.floor(f / bl); let m = 1e-5; for (let q = Math.max(0, j - 30); q <= Math.min(nb - 1, j + 30); q++) m = Math.max(m, mx[q]); ref[f] = m; }
+    const rs = zp(ref, 3, fps); return r.map((v, f) => clamp(v / rs[f]));
+  });
+  const [nB, nM, nH] = n, lvl = nB.map((b, f) => .45 * b + .35 * nM[f] + .2 * nH[f]), bri = nB.map((b, f) => nH[f] / (b + nM[f] + nH[f] + 1e-6));
+  const lv = zp(lvl, .8, fps), ls = zp(lvl, 10, fps), bf = zp(bri, 1.5, fps), bsl = zp(bri, 10, fps), bLong = zp(nB, 2.5, fps), bSlow = zp(nB, 6, fps);
+  const kick = nB.map((b, f) => clamp((b - (f ? nB[f - 1] : b)) * 5));
+  const D = { ...DET, warm: 6 }, dt = 1 / fps, ease = tau => 1 - Math.exp(-dt / tau);   // the auto-gain is exact here, so the detectors can start after 6 s instead of 25
+  const P = { buf, dur: buf.duration, fps, nf, off: N / 2 / sr, u: new Float32Array(nf), kick, bn: nB, mn: nM, hn: nH, tens: new Float32Array(nf), boo: new Float32Array(nf), st: new Uint8Array(nf), sceneT: [], minorT: [], kinds: [1] };
+  let tension = 0, sinceDrop = 99, boost = 0, sinceScene = 0, sinceMinor = 0, secT = 0, pT = 0, bigT = 0, dm = null, u = -1, stT = 0, st = 0, cand = -1, candT = 0, sf = [0, 0, 0], ss = [0, 0, 0], pf = null, ps = null;
+  for (let f = 0; f < nf; f++) {
+    const t = f * dt, age = t;
+    const rising = (bf[f] - bsl[f]) > .01 && lv[f] > ls[f] + .02;
+    tension = rising ? Math.min(1, tension + dt * .12) : tension * Math.exp(-dt * .4); sinceDrop += dt;
+    const slam = nB[f] > .75 && bSlow[f] < D.slamBass && lv[f] > ls[f] + D.slamLv, afterBuild = tension > .35 && lv[f] - ls[f] > .12 && nB[f] > .6;
+    let dropped = false; if (age > D.warm && sinceDrop > D.dropDwell && (slam || afterBuild)) { boost = 1; tension = 0; sinceDrop = 0; dropped = true; }
+    const cur = [lv[f], clamp(bf[f] * 2.5), bLong[f]];
+    for (let i = 0; i < 3; i++) { sf[i] += (cur[i] - sf[i]) * ease(D.sfTau); ss[i] += (cur[i] - ss[i]) * ease(sinceScene < 5 ? .5 : D.ssTau); }
+    if (age < D.warm) ss = sf.slice();
+    const gap = Math.abs(sf[0] - ss[0]) + Math.abs(sf[1] - ss[1]) + .5 * Math.abs(sf[2] - ss[2]);
+    secT = gap > D.gapThr ? secT + dt : Math.max(0, secT - dt); sinceScene += dt;
+    const pr = prof.subarray(f * 10, f * 10 + 10); if (!pf) { pf = Float64Array.from(pr); ps = Float64Array.from(pr); }
+    let dprof = 0; for (let i = 0; i < 10; i++) { pf[i] += (pr[i] - pf[i]) * ease(1.5); ps[i] += (pr[i] - ps[i]) * ease(sinceMinor < 4 ? .5 : 10); dprof += Math.abs(pf[i] - ps[i]) / 10; }
+    dm = (dm ?? dprof) + (dprof - (dm ?? dprof)) * ease(60);
+    pT = dprof > Math.max(D.minFloor, D.minK * dm) ? pT + dt : Math.max(0, pT - dt); sinceMinor += dt;
+    bigT = dprof > Math.max(D.bigFloor, D.bigK * dm) ? bigT + dt : Math.max(0, bigT - dt);
+    if (age > D.warm && ((dropped && sinceScene > D.dropGap && (gap > D.dropMinGap || dprof > D.dropMinProf)) || ((secT > D.gapDur || bigT > D.bigDur) && sinceScene > D.dwell))) {
+      P.sceneT.push(Math.max(P.sceneT.at(-1) ?? 0, t - (dropped ? 0 : Math.min(3, Math.max(secT, bigT)))));   // back-dated: the change began when the gap began, not when it was confirmed
+      P.kinds.push(dropped || sf[0] >= ss[0] ? 1 : 0); sinceScene = 0; secT = 0; sinceMinor = 0; pT = 0; bigT = 0; ss = cur.slice();
+    }
+    else if (age > D.warm + 5 && pT > D.minDur && sinceMinor > D.minDwell && sinceScene > 6) { P.minorT.push(Math.max(P.minorT.at(-1) ?? 0, t - Math.min(3, pT))); sinceMinor = 0; pT = 0; }
+    boost *= Math.exp(-dt / 6);
+    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost), tgt = lerp(.26, .88, I); u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);
+    P.u[f] = u; P.tens[f] = tension; P.boo[f] = boost;
+    const rawSt = boost > .5 ? 1 : tension > .25 ? 2 : bLong[f] > .3 ? 3 : lv[f] < .27 ? 4 : 5;   // state label with the same hold rules as live
+    if (age < 4) st = 0; else { stT += dt;
+      if (rawSt === st) cand = -1; else if (rawSt === 1 || st === 0) { st = rawSt; stT = 0; cand = -1; }
+      else if (stT > 4) { if (rawSt !== cand) { cand = rawSt; candT = 0; } else if ((candT += dt) > 3) { st = rawSt; stT = 0; cand = -1; } } }
+    P.st[f] = st;
+  }
+  const sh = Math.round(.25 * fps); P.u = P.u.map((_, f, a) => a[Math.min(nf - 1, f + sh)]);   // look ahead 0.25 s: the picture arrives with the hit instead of after it
+  return P;
+}
+const upper = (a, t) => { let l = 0, h = a.length; while (l < h) { const m = (l + h) >> 1; if (a[m] <= t) l = m + 1; else h = m; } return l; };   // how many entries are <= t
+function localView(t) {   // timeline at time t → the LIVE-shaped object render() reads (pure function of t)
+  const P = LOC, L = LIVE, f = clamp((t - P.off) * P.fps, 0, P.nf - 1), i = Math.floor(f), j = Math.min(i + 1, P.nf - 1), w = f - i, g = a => a[i] + (a[j] - a[i]) * w;
+  L.u = g(P.u); L.bn = g(P.bn); L.mn = g(P.mn); L.hn = g(P.hn); L.tension = g(P.tens); L.boost = g(P.boo); L.state = LST[P.st[Math.round(f)]]; L.kinds = P.kinds;
+  let pu = 0; for (let k = i; k >= Math.max(0, i - 24); k--) pu = Math.max(pu, P.kick[k] * Math.exp(-8 * Math.max(0, t - P.off - k / P.fps))); L.pulse = pu;
+  L.scenes = lastScene = upper(P.sceneT, t); trT0 = L.scenes ? P.sceneT[L.scenes - 1] : -99;   // (set here so render() never sees a "new" scene: seeking is pure)
+  L.minors = lastMinor = upper(P.minorT, t); tmT0 = L.minors ? P.minorT[L.minors - 1] : -99;
+}
+function integrateLocal(off) {   // like integrateTo(), but along the timeline (mirrors the LIVE branch of render())
+  hue = hueBase; rotA = 0;
+  for (let s = 0; s < off; s += .5) {
+    localView(s); const u = clamp(LIVE.u), e = score(u), tr = Math.exp(-(s - trT0) / 1.4), tm = Math.exp(-(s - tmT0) / 1.2);
+    hue += e[4] * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)));
+  }
+  localView(off);
+}
+function playLocal(a, t0, off) {   // the decoded file through the speakers; returns the (empty) scheduler
+  const src = a.createBufferSource(), outG = a.createGain(); src.buffer = LOC.buf; outG.gain.value = +$('vol').value; volNode = outG; src.connect(outG); outG.connect(a.destination); src.start(t0 + off, off);
+  return () => {};
+}
+function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; TOTAL = MIN * 60; setArc(arcName); drawProfile(); }
+async function loadLocal(src) {   // File or URL → decode → analyse; enables Play
+  const note = $('localnote'), go = $('playlocal'); go.disabled = true; localData = null; note.style.color = '';
+  try {
+    note.textContent = 'Decoding…';
+    const ab = await (src instanceof Blob ? src : await (await fetch(src)).blob()).arrayBuffer();
+    const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(ab);
+    if (!buf.length) throw new Error('empty file');
+    localData = await analyseLocal(buf, p => { note.textContent = 'Analysing… ' + Math.round(p * 100) + '%'; });
+    note.textContent = `Ready · ${fmt(buf.duration)} · ${localData.sceneT.length + 1} scenes`; go.disabled = false;
+  } catch (e) { note.textContent = 'Cannot read this file as audio (' + (e.message || e.name) + ')'; note.style.color = '#ff6b6b'; console.log('local:', e); }
+}
+function startLocal() {
+  if (!localData || playing || !ready || liveOn) return;
+  LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); start();
+}
+const lfile = document.querySelector('#lpick input');
+$('lpick').addEventListener('click', e => e.stopPropagation());
+lfile.addEventListener('change', () => { if (lfile.files[0]) loadLocal(lfile.files[0]); });
+$('playlocal').addEventListener('click', e => { e.stopPropagation(); startLocal(); });
 addEventListener('resize', resize);
 $('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
 addEventListener('load', () => {
@@ -928,12 +1041,15 @@ addEventListener('load', () => {
   { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
   resize();
-  loadPoster(IMG, () => {
+  loadPoster(IMG, async () => {
     ready = true; updateHint(); drawProfile();
+    const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
+    if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
     if (dbg !== null) {   // silent still: step the feedback loop up to the requested time
-      gate.classList.add('off'); const T = parseFloat(dbg); let t = 0; newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
-      for (; t < T; t += step) render(t, step, 0); render(T, step, 0);
+      gate.classList.add('off'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
+      const fr = x => { if (LOC) localView(x); render(x, step, LOC ? LIVE.bn : 0, LOC ? LIVE.mn : 0, LOC ? LIVE.hn : 0); };
+      for (; t < T; t += step) fr(t); fr(T);
     }
   });
 });
