@@ -53,6 +53,11 @@
   .imgs label{width:44px;height:44px;box-sizing:border-box;display:grid;place-items:center;border:2px dashed #f4f1ea66;border-radius:6px;font:400 22px/1 Arial,sans-serif;letter-spacing:0;cursor:pointer}
   .imgs label:hover{border-color:#ffd60a}
   #tune .imgs{justify-content:flex-start;padding-top:4px}
+  .imgs .gal{position:relative;width:44px;height:44px;padding:0;border:2px solid #f4f1ea44;border-radius:6px;background:#000 center/cover;cursor:pointer}
+  .imgs .gal:hover,.imgs .gal:focus-visible{border-color:#ffd60a;outline:none}
+  .imgs .gal.in::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#ffd60a;box-shadow:0 0 0 2px #000}
+  #home-drawer .imgs .gal{width:52px;height:52px}
+  .gal-lbl{margin:18px 0 0;font-size:12px}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
   #gate{position:fixed;inset:0;z-index:10;overflow:hidden;background:#000;color:#eeeee5;cursor:default;
@@ -247,6 +252,7 @@
     <div id="home-images" hidden>
       <h2>Your images</h2><p>Use up to five images with any sound source.</p>
       <div class="imgs" id="gimgs"></div><p>Select a thumbnail to use it. Add with +, remove with ✕, or drop images onto the page.</p>
+      <p class="gal-lbl">Gallery: click to add (max 5), click again to show.</p><div class="imgs gal-row" id="ggal"></div>
     </div>
     <div id="home-settings" hidden>
       <h2>Make it yours</h2><p>A few choices before you start. More controls are available during the trip.</p>
@@ -277,6 +283,7 @@
   <div class="help">Transition: how long key changes take to arrive (keys , and .)</div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · T cycles tile mode · 1-8 presets (Shift 1-8 save) · [ ] images · Shift+Arrows seek</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
+  <div>Gallery<div class="imgs gal-row" id="tgal"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
@@ -649,6 +656,7 @@ function makeTargets() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
 let ASPECT = 1;
+const GALLERY = __GALLERY__;   // [{id, title, src}] inlined by build.mjs; a picture is decoded only when its thumb is clicked (galPick)
 function loadImg(src, ok) {
   const img = new Image();
   img.onload = () => {
@@ -689,7 +697,25 @@ function renderImgs() {
     if (IM.length < 5) { const l = document.createElement('label'); l.title = 'Add images (or drop them on the page)'; l.innerHTML = '+<input type="file" accept="image/*" multiple hidden>'; tiles.push(l); }
     $(id).replaceChildren(...tiles);
   });
-  document.body.classList.toggle('multi', IM.length > 1); markThumbs();
+  document.body.classList.toggle('multi', IM.length > 1); markThumbs(); renderGallery();
+}
+// built-in gallery strip (home card #ggal and Settings #tgal): a thumb marked .in is already in IM[]
+function renderGallery() {
+  ['ggal', 'tgal'].forEach(id => $(id).replaceChildren(...GALLERY.map(g => {
+    const b = document.createElement('button'); b.type = 'button'; const inUse = IM.some(e => e.gid === g.id);
+    b.className = 'gal' + (inUse ? ' in' : ''); b.dataset.gid = g.id; b.style.backgroundImage = 'url("' + g.src + '")';
+    b.title = g.title + (inUse ? '  (in use)' : ''); b.setAttribute('aria-label', g.title + (inUse ? ', in use' : '')); return b;
+  })));
+}
+function galPick(gid) {
+  const g = GALLERY.find(x => x.id === gid); if (!g) return;
+  const k = IM.findIndex(e => e.gid === gid); if (k >= 0) return showImg(k);   // already in the list: just show it
+  if (IM.length >= 5) return toast('Max 5 images: remove one first (✕)', 2500);
+  loadImg(g.src, e => {   // decode on demand, same texture path as a user image
+    const have = IM.findIndex(x => x.gid === gid);
+    if (have >= 0 || IM.length >= 5) { gl.deleteTexture(e.tex); if (have >= 0) showImg(have); else toast('Max 5 images: remove one first (✕)', 2500); return; }
+    e.gid = gid; IM.push(e); renderImgs(); showImg(IM.length - 1);
+  });
 }
 function removeImg(k) {
   if (IM.length < 2 || k >= IM.length) return;
@@ -1387,6 +1413,9 @@ const $ = id => document.getElementById(id);
   });
   $(id).addEventListener('change', ev => { const f = ev.target; if (f.files) { addImages(f.files); f.value = ''; } });
 });
+['ggal', 'tgal'].forEach(id => $(id).addEventListener('click', ev => {
+  ev.stopPropagation(); const b = ev.target.closest('[data-gid]'); if (b) galPick(b.dataset.gid);
+}));
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function newSeed() {   // one seed drives all the randomness of a play (notes, drift phases, spin direction, start hue)
   const q = Q.get('seed'); seedUsed = q !== null ? (parseFloat(q) || 0) : Math.floor(Math.random() * 1e6);
