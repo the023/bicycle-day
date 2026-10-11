@@ -70,6 +70,7 @@
   .card .go:hover:not(:disabled){background:#fff}
   .card .go:disabled{opacity:.35;cursor:not-allowed}
   #opts button,#dur button,#mus button,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
+  #hclocal{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}#hclocal.on{background:#f4f1ea;color:#05030c}
   #opts button.on,#dur button.on,#mus button.on{background:#f4f1ea;color:#05030c}
   #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#ffd60a}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
@@ -152,7 +153,7 @@
   <div class="t">BICYCLE<br>DAY</div>
   <div id="cards">
     <div class="card" id="c-gen"><b>Generative</b><span>Up to 5 images (✕ removes, + adds; also in Settings while playing). The app composes its own music and the picture follows it.</span>
-      <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
+      <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">hardcore</button></div>
       <div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
       <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
       <div class="imgs" id="gimgs"></div>
@@ -164,7 +165,7 @@
     <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
       <button class="go" id="micmode">● Use the microphone</button></div>
     <div class="card" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn" id="localnote"></i>
-      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button class="go" id="playlocal" disabled>▶ Play</button></div>
+      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button id="hclocal" title="Hardcore look: strobe grid, surges, big punches">Hardcore: off</button><button class="go" id="playlocal" disabled>▶ Play</button></div>
   </div>
   <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
   <div class="sub" id="qnote"></div>
@@ -256,6 +257,14 @@ const ARCS = {
     [.78, [2,  1,  12,.95, .55, 1,   0,  1,  1,  1.3,1,  1]],
     [.783,[0,  0,  6, 0,   0,   0,   1,  1,  0,  0,  0,  1]],
     [.95, [0,  0,  6, 0,   0,   0,   1,  1,  0,  0,  0,  1]],
+    [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
+  ] },
+  hardcore: { bpm: [172, 190], drive: 2, kalMax: 1, marks: { riser: [.8, .86], hit: .86, exhale: .95 }, keys: [   // relentless from the first seconds, no calm: hard distorted kick on every beat (a short fade-in from black is done in render())
+    [0,   [1,  .6, 10,.7,  .6,  .6,  0,  1,  .6, 1,  .8, 1]],
+    [.04, [1.8,1,  14,.8,  .85, 1,   0,  1,  1,  1.4,1.2,1]],
+    [.50, [2.2,1,  16,.87, 1,   1,   0,  1,  1,  1.6,1.6,1]],
+    [.90, [2.4,1,  16,.9,  1,   1,   0,  1,  1,  1.7,1.8,1]],
+    [.96, [1.2,.6, 10,.5,  .4,  .5,  0,  1,  .4, .8, .8, 1]],
     [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
   ] },
   intense: { bpm: [84, 150], drive: 1, kalMax: .85, marks: { riser: [.18, .25], hit: .25, exhale: .93 }, keys: [   // short calm, fast climb, long relentless plateau (adds a kick + hats)
@@ -575,20 +584,27 @@ let lastScene = 0, trT0 = -99, lastMinor = 0, tmT0 = -99;   // live: when the cu
 const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
 // surges + moods: irregular seeded timelines, pure functions of t (so seek and still-rendering work)
 // surge = intensity swell (rises 15-30 s, falls 6-15 s, then the picture recomposes for a while); mood = dark / blaze / b&w / strobe stretch
-let TL = null, TLph = null, TLtot = 0;
+let TL = null, TLph = null, TLtot = 0, TLhc = false;
 // slow start (generated mode): the moves that don't follow the arc (surges, moods, zoom swing, scene punches) fade in over the first quarter of the piece (20 s..3 min)
-const opening = u => LIVE ? 1 : smooth(.02, .2, u) ** 2;   // generated mode: deformation (warp, breath, pulse, spin, zoom wobble, fringing, melt, stretch) ramps up over the first 20 % of the arc
-const rampT = () => clamp(TOTAL * .25, 20, 180), calm = t => LIVE ? 1 : smooth(6, rampT(), t);
+// hardcore (arc 'hardcore', ?hc=1, or the Local card's toggle): no calm start, scenes every 8 s, minor changes every 2 s, frequent surges / moods, strobe grid at the peaks
+let HCLOC = false;
+const hcOn = () => !CTRL && !SHOW && (LOC ? HCLOC || Q.get('hc') === '1' : !LIVE && ((arcName === 'hardcore' && !ARC.piano) || Q.get('hc') === '1'));
+const HCspin = t => .7 + .5 * Math.sin(t * .9 + PH);   // hardcore spin speed (rad/s), a pure function of t (mirrored in integrateTo / integrateLocal)
+const opening = u => LIVE || hcOn() ? 1 : smooth(.02, .2, u) ** 2;   // generated mode: deformation (warp, breath, pulse, spin, zoom wobble, fringing, melt, stretch) ramps up over the first 20 % of the arc
+const rampT = () => hcOn() ? 3 : clamp(TOTAL * .25, 20, 180), calm = t => LIVE || hcOn() ? 1 : smooth(6, rampT(), t);
 function timelines() {
-  if (TL && TLph === PH && TLtot === TOTAL) return TL;
+  const hc = hcOn(); if (TL && TLph === PH && TLtot === TOTAL && TLhc === hc) return TL;
   const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [], tun = [];
-  let t = rampT() * .5 + rr(5, 20);
-  while (t < 7200) { const rise = rr(15, 30), fall = rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: rr(.5, 1) }); t += rise + fall + rr(4, 25); }
-  t = rampT() + rr(15, 40);
-  while (t < 7200) { const k = ['dark', 'bw', 'strobe', 'blaze'][Math.floor(r() * 4)], d = k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(6, 14) : rr(10, 25); moods.push({ k, a: t, b: t + d, rate: rr(5, 11) }); t += d + rr(20, 50); }
+  let t = hc ? rr(1, 3) : rampT() * .5 + rr(5, 20);
+  while (t < 7200) { const rise = hc ? rr(3, 6) : rr(15, 30), fall = hc ? rr(2, 4) : rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: hc ? rr(.6, 1) : rr(.5, 1) }); t += rise + fall + (hc ? rr(1, 4) : rr(4, 25)); }
+  t = hc ? rr(4, 8) : rampT() + rr(15, 40);
+  while (t < 7200) {
+    const k = (hc ? ['strobe', 'blaze', 'dark', 'bw', 'strobe', 'blaze'] : ['dark', 'bw', 'strobe', 'blaze'])[Math.floor(r() * (hc ? 6 : 4))], d = hc ? (k === 'blaze' ? rr(2, 3.5) : rr(3, 6)) : k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(6, 14) : rr(10, 25);
+    moods.push({ k, a: t, b: t + d, rate: hc ? rr(8, 14) : rr(5, 11) }); t += d + (hc ? rr(3, 8) : rr(20, 50));
+  }
   t = Math.max(rr(70, 110), rampT() + rr(10, 40));   // tunnel stretches: first one after the calm start, then one every ~1.5-3 min, 9-16 s each
   while (t < 7200) { const d = rr(9, 16); tun.push({ a: t, b: t + d }); t += d + rr(70, 160); }
-  TLph = PH; TLtot = TOTAL; return TL = { sur, moods, tun };
+  TLph = PH; TLtot = TOTAL; TLhc = hc; return TL = { sur, moods, tun };
 }
 function surgeAt(t) {
   const s = timelines().sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
@@ -600,7 +616,8 @@ function tunnelAt(t) {   // EFFECT tunnel timeline (generated mode): 0..1, pure 
 function moodAt(t) {
   const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { sur, moods } = timelines(), f = Q.get('mood');
   const s = f ? { k: f, a: -1e9, b: 1e9, rate: 8 } : moods.find(x => t >= x.a && t < x.b);
-  if (s) { m[s.k] = smooth(s.a, s.a + 1.5, t) * (1 - smooth(s.b - 1.5, s.b, t)); m.rate = s.rate; }
+  const rp = hcOn() ? .4 : 1.5;
+  if (s) { m[s.k] = smooth(s.a, s.a + rp, t) * (1 - smooth(s.b - rp, s.b, t)); m.rate = s.rate; }
   const p = sur.find(c => c.h > .75 && t > c.b - 2 && t < c.b + 3);   // the top of a big swell blows out briefly
   if (p) m.blaze = Math.max(m.blaze, .8 * smooth(p.b - 1.5, p.b, t) * (1 - smooth(p.b, p.b + 2.5, t)));
   return m;
@@ -700,7 +717,7 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
     <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding overlay on / off')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
     ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
-    <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
+    <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
     <div class="n">In live / mic mode only F, Esc, H, L, B, T, 1-3, the image keys and the slider keys (Z X Q W E R Y U I O P C) apply. Click anywhere to close.</div></div>`;
 }
 const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
@@ -760,15 +777,16 @@ const GRID = { held: false };   // J held = strobe grid (generated / local / liv
 let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp(u0 + USER.inten * .25), u = lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
-  const g15 = (LIVE && !LOC) || CTRL || SHOW ? 1 : smooth(.13, .18, t / TOTAL);   // generated + local: no deformation, tiles, tilt or scene punches during the first ~15 % (live / controlled / showcase excluded)
+  const HC = hcOn(), hcK = HC ? 1 : 0;
+  const g15 = (LIVE && !LOC) || CTRL || SHOW || HC ? 1 : smooth(.13, .18, t / TOTAL);   // generated + local: no deformation, tiles, tilt or scene punches during the first ~15 % (live / controlled / showcase excluded)
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
-  const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
+  const SP = HC ? 8 : 45, MP = HC ? 2 : 15, ph = t / SP + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
-  const mi = LIVE ? LIVE.minors : Math.floor(t / 15 + PH * .2), mf = t / 15 + PH * .2 - mi;
+  const mi = LIVE ? LIVE.minors : Math.floor(t / MP + PH * .2), mf = t / MP + PH * .2 - mi;
   if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
-  const tm = g15 * (LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2) * calm(t));   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  const tm = g15 * (LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * MP / 1.2) * calm(t));   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
   const tk = scene * 50 + mi;
-  const tr = g15 * (LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) * calm(t) : 0);   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
+  const tr = g15 * (LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * SP / 1.4) * calm(t) : 0);   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
   const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
   const kindOf = n => LIVE ? (LIVE.kinds[n] ?? 1) : 1;   // 1 = energetic section, 0 = calm one
   const palRaw = n => { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[Math.floor(hsh(n, 4) * pool.length)]; };
@@ -776,7 +794,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const leadTile = hsh(scene, 3) < .5, st = LIVE ? LIVE.state : '', sv = LIVE_LOOK[st] || [1, 1, 1, 1], base = kindOf(scene) ? [1, 1.1, 1, 1] : [.35, .8, .7, .7];
   const tg = base.map((b, i) => b * (1 + .3 * (sv[i] - 1)));   // the section sets the look; the instantaneous state only nudges it
   if (st === 'drop' && leadTile) tg[0] *= .35;
-  const PL = PALS[Q.has('pal') ? +Q.get('pal') : palIdx(scene)], ez = 1 - Math.exp(-dt / 1.2);
+  const hcPal = HC && !LOC, PL = PALS[Q.has('pal') ? +Q.get('pal') : hcPal ? palIdx(1000 + (bi >> 2)) : palIdx(scene)], ez = 1 - Math.exp(-dt / (HC ? .3 : 1.2));   // hardcore: the palette flips every 4 beats, quickly
   LOOK.k += (tg[0] - LOOK.k) * ez; LOOK.w += (tg[1] - LOOK.w) * ez; LOOK.f += (tg[2] - LOOK.f) * ez; LOOK.p += (tg[3] - LOOK.p) * ez; LOOK.ha += (PL.ha - LOOK.ha) * ez; LOOK.hj += (hsh(tk, 7) * 2 - LOOK.hj) * (1 - Math.exp(-dt / 1.5));   // hue offset re-rolled on every minor change
   // styles (opt-in): auto picks one per scene (20 % none); calm sections get a lighter touch
   const sIdx = USER.style === 3 ? [0, 1, 2, 1, 2][Math.floor(hsh(LIVE ? scene : wi, 8) * 5)] : USER.style, sAmt = USER.style === 3 ? (kindOf(scene) ? .55 : .3) : .5;
@@ -789,15 +807,15 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // band reactivity: mids spin the picture, bass speeds the tiles up, highs add sparkle (live only where it would break the pure f(t))
   BAND.hi += (hi - BAND.hi) * (1 - Math.exp(-dt * 3)); BAND.mid += (mid - BAND.mid) * (1 - Math.exp(-dt * 3)); BAND.zt += ((LIVE ? .45 * LIVE.tension : 0) - BAND.zt) * (1 - Math.exp(-dt * 2)); BAND.tt = LIVE ? BAND.tt + dt * (1 + 2.5 * bass) : t;
   USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
-  const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
+  const KMAX = HC ? 1 : ARC.kalMax ?? .6, dip = HC ? 1 : 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
   // tunnel: seeded stretches (generated), or on drops / strong builds (live, eased); stretch of the source ghost grows with intensity + surges
   if (LIVE) tunLive += ((st === 'drop' ? .85 : st === 'build' ? .5 * smooth(.25, .6, LIVE.tension) : 0) - tunLive) * (1 - Math.exp(-dt / 1.5));
   const tun = g15 * (Q.has('tunnel') ? +Q.get('tunnel') : LIVE ? tunLive : tunnelAt(t));
   const cz = calm(t) * g15, sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t) * cz, md = moodAt(t);
-  const kal = g15 * clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
+  const kal = g15 * clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * ((HC ? .8 : .35) + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
-  hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; if (HC) rotA += dt * rotDir * HCspin(t); rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
   let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * USER.tile) * g15, tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
   if (USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * USER.tile)) * g15; tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
@@ -810,13 +828,13 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (ARC.piano) pulse = .12 * noteGlow(t);   // piano: no heartbeat, only a very soft breath after each melody note
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
   const op = opening(u0) * g15; pulse *= op;
-  const zoom = (1 + zoomAmp * op * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
+  const zoom = (1 + zoomAmp * op * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (HC ? 1.6 : 1) * (scene % 2 ? .55 : -.4)) * (1 + tm * (HC ? .3 : .12) * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
   const stretch = Q.has('stretch') ? +Q.get('stretch') : clamp((.15 + .6 * u + .5 * sg) * (LIVE ? smooth(10, 50, t) : cz * op) * .9);
-  const wr = warp * op * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg), ab = (aber * op + BAND.hi * .6) * (1 + .5 * sg);
+  const wr = warp * op * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg) * (HC ? 1.3 : 1), ab = (aber * op + BAND.hi * .6) * (1 + .5 * sg) * (HC ? 1.8 : 1) + (HC ? .4 : 0);
   // final parameters of this frame: in showcase mode they are replaced by a neutral baseline + the active FX entry
-  const P = { t, warp: wr, kal, fold, fb: fb * (1 - .75 * (Q.get('tile') ? 1 : tile)), fbHue: USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha, hue: hue + LOOK.hj, pal: pal * LOOK.p, side, breath: breath * op, melt: melt * op * (.5 + sg), zoom, rot: rotA + USER.rot, ab, pulse, bright, anchor, tilt,
+  const P = { t, warp: wr, kal, fold, fb: fb * (1 - .75 * (Q.get('tile') ? 1 : tile)), fbHue: USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha, hue: hue + LOOK.hj, pal: pal * LOOK.p, side, breath: breath * op, melt: melt * op * (.5 + sg), zoom, rot: rotA + USER.rot, ab, pulse, bright: bright * (HC && !LOC ? smooth(0, 3, t) : 1), anchor, tilt,
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(USER.col === 2 ? 1 : 0, md.bw), tile, tileN, tileMode,
-    kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: 0 };
+    kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: HC ? smooth(.5, .7, sg) : 0 };
   if (USER.fx !== 1) { const f = USER.fx; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
   if (SHOW) showcaseParams(P, t); else if (CTRL && !LIVE) ctrlParams(P, t, dt);
   if (GRID.held) P.cells = 1;   // J held (non-controlled modes)
@@ -922,6 +940,9 @@ function buildAudio(a, t0, off = 0) {
     const g = env(t, .004, v, .22, master); o.connect(lp); lp.connect(g); send(g, .3, .5); o.start(t); o.stop(t + .3);
   };
   const kick = (t, v) => { const o = a.createOscillator(); o.type = 'sine'; o.frequency.setValueAtTime(160, t); o.frequency.exponentialRampToValueAtTime(46, t + .12); const g = env(t, .003, v, .3, master); o.connect(g); o.start(t); o.stop(t + .4); };
+  // hardcore kick (drive 2): a pitch dive through a hard clipper, the gabber sound
+  const crv = new Float32Array(256); for (let i = 0; i < 256; i++) crv[i] = Math.tanh((i / 128 - 1) * 7);
+  const gkick = (t, v) => { const o = a.createOscillator(), sh = a.createWaveShaper(); o.type = 'sine'; sh.curve = crv; o.frequency.setValueAtTime(420, t); o.frequency.exponentialRampToValueAtTime(52, t + .09); o.frequency.exponentialRampToValueAtTime(38, t + .22); const g = env(t, .002, v, .26, master); o.connect(sh); sh.connect(g); o.start(t); o.stop(t + .3); };
   const hat = (t, v) => { const n = noise(t, .08), f = a.createBiquadFilter(); f.type = 'highpass'; f.frequency.value = 7000; n.connect(f); f.connect(env(t, .002, v, .04, master)); };
   const thump = (t, v) => {
     for (const [dt, f0, f1, k] of [[0, 78, 42, 1], [.22, 64, 38, .6]]) {
@@ -962,8 +983,9 @@ function buildAudio(a, t0, off = 0) {
     while (hb < BEATS.length && t0 + BEATS[hb] < hz) {
       const bt = t0 + BEATS[hb], uu = BEATS[hb] / TOTAL, w = hbW(uu), en = energy(uu);
       if (w > .01 && bt > a.currentTime - .1) {
-        thump(bt, .6 * w);
-        if (ARC.drive && en > .3) { kick(bt, .5 * en); hat(bt + 30 / bpmAt(uu), .12 * en); }   // intense: kick + off-beat hat
+        if (ARC.drive > 1) { gkick(bt, .55); hat(bt + 15 / bpmAt(uu), .1); hat(bt + 30 / bpmAt(uu), .16); hat(bt + 45 / bpmAt(uu), .1); }   // hardcore: distorted kick on every beat, 16th hats, no heartbeat
+        else thump(bt, .6 * w);
+        if (ARC.drive === 1 && en > .3) { kick(bt, .5 * en); hat(bt + 30 / bpmAt(uu), .12 * en); }   // intense: kick + off-beat hat
       }
       hb++;
     }
@@ -991,7 +1013,7 @@ function newSeed() {   // one seed drives all the randomness of a play (notes, d
 function integrateTo(off) {
   if (LOC) return integrateLocal(off);   // fast-forward the drifting state (hue, spin) to a given time; mirrors render()
   hue = hueBase; rotA = 0;
-  for (let s = 0; s < off; s += .5) { const u = s / TOTAL, e = score(u); hue += e[4] * .5; rotA += .5 * rotDir * opening(u) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)); }
+  for (let s = 0; s < off; s += .5) { const u = s / TOTAL, e = score(u); hue += e[4] * .5; rotA += .5 * rotDir * (hcOn() ? HCspin(s) : 0) + .5 * rotDir * opening(u) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)); }
 }
 const setPP = () => { $('pp').textContent = paused ? '▶' : '❚❚'; };
 function begin(off, fresh) {   // (re)start sound + state at song time `off`; the picture is a pure function of time so it just follows
@@ -1415,7 +1437,7 @@ function integrateLocal(off) {   // like integrateTo(), but along the timeline (
   hue = hueBase; rotA = 0;
   for (let s = 0; s < off; s += .5) {
     localView(s); const u = clamp(LIVE.u), e = score(u), tr = Math.exp(-(s - trT0) / 1.4), tm = Math.exp(-(s - tmT0) / 1.2);
-    hue += e[4] * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)));
+    hue += e[4] * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)) + (hcOn() ? HCspin(s) : 0));
   }
   localView(off);
 }
@@ -1441,6 +1463,7 @@ function startLocal() {
 }
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());
+$('hclocal').addEventListener('click', e => { e.stopPropagation(); HCLOC = !HCLOC; e.target.textContent = 'Hardcore: ' + (HCLOC ? 'on' : 'off'); e.target.classList.toggle('on', HCLOC); });
 lfile.addEventListener('change', () => { if (lfile.files[0]) loadLocal(lfile.files[0]); });
 $('playlocal').addEventListener('click', e => { e.stopPropagation(); startLocal(); });
 addEventListener('resize', resize);

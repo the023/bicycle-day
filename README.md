@@ -19,12 +19,13 @@ Keep this window visible (second window or screen) — a hidden tab stops animat
 
 ## Options
 
-On the start screen: pick a **curve** (journey / waves / slam / intense), a **duration**, or **drop any image** on the page.
+On the start screen: pick a **curve** (journey / waves / slam / intense / hardcore), a **duration**, or **drop any image** on the page.
 Everything can also be set in the URL:
 
 | Param | Meaning | Default |
 |---|---|---|
-| `arc` | `journey`, `waves`, `slam`, `intense` | `journey` |
+| `arc` | `journey`, `waves`, `slam`, `intense`, `hardcore` | `journey` |
+| `hc` | `1` = hardcore look on any arc (8 s scenes, 2 s minor changes, frequent surges / moods, strobe grid at peaks, no calm start) | off |
 | `min` | length in minutes | `5` |
 | `scale` / `root` | `dorian`, `lydian`, `phrygian`, `minor` / MIDI note | `dorian` / `50` |
 | `bpm` | heartbeat tempo range, e.g. `60-130` | per arc |
