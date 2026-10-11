@@ -1,64 +1,54 @@
-# Keyboard Map — Bicycle Day (T3 audit)
+# Keyboard Map — Bicycle Day (T4 final)
 
-Read-only audit of `KB`, `KB_ACT`, `CT_KEYS`, `ctrlKey`, `tweakKey`, and the main `keydown` handler. Rows are physical keys during playback (many keys do nothing while the gate is open; Esc still works there). `CL`: 0 auto, 1 assisted, 2 manual. `SHOW` = showcase forced CL 0; `liveOn` = stream/live/local mic.
+Single meaning per key. A level may only ENABLE or DISABLE a key (disabled = greyed in the help overlay). Extreme mode (HCX/hcOn) only adds things, never remaps. Modifier convention for adjustable keys: key = toggle/primary, Shift+key = amount DOWN, Alt+key = amount UP (Ctrl unused).
 
-| key | auto (CL 0) | assisted (CL 1) | manual (CL 2) | conflict? |
-|---|---|---|---|---|
-| Escape | stop play (or stop live) / close help or drawer; fullscreen exit handled by browser | same | same | no |
-| F1–F12 | none | none | none | no |
-| Digit0 | unused | unused | unused | no |
-| Digit1 | tiles: checkerboard mode | tiles: checkerboard mode | tiles: checkerboard mode | no |
-| Digit2 | tiles: wave mode | tiles: wave mode | tiles: wave mode | no |
-| Digit3 | tiles: shatter mode | tiles: shatter mode | tiles: shatter mode | no |
-| Digit4 | unused (Shift+4 image) | unused (Shift+4 image) | unused (Shift+4 image) | no |
-| Digit5 | unused (Shift+5 image) | unused (Shift+5 image) | unused (Shift+5 image) | no |
-| Digit6–Digit9 | unused | unused | unused | no |
-| Shift+Digit1..5 | switch image (when ≥ that many) | same | same | no |
-| Q | kaleidoscope amount − | kaleidoscope amount − | warp toggle | **yes** |
-| W | kaleidoscope amount + | kaleidoscope amount + | kaleidoscope: 6 folds | **yes** |
-| E | tiles amount − | tiles amount − | feedback trails toggle | **yes** |
-| R | tiles amount + | tiles amount + | melt toggle | **yes** |
-| T | tiles on/off | tiles on/off (help cap remapped to CT key Y) | tiles on/off (help cap remapped to CT key Y) | no* |
-| Y | feedback trails amount − | feedback trails amount − | tiles (checker) toggle | **yes** |
-| U | feedback trails amount + | feedback trails amount + | Kali style toggle | **yes** |
-| I | intensity amount − | intensity amount − | Julia style toggle | **yes** |
-| O | intensity amount + | intensity amount + | tunnel toggle | **yes** |
-| P | style cycle (none/Kali/Julia/auto) | style cycle | source stretch toggle | **yes** |
-| A | unused | mood: dark toggle | mood: dark toggle | **yes** |
-| S | unused | mood: black and white toggle | mood: black and white toggle | **yes** |
-| D | unused | mood: blaze toggle | mood: blaze toggle | **yes** |
-| F | fullscreen | fullscreen | fullscreen | no |
-| G | unused | strobe mood hold | strobe mood hold | **yes** |
-| H | help overlay toggle | help overlay toggle | help overlay toggle | no |
-| J | strobe grid hold | strobe grid hold | strobe grid hold | no |
-| K | unused (browser focus) | pause/resume | pause/resume | **yes** |
-| L | live-coding overlay cycle (off/overlay/crazy) | same | same | no |
-| BracketLeft | previous image | same | same | no |
-| BracketRight | next image | same | same | no |
-| V | next image | same | same | no |
-| B | bookmark (save JSON + PNG) | same | same | no |
-| N | extreme/hardcore toggle (or showcase: next effect) | extreme/hardcore toggle | extreme/hardcore toggle | no† |
-| M | cycle control level auto→assisted→manual | same | same | no |
-| Z | effects amount − | effects amount − (global) | intensity amount − (engine P) | **yes** |
-| X | effects amount + | effects amount + (global) | intensity amount + (engine P) | **yes** |
-| C | colour cycle (auto/frozen/b&w) | palette cycle (6 palettes) | palette cycle (6 palettes) | **yes** |
-| Comma | transition time shorter | transition time shorter | unused (tweakKey off in manual) | **yes** |
-| Period | transition time longer | transition time longer | unused (tweakKey off in manual) | **yes** |
-| Semicolon | auto-image cadence cycle | auto-image cadence cycle | unused (tweakKey off in manual) | **yes** |
-| ShiftLeft (Shift) | modifier: Shift+1..5 switches images | same | same | no |
-| Space | pause/resume | surge hold (CT_KEYS) | surge hold (CT_KEYS) | **yes** |
-| Enter | browser default / button | pause/resume | pause/resume | **yes** |
-| ArrowLeft | seek −10 s | rotate left (held) | rotate left (held) | **yes** |
-| ArrowRight | seek +10 s | rotate right (held) | rotate right (held) | **yes** |
-| ArrowUp | unused | zoom in (held) | zoom in (held) | **yes** |
-| ArrowDown | unused | zoom out (held) | zoom out (held) | **yes** |
+CL: 0 auto, 1 assisted, 2 manual. Lmin = minimum control level that enables the key.
 
-\* `KeyT` is not in `CT_KEYS`; all levels run the same `USER.tile` toggle. In assisted/manual the help overlay's `ctrlHelp` happens to resolve the `KeyT` cap through `CT_KEYS` entry `KeyY`, so the on-screen label changes, but the action does not. No functional conflict.
-
-† `KeyN` also means "next effect segment" in showcase mode (`SHOW`), but showcase forces CL 0 and `setHC` is skipped there. Not a control-level conflict, but a mode-dependent one.
+| key | meaning (single) | min level | notes |
+|---|---|---|---|
+| Escape | stop play/live; close help/drawer | 0 | |
+| F1–F12 | unused | 0 | |
+| Digit0 | unused | 0 | |
+| Digit1–Digit8 | recall preset n | 0 | Shift+Digit n saves preset n |
+| Shift+Digit1..8 | save preset n | 0 | |
+| ArrowLeft/Right/Up/Down | rotate / zoom (held) | 0 | Shift+Left/Right = seek ±10 s |
+| Shift+ArrowLeft/Right | seek −/+10 s | 0 | |
+| Space | pause / resume | 0 | |
+| Enter | surge swell (hold) | 1 | |
+| KeyA | mood: dark | 1 | |
+| KeyS | mood: black & white | 1 | |
+| KeyD | mood: blaze | 1 | |
+| KeyG | strobe (hold) | 1 | |
+| KeyJ | strobe grid (hold) | 0 | |
+| KeyQ | effect: warp | 1 | |
+| KeyW | effect: kaleidoscope | 1 | Shift/Alt+W = USER.kal amount |
+| KeyE | effect: trails | 1 | Shift/Alt+E = USER.fb amount |
+| KeyR | effect: melt | 1 | |
+| KeyY | effect: tiles (checker) | 1 | Shift/Alt+Y = USER.tile amount |
+| KeyU | effect: Kali style | 1 | |
+| KeyI | effect: Julia style | 1 | |
+| KeyO | effect: tunnel | 1 | |
+| KeyP | effect: source stretch | 1 | style cycle via Settings only |
+| KeyT | tile mode cycle (off/checker/wave/shatter) | 0 | Shift/Alt+T = USER.tile amount |
+| KeyZ | global amount − | 0 | levels 0–1: USER.fx; level 2: engine intensity |
+| KeyX | global amount + | 0 | levels 0–1: USER.fx; level 2: engine intensity |
+| KeyC | palette cycle (6 palettes) | 0 | Shift+C = previous palette; #u-col = colour mode |
+| KeyM | cycle control level (auto/assisted/manual) | 0 | |
+| KeyN | extreme look toggle (also showcase next) | 0 | |
+| KeyF | fullscreen | 0 | |
+| KeyH | help overlay | 0 | |
+| KeyL | live-coding overlay cycle | 0 | |
+| KeyB | bookmark (save) | 0 | |
+| KeyV | next image | 0 | |
+| BracketLeft | previous image | 0 | |
+| BracketRight | next image | 0 | |
+| Comma | transition time shorter | 0 | |
+| Period | transition time longer | 0 | |
+| Semicolon | auto-image cadence cycle | 0 | |
 
 Notes:
-- In assisted level, `ctrlKey` returns `false` for `KeyZ`/`KeyX` on purpose so they fall through to `tweakKey` (effects amount). In manual they are consumed by `ctrlKey` (intensity).
-- `KeyM` level changes reset effects (`resetFx`).
-- Most keys guard on `playing || liveOn`; while the gate is open only `Escape` (drawer/help) and form focus behaviour apply.
-- Mouse/wheel are not keys: move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom.
+- Old pause keys K / Enter (pause) removed; Enter is now surge (levels 1–2).
+- Digit row now presets; Shift+Digit1..5 image switching removed (use V / [ / ]).
+- Digits 1–3 no longer select tile modes (use T).
+- Extreme mode (HCX) may add visuals but never remaps keys.
+- Live/mic: no seek; arrows still rotate/zoom via holds.
