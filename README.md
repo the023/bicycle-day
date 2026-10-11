@@ -56,7 +56,7 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 
 Controlled mode adds Q W E R Y U I O P (effects), A S D G J (moods, G = strobe, J = strobe grid), Space (surge), Z X (intensity), C (palette), arrows (rotate / zoom).
 
-**Debug / effects gallery:** open `dist/bicycle-day.html?showcase=1&quality=high` — one effect at a time on a plain image (`seg=<sec>` per effect, N / P = next / previous, click the bar to jump).
+**Debug / effects gallery:** open `dist/bicycle-day.html?showcase=1&quality=high` — one effect at a time on a plain image (`seg=<sec>` per effect, N / P = next / previous, click the bar to jump); a side panel (hover the right edge) lists all effects, click one to jump to it.
 **Reproduce a bookmarked frame:** the `url` field in the B file (`?t=<sec>&seed=<n>&arc=…`), see AGENTS.md for the headless-Chrome still command.
 
 ## Layout

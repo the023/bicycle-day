@@ -18,6 +18,11 @@
   #code div.cur::after{content:"\2588";animation:cblink 1s steps(1) infinite}
   @keyframes ctype{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
   @keyframes cblink{50%{opacity:0}}
+  #fxpanel{position:fixed;top:64px;right:0;bottom:84px;width:min(300px,70vw);display:none;overflow-y:auto;padding:14px 8px 14px 26px;box-sizing:border-box;background:#000c;border-left:1px solid #f4f1ea33;color:#f4f1ea;font:600 15px/1.35 "Helvetica Neue",Arial,sans-serif;z-index:9;transform:translateX(calc(100% - 14px));transition:transform .25s}
+  #fxpanel::before{content:"";position:fixed;right:4px;top:50%;width:4px;height:60px;margin-top:-30px;border-radius:2px;background:#f4f1ea88}
+  #fxpanel:hover{transform:none}#fxpanel:hover::before{display:none}
+  body.showc.playing #fxpanel,body.showc.still #fxpanel{display:block}
+  #fxpanel div{padding:4px 10px;border-radius:6px;cursor:pointer;opacity:.75;white-space:nowrap}#fxpanel div:hover{opacity:1;background:#f4f1ea22}#fxpanel div.on{opacity:1;color:#ffd60a;background:#ffd60a22}
   #help{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000d;color:#f4f1ea;z-index:20;font:700 clamp(13px,1.25vw,17px)/1.7 "Helvetica Neue",Arial,sans-serif;letter-spacing:.06em;cursor:pointer}
   #help a{color:#ffd60a}
   #help.on{display:flex}
@@ -193,6 +198,7 @@
 <div id="thumbs"></div>
 <div id="toast"></div>
 <div id="code"></div>
+<div id="fxpanel"></div>
 <div id="help"></div>
 <div id="fxlabel"></div>
 <div id="ctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
@@ -664,7 +670,7 @@ function showcaseParams(p, t) {   // pure function of t: neutral baseline (plain
   const f = t / SHOW.seg - Math.floor(t / SHOW.seg), k = t >= TOTAL ? 0 : smooth(0, .2, f) * (1 - smooth(.8, 1, f)), i = fxIndex(t);
   Object.assign(p, { warp: 0, kal: 0, fold: 6, fb: 0, hue: 0, pal: 0, side: 0, breath: 0, melt: 0, zoom: 1, rot: 0, ab: 0, pulse: 0, bright: 1, anchor: 0, tilt: [0, 0], srcZ: 1, srcRot: 0, palC: PALS[0].c, palD: PALS[0].d, ha: 1, stretch: 0, tun: 0, mono: 0, tile: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0 });
   FX[i].set(p, k); p.fbHue = (.006 + .02 * p.pal) * p.ha; p.zoom *= USER.zoom;
-  if (i !== fxShown) { fxShown = i; $('fxlabel').textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; }
+  if (i !== fxShown) { fxShown = i; $('fxlabel').textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; fxPanelMark(i); }
 }
 /* ════════════════════════ CONTROLLED MODE (?ctrl=1 or the Controlled card) ════════════════════════
    The engine's P is replaced by a quiet base (small breath, heartbeat, drift) and the effects the user has switched on are layered on top.
@@ -717,7 +723,7 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
     <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding overlay on / off')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
     ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
-    <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
+    <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>Showcase: hover the right edge for the effect list, click one to jump to it</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
     <div class="n">In live / mic mode only F, Esc, H, L, B, T, 1-3, the image keys and the slider keys (Z X Q W E R Y U I O P C) apply. Click anywhere to close.</div></div>`;
 }
 const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
@@ -1091,6 +1097,16 @@ function stopPlay() {   // back to the start screen
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
 bar.addEventListener('pointerdown', e => { dragging = true; bar.setPointerCapture(e.pointerId); $('head').style.left = frac(e) * 100 + '%'; });
 bar.addEventListener('pointermove', e => { if (dragging) { $('head').style.left = frac(e) * 100 + '%'; $('tm').textContent = fmt(frac(e) * TOTAL) + ' / ' + fmt(TOTAL); } });
+if (SHOW) {   // showcase side panel: every effect by name, the current one highlighted, click = jump (slides in on hover)
+  document.body.classList.add('showc'); const fp = $('fxpanel');
+  fp.innerHTML = FX.map((f, i) => `<div data-i="${i}">${i + 1} · ${f.name}</div>`).join('');
+  fp.addEventListener('click', e => { e.stopPropagation(); const r = e.target.closest('div[data-i]'); if (r) seekTo(fxStart(+r.dataset.i)); });
+  ['pointerdown', 'pointerup', 'pointermove', 'wheel'].forEach(n => fp.addEventListener(n, e => e.stopPropagation()));
+}
+function fxPanelMark(i) {
+  const fp = $('fxpanel'), rows = fp.children; for (let j = 0; j < rows.length; j++) rows[j].classList.toggle('on', j === i);
+  const r = rows[i]; if (r) fp.scrollTop = r.offsetTop - fp.clientHeight / 2 + r.offsetHeight / 2;   // (manual: scrollIntoView would scroll the page sideways while the panel is slid off-screen)
+}
 const fxStart = i => clamp(i, 0, FX.length - 1) * SHOW.seg;   // showcase: seek bar snaps to the start of an effect
 bar.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; seekTo(SHOW ? fxStart(Math.floor(frac(e) * FX.length)) : frac(e) * TOTAL); });
 $('pp').addEventListener('click', togglePause);
