@@ -9,6 +9,11 @@
   body.playing:not(.ui),body.live:not(.ui){cursor:none}
   #toast{position:fixed;left:50%;bottom:90px;transform:translateX(-50%);padding:10px 16px;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;opacity:0;transition:opacity .5s;pointer-events:none;z-index:7;white-space:nowrap}
   #toast.on{opacity:1}
+  #thumbs{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);display:none;gap:6px;z-index:6;opacity:0;transition:opacity .4s;pointer-events:none}
+  body.ui #thumbs{opacity:1;pointer-events:auto}
+  body.playing.multi #thumbs,body.live.multi #thumbs{display:flex}
+  #thumbs button{width:44px;height:44px;padding:0;border:2px solid #fff4;border-radius:6px;background:#000 center/cover;cursor:pointer;overflow:hidden}
+  #thumbs button.on{border-color:#f4f1ea}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
   #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
@@ -114,10 +119,10 @@
 <div id="gate">
   <div class="t">BICYCLE<br>DAY</div>
   <div id="cards">
-    <div class="card" id="c-gen"><b>Generative</b><span>Pick an image. The app composes its own music and the picture follows it.</span>
+    <div class="card" id="c-gen"><b>Generative</b><span>Pick up to 4 images (plus the default poster). The app composes its own music and the picture follows it.</span>
       <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
       <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
-      <label id="pick">Choose an image<input type="file" accept="image/*" hidden></label>
+      <label id="pick">Choose an image<input type="file" accept="image/*" multiple hidden></label>
       <button class="go" id="playgen">▶ Play</button></div>
     <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
       <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">● Listen to a tab</button></div>
@@ -140,11 +145,12 @@
   <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
   <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
-  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off</div>
+  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
 </div>
+<div id="thumbs"></div>
 <div id="toast"></div>
 <div id="ctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
 
@@ -245,7 +251,8 @@ void main(){ vec2 p=vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position=vec4(p*
 
 const FS_SCENE = `#version 300 es
 precision highp float;
-uniform sampler2D uTex,uPrev;
+uniform sampler2D uTex,uPrev,uTex2; uniform float uImgMix;
+vec4 texI(sampler2D t,vec2 uv){ return uImgMix<=0.?texture(t,uv):mix(texture(t,uv),texture(uTex2,uv),uImgMix); }   // crossfade between two source images (display pass of the source only, not the feedback)
 uniform vec2 uRes;
 uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot;
 uniform float uWarpN,uFx,uKali,uJulia;
@@ -289,9 +296,9 @@ vec2 warp(vec2 p){
   return p;
 }
 vec3 tx(vec2 p){
-  vec2 uv=vec2(p.x/uAspect,p.y)+.5; if(uFx<.5) return texture(uTex,uv).rgb;   // low quality: no colour fringing
+  vec2 uv=vec2(p.x/uAspect,p.y)+.5; if(uFx<.5) return texI(uTex,uv).rgb;   // low quality: no colour fringing
   float d=uAber*.012; vec2 dir=normalize(p+1e-4);
-  return vec3(texture(uTex,uv+dir*d).r,texture(uTex,uv).g,texture(uTex,uv-dir*d).b);
+  return vec3(texI(uTex,uv+dir*d).r,texI(uTex,uv).g,texI(uTex,uv-dir*d).b);
 }
 void main(){
   vec2 fc=gl_FragCoord.xy/uRes;
@@ -314,7 +321,7 @@ void main(){
   c=hueRot(c,(uHue+length(p)*1.5*uPal)*uHueAmt);
   // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
   vec2 ps=rot(p0/uSrcZ,uSrcRot); ps+=.04*vec2(sin(ps.y*5.+uT*.23),cos(ps.x*5.+uT*.19));   // the ghost of the source drifts too: slow zoom, turn and wobble
-  vec3 src=texture(uTex,vec2(ps.x/uAspect,ps.y)+.5).rgb;
+  vec3 src=texI(uTex,vec2(ps.x/uAspect,ps.y)+.5).rgb;
   float inside=(1.-smoothstep(.42*uAspect,.5*uAspect,abs(ps.x)))*(1.-smoothstep(.42,.5,abs(ps.y)));
   c=mix(c,src,uAnchor*inside);
   c=mix(c,c*.12,smoothstep(.5*uAspect,.5*uAspect+.03,abs(p0.x))*uSide);            // the poster is square: dark ghost on the sides
@@ -349,7 +356,7 @@ void main(){
 }`;
 
 /* ════════════════════════ GL setup ════════════════════════ */
-let progS, progD, uS = {}, uD = {}, texImg, fbo = [], tex = [], FW = 1600, FH = 900, ready = false;
+let progS, progD, uS = {}, uD = {}, IM = [], imFrom = 0, imTo = 0, imMix = 1, fbo = [], tex = [], FW = 1600, FH = 900, ready = false;
 function prog(fs) {
   const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
   const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, VS)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
@@ -358,7 +365,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
+  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate']);
   makeTargets();
 }
@@ -381,19 +388,42 @@ function makeTargets() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
 let ASPECT = 1;
-function loadPoster(src, done) {
+function loadImg(src, ok) {
   const img = new Image();
   img.onload = () => {
-    if (texImg) gl.deleteTexture(texImg);
-    texImg = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, texImg);
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
     gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
-    ASPECT = img.naturalWidth / img.naturalHeight; done && done();
+    ok({ tex: t, aspect: img.naturalWidth / img.naturalHeight, url: src });
   };
   img.onerror = () => { hint.textContent = 'Could not load that image'; };
   img.src = src;
+}
+function loadPoster(src, done) { loadImg(src, e => { IM[0] = e; imFrom = imTo = 0; imMix = 1; ASPECT = e.aspect; done && done(); }); }
+// several images: #1 is the poster, #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
+function showImg(n, quiet) {
+  if (n < 0 || n >= IM.length || (n === imTo && imMix >= 1)) return;
+  if (imMix < 1) { imFrom = imTo; imMix = 0; } else imFrom = imTo;   // a switch mid-fade restarts from the target it was heading to
+  imTo = n; imMix = 0; markThumbs(); if (!quiet) toast('Image ' + (n + 1) + ' / ' + IM.length, 1500);
+}
+function markThumbs() { [...$('thumbs').children].forEach((b, i) => b.classList.toggle('on', i === imTo)); }
+function addThumb(url, k) {
+  const b = document.createElement('button'); b.style.backgroundImage = 'url(' + url + ')'; b.title = 'Image ' + (k + 1) + '  (Shift+' + (k + 1) + ')';
+  b.addEventListener('click', ev => { ev.stopPropagation(); showImg(k); }); $('thumbs').appendChild(b);
+}
+function addImages(files) {
+  const fs = [...files].filter(f => f.type.startsWith('image/')).slice(0, 5 - IM.length);
+  if (!fs.length) return;
+  let first = -1, n = 0;
+  fs.forEach(f => { const url = URL.createObjectURL(f); loadImg(url, e => {
+    e.url = url; if (IM.length >= 5) return;
+    IM.push(e); if (first < 0) first = IM.length - 1;
+    if (!$('thumbs').children.length) addThumb(IM[0].url, 0);
+    addThumb(url, IM.length - 1); document.body.classList.toggle('multi', IM.length > 1);
+    if (++n === fs.length) showImg(first, true), hint.textContent = IM.length + ' images loaded';
+  }); });
 }
 function resize() {   // keep the canvas a 16:9 box, centred, as large as the window allows
   const w = Math.min(innerWidth, innerHeight * 16 / 9), h = w * 9 / 16, dpr = Math.min(devicePixelRatio || 1, QUAL[quality].dpr);
@@ -490,7 +520,10 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
-  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, texImg); gl.uniform1i(uS.uTex, 0);
+  if (imMix < 1) { imMix = Math.min(1, imMix + dt / 1.5); ASPECT = lerp(IM[imFrom].aspect, IM[imTo].aspect, smooth(0, 1, imMix)); if (imMix >= 1) { imFrom = imTo; ASPECT = IM[imTo].aspect; } }
+  const imK = imMix >= 1 ? 0 : smooth(0, 1, imMix);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, IM[imFrom].tex); gl.uniform1i(uS.uTex, 0);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, IM[imTo].tex); gl.uniform1i(uS.uTex2, 2); gl.uniform1f(uS.uImgMix, imK);
   gl.activeTexture(gl.TEXTURE1); gl.bindTexture(gl.TEXTURE_2D, tex[cur]); gl.uniform1i(uS.uPrev, 1);
   gl.uniform2f(uS.uRes, FW, FH); gl.uniform1f(uS.uT, t); gl.uniform1f(uS.uWarp, wr); gl.uniform1f(uS.uKal, kal); gl.uniform1f(uS.uKalN, fold);
   // trails would smear the tiles away, so they thin out while tiles are on
@@ -713,6 +746,8 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
   if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
+  if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
+  if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
   if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
   if (liveOn) return;
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
@@ -792,10 +827,9 @@ $('dur').addEventListener('click', e => {
 });
 document.getElementById('pick').addEventListener('click', e => e.stopPropagation());   // opening the file dialog must not start playback
 const fileIn = document.querySelector('#pick input');
-const loadFile = f => { if (f && f.type.startsWith('image/')) { const url = URL.createObjectURL(f); loadPoster(url, () => URL.revokeObjectURL(url)); } };
-fileIn.addEventListener('change', () => loadFile(fileIn.files[0]));
+fileIn.addEventListener('change', () => { addImages(fileIn.files); fileIn.value = ''; });
 addEventListener('dragover', e => e.preventDefault());
-addEventListener('drop', e => { e.preventDefault(); loadFile(e.dataTransfer.files[0]); });
+addEventListener('drop', e => { e.preventDefault(); addImages(e.dataTransfer.files); });
 /* ════════════════════════ LIVE MODE (prototype): listen to a tab (e.g. YouTube) and follow the music ════════════════════════
    Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
    Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
