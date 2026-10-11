@@ -25,6 +25,14 @@
   body.playing.multi #thumbs,body.live.multi #thumbs{display:flex}
   #thumbs button{width:44px;height:44px;padding:0;border:2px solid #fff4;border-radius:6px;background:#000 center/cover;cursor:pointer;overflow:hidden}
   #thumbs button.on{border-color:#f4f1ea}
+  .imgs{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+  .imgs .im{position:relative;width:44px;height:44px;padding:0;border:2px solid #f4f1ea44;border-radius:6px;background:#000 center/cover;cursor:pointer}
+  .imgs .im.on{border-color:#ffd60a}
+  .imgs .im i{position:absolute;right:-7px;top:-7px;width:18px;height:18px;border-radius:50%;background:#000d;color:#f4f1ea;font:700 11px/18px Arial,sans-serif;font-style:normal;text-align:center;letter-spacing:0}
+  .imgs .im i:hover{background:#ff2d95}
+  .imgs label{width:44px;height:44px;box-sizing:border-box;display:grid;place-items:center;border:2px dashed #f4f1ea66;border-radius:6px;font:400 22px/1 Arial,sans-serif;letter-spacing:0;cursor:pointer}
+  .imgs label:hover{border-color:#ffd60a}
+  #tune .imgs{justify-content:flex-start;padding-top:4px}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
   #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
@@ -52,9 +60,9 @@
   .card .go{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
   .card .go:hover:not(:disabled){background:#fff}
   .card .go:disabled{opacity:.35;cursor:not-allowed}
-  #opts button,#dur button,#mus button,#pick,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
+  #opts button,#dur button,#mus button,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
   #opts button.on,#dur button.on,#mus button.on{background:#f4f1ea;color:#05030c}
-  #pick:hover,#lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#ffd60a}
+  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#ffd60a}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
     font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
   body.playing #ctl{display:flex}
@@ -134,11 +142,11 @@
 <div id="gate">
   <div class="t">BICYCLE<br>DAY</div>
   <div id="cards">
-    <div class="card" id="c-gen"><b>Generative</b><span>Pick up to 4 images (plus the default poster). The app composes its own music and the picture follows it.</span>
+    <div class="card" id="c-gen"><b>Generative</b><span>Up to 5 images (✕ removes, + adds; also in Settings while playing). The app composes its own music and the picture follows it.</span>
       <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button></div>
       <div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
       <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
-      <label id="pick">Choose an image<input type="file" accept="image/*" multiple hidden></label>
+      <div class="imgs" id="gimgs"></div>
       <button class="go" id="playgen">▶ Play</button></div>
     <div class="card" id="c-ctrl"><b>Controlled</b><span>You drive the picture from the keyboard: toggle effects, moods, palettes. Generated music underneath (not the stream / mic / local modes). H shows the keys.</span>
       <button class="go" id="playctrl">▶ Play</button></div>
@@ -165,6 +173,7 @@
   <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
+  <div>Images<div class="imgs" id="timgs"></div></div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
@@ -261,6 +270,7 @@ const ARCS = {
     [1,   [0,  0,  6, 0,   0,   0,   1,  0,  0,  0,  0,  0]],
   ] },
 };
+let lastP = null, snapWant = false;
 let arcName = ARCS[Q.get('arc')] ? Q.get('arc') : 'journey', ARC, KEYS, EMAX = 1, BEATS = [], PH = 0, NOTES = [], MEL = [];
 let MUSIC = ['ambient', 'gnossienne', 'gymnopedie'].includes(Q.get('music')) ? Q.get('music') : (() => { try { const m = JSON.parse(localStorage.getItem('bicycleday.music')); return ['gnossienne', 'gymnopedie'].includes(m) ? m : 'ambient'; } catch (e) { return 'ambient'; } })();
 function score(u) {
@@ -495,20 +505,32 @@ function showImg(n, quiet) {
   if (imMix < 1) { imFrom = imTo; imMix = 0; } else imFrom = imTo;   // a switch mid-fade restarts from the target it was heading to
   imTo = n; imMix = 0; markThumbs(); if (!quiet) toast('Image ' + (n + 1) + ' / ' + IM.length, 1500);
 }
-function markThumbs() { [...$('thumbs').children].forEach((b, i) => b.classList.toggle('on', i === imTo)); }
-function addThumb(url, k) {
-  const b = document.createElement('button'); b.style.backgroundImage = 'url(' + url + ')'; b.title = 'Image ' + (k + 1) + '  (Shift+' + (k + 1) + ')';
-  b.addEventListener('click', ev => { ev.stopPropagation(); showImg(k); }); $('thumbs').appendChild(b);
+function markThumbs() { document.querySelectorAll('#thumbs button,.imgs .im').forEach(b => b.classList.toggle('on', +b.dataset.k === imTo)); }
+// image manager: the same strip on the home card (#gimgs) and in Settings (#timgs): click = show, ✕ = remove, + = add; #thumbs = bottom row while playing
+function renderImgs() {
+  const bg = u => 'url("' + u + '")';
+  $('thumbs').replaceChildren(...IM.map((e, k) => { const b = document.createElement('button'); b.dataset.k = k; b.style.backgroundImage = bg(e.url); b.title = 'Image ' + (k + 1) + '  (Shift+' + (k + 1) + ')'; return b; }));
+  ['gimgs', 'timgs'].forEach(id => {
+    const tiles = IM.map((e, k) => { const b = document.createElement('div'); b.className = 'im'; b.dataset.k = k; b.style.backgroundImage = bg(e.url); b.title = 'Image ' + (k + 1) + ': click to show';
+      if (IM.length > 1) { const x = document.createElement('i'); x.textContent = '✕'; x.title = 'Remove'; b.appendChild(x); } return b; });
+    if (IM.length < 5) { const l = document.createElement('label'); l.title = 'Add images (or drop them on the page)'; l.innerHTML = '+<input type="file" accept="image/*" multiple hidden>'; tiles.push(l); }
+    $(id).replaceChildren(...tiles);
+  });
+  document.body.classList.toggle('multi', IM.length > 1); markThumbs();
+}
+function removeImg(k) {
+  if (IM.length < 2 || k >= IM.length) return;
+  const cur = imTo, [e] = IM.splice(k, 1); gl.deleteTexture(e.tex); if (e.url.startsWith('blob:')) URL.revokeObjectURL(e.url);
+  imTo = imFrom = cur > k ? cur - 1 : Math.min(cur, IM.length - 1); imMix = 1; ASPECT = IM[imTo].aspect;   // removing the shown image cuts to its neighbour
+  renderImgs();
 }
 function addImages(files) {
   const fs = [...files].filter(f => f.type.startsWith('image/')).slice(0, 5 - IM.length);
-  if (!fs.length) return;
+  if (!fs.length) { if (IM.length >= 5) toast('5 images max: remove one first', 2000); return; }
   let first = -1, n = 0;
   fs.forEach(f => { const url = URL.createObjectURL(f); loadImg(url, e => {
-    e.url = url; if (IM.length >= 5) return;
-    IM.push(e); if (first < 0) first = IM.length - 1;
-    if (!$('thumbs').children.length) addThumb(IM[0].url, 0);
-    addThumb(url, IM.length - 1); document.body.classList.toggle('multi', IM.length > 1);
+    if (IM.length >= 5) { gl.deleteTexture(e.tex); URL.revokeObjectURL(url); return; }
+    IM.push(e); if (first < 0) first = IM.length - 1; renderImgs();
     if (++n === fs.length) showImg(first, true), hint.textContent = IM.length + ' images loaded';
   }); });
 }
@@ -667,7 +689,7 @@ function ctrlKey(e) {   // returns true when the key belongs to controlled mode
   }
   if (e.code === 'KeyZ' || e.code === 'KeyX') { CT.I = clamp(Math.round((CT.I + (e.code === 'KeyX' ? .1 : -.1)) * 10) / 10); toast('Intensity ' + Math.round(CT.I * 100) + '%', 1200); }
   else if (e.code === 'KeyC') { CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); }
-  else if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: choose more on the start screen', 2000); }
+  else if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: add more in Settings', 2000); }
   else if (e.code === 'KeyH') ctrlHelpToggle();
   else if (e.code === 'KeyK' || e.code === 'Enter') togglePause();
   else if (/^Arrow(Up|Down|Left|Right)$/.test(e.code)) CT.held.add(e.code);
@@ -685,7 +707,7 @@ function enterCtrl() {   // sound = a long 'waves' piece underneath (it does not
 }
 let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
-  const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp(u0 + USER.inten * .25), u = lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
   const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
@@ -743,6 +765,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(USER.col === 2 ? 1 : 0, md.bw), tile, tileN, tileMode,
     kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate };
   if (SHOW) showcaseParams(P, t); else if (CTRL && !LIVE) ctrlParams(P, t, dt);
+  lastP = P;   // for the B snapshot
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
@@ -895,6 +918,13 @@ function buildAudio(a, t0, off = 0) {
 let ac = null, t0 = 0, playing = false, lat = 0, pump = null, pumpId = 0, rng = Math.random, seedUsed = 0;
 let paused = false, hueBase = 0, dragging = false, volNode = null, hideT = 0;
 const $ = id => document.getElementById(id);
+['gimgs', 'timgs', 'thumbs'].forEach(id => {
+  $(id).addEventListener('click', ev => {
+    ev.stopPropagation(); const t = ev.target, b = t.closest('[data-k]'); if (!b) return;
+    if (t.tagName === 'I') removeImg(+b.dataset.k); else showImg(+b.dataset.k);
+  });
+  $(id).addEventListener('change', ev => { const f = ev.target; if (f.files) { addImages(f.files); f.value = ''; } });
+});
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function newSeed() {   // one seed drives all the randomness of a play (notes, drift phases, spin direction, start hue)
   const q = Q.get('seed'); seedUsed = q !== null ? (parseFloat(q) || 0) : Math.floor(Math.random() * 1e6);
@@ -937,6 +967,7 @@ function loop() {
     bass /= 6 * 255; mid /= 34 * 255; hi /= 159 * 255;
   }
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
+  if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
   if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
   requestAnimationFrame(loop);
@@ -993,6 +1024,7 @@ addEventListener('keydown', e => {
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
   if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
+  if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // mark this moment ("bad")
   if (CTRL && !liveOn && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
   if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
   if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
@@ -1033,6 +1065,21 @@ function applyTweaks(o) {   // push saved values into USER and into the panel wi
   $('u-col').textContent = 'Colour: ' + COLS[USER.col]; $('u-src').textContent = 'Source: ' + (USER.src ? 'on' : 'off');
 }
 const snapTweaks = () => Object.fromEntries(KEYS_U.map(k => [k, USER[k]]));
+// B = bookmark this moment: state + final render params + tiny thumbnail → localStorage ('bicycleday.snaps'), clipboard and a downloaded bicycle-<ID>.json
+function takeSnapshot(t) {
+  const c = document.createElement('canvas'); c.width = 320; c.height = 180; const x = c.getContext('2d'); x.drawImage(cv, 0, 0, 320, 180);
+  const d = x.getImageData(0, 0, 320, 180).data; let sum = 0, sat = 0; for (let i = 0; i < d.length; i += 4) { const mx = Math.max(d[i], d[i + 1], d[i + 2]), mn = Math.min(d[i], d[i + 1], d[i + 2]); sum += (d[i] + d[i + 1] + d[i + 2]) / 3; sat += mx - mn; }
+  const n = d.length / 4, id = 'bd-' + seedUsed + '-' + Math.round(t) + 's', rd = o => JSON.parse(JSON.stringify(o, (k, v) => typeof v === 'number' ? Math.round(v * 1e4) / 1e4 : v));
+  const mode = LOC ? 'local' : liveOn ? 'live' : CTRL ? 'controlled' : SHOW ? 'showcase' : 'generative';
+  const snap = { id, when: new Date().toISOString(), mode, t: +t.toFixed(2), total: TOTAL, frac: +(t / TOTAL).toFixed(3), seed: seedUsed, arc: arcName, music: MUSIC, min: MIN, quality, image: imTo, images: IM.length, aspect: ASPECT,
+    meanLuma: +(sum / n / 255).toFixed(3), meanSat: +(sat / n / 255).toFixed(3), user: snapTweaks(), params: rd(lastP), live: LIVE && mode !== 'generative' ? rd({ u: LIVE.u, scenes: LIVE.scenes }) : undefined,
+    url: location.origin === 'null' || location.protocol === 'file:' ? location.pathname + '?t=' + Math.round(t) + '&seed=' + seedUsed + '&arc=' + arcName + '&min=' + MIN + '&music=' + MUSIC + '&quality=high' : undefined, thumb: c.toDataURL('image/jpeg', .6) };
+  const all = lsGet('snaps') || []; all.push(snap); lsSet('snaps', all.slice(-30));
+  const json = JSON.stringify(snap, null, 1);
+  try { navigator.clipboard.writeText(json).catch(() => {}); } catch (e) {}
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = 'bicycle-' + id + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+  toast('Saved ' + id + ' · luma ' + snap.meanLuma, 4000);
+}
 let saveT = 0; const autosave = () => { clearTimeout(saveT); saveT = setTimeout(() => lsSet('last', snapTweaks()), 300); };   // the panel remembers where you left it
 $('tune').addEventListener('input', autosave); $('tune').addEventListener('click', autosave);
 $('tune').addEventListener('click', e => {
@@ -1083,9 +1130,6 @@ $('dur').addEventListener('click', e => {
   e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
   if (SHOW) return; MIN = +b.dataset.min; TOTAL = MIN * 60; applyArc(); markDur(); updateHint();
 });
-document.getElementById('pick').addEventListener('click', e => e.stopPropagation());   // opening the file dialog must not start playback
-const fileIn = document.querySelector('#pick input');
-fileIn.addEventListener('change', () => { addImages(fileIn.files); fileIn.value = ''; });
 addEventListener('dragover', e => e.preventDefault());
 addEventListener('drop', e => { e.preventDefault(); addImages(e.dataTransfer.files); });
 /* ════════════════════════ LIVE MODE (prototype): listen to a tab (e.g. YouTube) and follow the music ════════════════════════
@@ -1337,7 +1381,7 @@ addEventListener('load', () => {
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
   resize();
   loadPoster(IMG, async () => {
-    ready = true; updateHint(); drawProfile();
+    ready = true; updateHint(); drawProfile(); renderImgs();
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
