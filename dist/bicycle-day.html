@@ -913,9 +913,9 @@ let HCX = null;
 const hcOn = () => !CTRL && !SHOW && (HCX ?? (Q.get('hc') === '1' || (!LOC && !LIVE && arcName === 'hardcore' && !ARC.piano)));
 const HCspin = t => .7 + .5 * Math.sin(t * .9 + PH);   // hardcore spin speed (rad/s), a pure function of t (mirrored in integrateTo / integrateLocal)
 const opening = u => LIVE || hcOn() ? 1 : smooth(.02, .2, u) ** 2;   // generated mode: deformation (warp, breath, pulse, spin, zoom wobble, fringing, melt, stretch) ramps up over the first 20 % of the arc
-const rampT = (hc = hcOn()) => hc ? 3 : clamp(TOTAL * .25, 20, 180), calm = t => LIVE || hcOn() ? 1 : smooth(6, rampT(), t);
+const rampT = (hc = hcOn()) => hc ? 3 : LOC ? 5 : clamp(TOTAL * .25, 20, 180), calm = t => LIVE || hcOn() ? 1 : smooth(6, rampT(), t);   // local file: fixed 5 s start (not a share of the track)
 function timelines(hc = hcOn()) {
-  const c = TLc[hc ? 1 : 0]; if (c && c.ph === PH && c.tot === TOTAL) return c.tl;
+  const c = TLc[hc ? 1 : 0]; if (c && c.ph === PH && c.tot === TOTAL && c.loc === !!LOC) return c.tl;
   const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [], tun = [];
   let t = hc ? rr(1, 3) : rampT(hc) * .5 + rr(5, 20);
   while (t < 7200) { const rise = hc ? rr(3, 6) : rr(15, 30), fall = hc ? rr(2, 4) : rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: hc ? rr(.6, 1) : rr(.5, 1) }); t += rise + fall + (hc ? rr(1, 4) : rr(4, 25)); }
@@ -926,7 +926,7 @@ function timelines(hc = hcOn()) {
   }
   t = Math.max(rr(70, 110), rampT(hc) + rr(10, 40));   // tunnel stretches: first one after the calm start, then one every ~1.5-3 min, 9-16 s each
   while (t < 7200) { const d = rr(9, 16); tun.push({ a: t, b: t + d }); t += d + rr(70, 160); }
-  const tl = { sur, moods, tun }; TLc[hc ? 1 : 0] = { ph: PH, tot: TOTAL, tl }; return tl;
+  const tl = { sur, moods, tun }; TLc[hc ? 1 : 0] = { ph: PH, tot: TOTAL, loc: !!LOC, tl }; return tl;
 }
 function surgeAt(t, hc) {
   const s = timelines(hc).sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
@@ -1175,7 +1175,9 @@ let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cu
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp(u0 + UE.inten * .25), u = lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   easeUser(dt); const HC = hcOn(), hk = ramp(HCr, HC ? 1 : 0, dt, USER.trans), Hd = hk > .5, hl = (a, b) => lerp(a, b, hk);   // hk = hardcore blend 0..1 (a toggle ramps over the transition time); Hd = its discrete half (scene period, timelines, palette flips)
-  const g15 = (LIVE && !LOC) || CTRL || SHOW || Hd ? 1 : smooth(.13, .18, t / TOTAL);   // generated + local: no deformation, tiles, tilt or scene punches during the first ~15 % (live / controlled / showcase excluded)
+  // deformation gate (tiles, tilt, scene punches, tunnel, kaleidoscope, warp, pulse...): generated = calm start over the first ~15 % of the piece;
+  // local file = 5 s ramp-up (fixed, not track-proportional); live = calmer for 10 s (x0.3 → 1), then the full music-driven look; controlled / showcase / extreme = always 1
+  const g15 = CTRL || SHOW || Hd ? 1 : LOC ? smooth(0, 5, t) : LIVE ? lerp(.3, 1, smooth(0, 10, t)) : smooth(.13, .18, t / TOTAL);
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
   const SP = Hd ? 8 : 45, MP = Hd ? 2 : 15, ph = t / SP + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
@@ -1892,7 +1894,7 @@ async function analyseLocal(buf, progress) {
     }
     else if (age > D.warm + 5 && ag[f] > .3 && pT > D.minDur && sinceMinor > D.minDwell && sinceScene > 6) { P.minorT.push(Math.max(P.minorT.at(-1) ?? 0, t - Math.min(3, pT))); sinceMinor = 0; pT = 0; }
     boost *= Math.exp(-dt / 6);
-    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost) * Math.min(1, ag[f] * 1.5), tgt = lerp(.04, .88, I) * smooth(0, 6, t);  u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);   // I scaled by absolute loudness; fades in over the first 6 s
+    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost) * Math.min(1, ag[f] * 1.5), tgt = lerp(.04, .88, I) * smooth(0, 5, t);  u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);   // I scaled by absolute loudness; fades in over the first 5 s
     P.u[f] = u; const gq = Math.min(1, ag[f] * 1.5); P.tens[f] = tension * gq; P.boo[f] = boost * gq;   // no tile bursts / tension look in a quiet stretch
     const rawSt = boost > .5 ? 1 : tension > .25 ? 2 : bLong[f] > .3 ? 3 : lv[f] < .27 ? 4 : 5;   // state label with the same hold rules as live
     if (age < 4) st = 0; else { stT += dt;
@@ -1914,7 +1916,7 @@ function localView(t) {   // timeline at time t → the LIVE-shaped object rende
 function integrateLocal(off) {   // like integrateTo(), but along the timeline (mirrors the LIVE branch of render())
   hue = hueBase; rotA = 0;
   for (let s = 0; s < off; s += .5) {
-    localView(s); const u = clamp(LIVE.u), e = score(u), tr = Math.exp(-(s - trT0) / 1.4), tm = Math.exp(-(s - tmT0) / 1.2);
+    localView(s); const u = clamp(LIVE.u), e = score(u), g = smooth(0, 5, s), tr = g * Math.exp(-(s - trT0) / 1.4), tm = g * Math.exp(-(s - tmT0) / 1.2);   // g = render()'s local ramp-up gate
     hue += e[4] * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)) + (hcOn() ? HCspin(s) : 0));
   }
   localView(off);
