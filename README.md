@@ -53,6 +53,7 @@ Keys work at any time while playing (no need to click first); **H** shows a draw
 | P / C | cycle style (none, Kali, Julia, auto) / colour (auto, frozen, b&w) |
 | [ ] / V / Shift+1..5 | previous / next image, next image (all levels), image number |
 | M | control level: auto / assisted / manual |
+| ; | auto image: off / every 30 s / every 60 s / on every scene change (needs 2+ images; also chips in Settings, `?autoimg=<s>`; a manual switch restarts the timer) |
 | , . | transition time shorter / longer (instant, 1, 3, 5, 10 s; default 3 s; chips in Settings): key changes (Z X Q W E R Y U I O P C, hardcore N, effect fades in assisted / manual) ease to the new value over that time; the toast shows the target, e.g. `Effects 60 % → 3 s`. Dragging a slider is not delayed |
 | N | hardcore look on / off during play, any source (generated, local, stream, mic) and level auto / assisted (look only, the music is not changed; not in manual). Also *Hardcore* toggles on the Generative / Stream / Live / Local cards and in Settings |
 | mouse | move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom |

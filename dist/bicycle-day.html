@@ -126,6 +126,7 @@
   #tune button:hover{border-color:#ffd60a}
   #tune .tmodes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
   #tune .tmodes button{padding:6px 0}
+  #tune .tr4{grid-template-columns:1.6fr 1fr 1fr 1.4fr}
   #tune .tr3{grid-template-columns:repeat(3,1fr)}
   #tune .tr5{grid-template-columns:repeat(5,1fr)}
   #tune button.on{background:#f4f1ea;color:#05030c}
@@ -203,6 +204,7 @@
   <div class="help">Transition: how long key changes take to arrive (keys , and .)</div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
+  <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button class="hcb" id="u-hc" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Hardcore: off</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
@@ -565,12 +567,21 @@ function loadImg(src, ok) {
 }
 function loadPoster(src, done) { loadImg(src, e => { IM[0] = e; imFrom = imTo = 0; imMix = 1; ASPECT = e.aspect; done && done(); }); }
 // several images: #1 is the poster, #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
-function showImg(n, quiet) {
+function showImg(n, quiet, auto) {
   if (n < 0 || n >= IM.length || (n === imTo && imMix >= 1)) return;
+  if (!auto) AI.acc = 0;   // a manual switch restarts the auto-image timer
   if (imMix < 1) { imFrom = imTo; imMix = 0; } else imFrom = imTo;   // a switch mid-fade restarts from the target it was heading to
   imTo = n; imMix = 0; markThumbs(); if (!quiet) toast('Image ' + (n + 1) + ' / ' + IM.length, 1500);
 }
 function markThumbs() { document.querySelectorAll('#thumbs button,.imgs .im').forEach(b => b.classList.toggle('on', +b.dataset.k === imTo)); }
+// auto image (USER.auto: 0 off, N = every N s of song time, -1 = on every scene change; key ; and chips in Settings): advances through IM[] with the usual crossfade.
+// Song time = the sum of the frame steps, so it never runs while paused; begin() / startLive() reset the scene memory so a seek can't trigger a change.
+const AI = { acc: 0, scene: null };
+function autoImg(dt, scene) {
+  const n = USER.auto; AI.acc += dt; const was = AI.scene; AI.scene = scene;
+  if (!n || IM.length < 2 || SHOW || imMix < 1) return;
+  if (n < 0 ? (was !== null && scene !== was) : AI.acc >= n) { AI.acc = 0; showImg((imTo + 1) % IM.length, false, true); }
+}
 // image manager: the same strip on the home card (#gimgs) and in Settings (#timgs): click = show, ✕ = remove, + = add; #thumbs = bottom row while playing
 function renderImgs() {
   const bg = u => 'url("' + u + '")';
@@ -610,7 +621,7 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 const METER = { db: -90 };
 let micGain = null, TD = null, MICDB = 0, clipT = 0;
 // user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
-const USER = { trans: 3, style: 0, fx: 1, inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
+const USER = { auto: 0, trans: 3, style: 0, fx: 1, inten: 0, kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
 // transition time (USER.trans seconds, 0 = instant): key presses / buttons set the TARGET (USER.*, what the sliders show); render() reads these eased copies (UE) that follow it along a smoothstep of that length.
 // Slider drags snap (a dragged slider already moves smoothly). Persistent state like USER: seek never touches it.
 const UE = { fx: 1, inten: 0, kal: 1, tile: 1, fb: 1, monoK: 0, hueK: 1 }, UR = {}, HCr = {};
@@ -776,7 +787,7 @@ function ctrlParams(P, t, dt) {   // level assisted (CL 1): add the effects' del
 const KB = [   // rows of [code, cap, width in key units]; a number = blank spacer
   [['Escape', 'Esc', 1.5], ...'1234567890'.split('').map(c => ['Digit' + c, c])],
   [.5, ...'QWERTYUIOP'.split('').map(c => ['Key' + c, c]), ['BracketLeft', '['], ['BracketRight', ']']],
-  [.8, ...'ASDFGHJKL'.split('').map(c => ['Key' + c, c]), ['Enter', 'Enter', 1.9]],
+  [.8, ...'ASDFGHJKL'.split('').map(c => ['Key' + c, c]), ['Semicolon', ';'], ['Enter', 'Enter', 1.9]],
   [['ShiftLeft', 'Shift', 2.2], ...'ZXCVBNM'.split('').map(c => ['Key' + c, c]), ['Comma', ','], ['Period', '.']],
   [['Space', 'Space', 6.4], .3, ['ArrowLeft', '←'], ['ArrowUp', '↑'], ['ArrowDown', '↓'], ['ArrowRight', '→']],
 ];
@@ -788,7 +799,7 @@ const KB_ACT = {
   BracketLeft: [['img', 'prev image']], BracketRight: [['img', 'next image']], KeyV: [['img', 'next image']],
   KeyQ: [['fx', 'kaleido −']], KeyW: [['fx', 'kaleido +']], KeyE: [['fx', 'tiles −']], KeyR: [['fx', 'tiles +']], KeyY: [['fx', 'trails −']], KeyU: [['fx', 'trails +']], KeyT: [['fx', 'tiles on/off']],
   KeyI: [['glob', 'intens. −']], KeyO: [['glob', 'intens. +']], KeyP: [['glob', 'style']], KeyC: [['glob', 'colour'], ['glob', 'palette']], KeyZ: [['glob', 'effects −']], KeyX: [['glob', 'effects +']],
-  KeyM: [['glob', 'level']], Comma: [['glob', 'transition −']], Period: [['glob', 'transition +']],
+  Semicolon: [['img', 'auto image']], KeyM: [['glob', 'level']], Comma: [['glob', 'transition −']], Period: [['glob', 'transition +']],
   KeyJ: [['mood', 'grid (hold)']], KeyN: [['mood', 'hardcore']],
   KeyB: [['tool', 'bookmark']], KeyL: [['tool', 'live code']], KeyH: [['tool', 'help']], KeyF: [['tool', 'fullscreen']],
 };
@@ -800,7 +811,7 @@ function ctrlHelp() {
     const a = KB_ACT[c]; let m = a ? (CL && a.length > 1 ? a[1] : a[0]) : null; if (!m) return null;
     let label = m[1], on = false;
     if (c === 'KeyZ' || c === 'KeyX') label = (CL === 2 ? 'intens. ' : 'effects ') + (c === 'KeyZ' ? '−' : '+');
-    if (c === 'KeyC') on = !!CT.pal; if (c === 'KeyN') on = hcOn(); if (c === 'KeyL') on = !!CODE.mode; if (c === 'KeyM') { label = LVL[CL]; on = CL > 0; }
+    if (c === 'Semicolon') { label = 'auto img: ' + aiTxt(USER.auto); on = USER.auto !== 0; } if (c === 'KeyC') on = !!CT.pal; if (c === 'KeyN') on = hcOn(); if (c === 'KeyL') on = !!CODE.mode; if (c === 'KeyM') { label = LVL[CL]; on = CL > 0; }
     if (c === 'KeyH') on = true; if (c === 'KeyC' && CL === 0) label = 'colour: ' + COLS[USER.col];
     return { cat: m[0], label, on };
   };
@@ -907,6 +918,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const mi = LIVE ? LIVE.minors : Math.floor(t / MP + PH * .2), mf = t / MP + PH * .2 - mi;
   if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
   const tm = g15 * (LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * MP / 1.2) * calm(t));   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  if (!SHOW) autoImg(dt, scene);
   const tk = scene * 50 + mi;
   const tr = g15 * (LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * SP / 1.4) * calm(t) : 0);   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
   const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
@@ -1146,7 +1158,7 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   off = clamp(off, 0, Math.max(0, TOTAL - 3));
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
-  bi = 0; bassE = 0; lastT = off; integrateTo(off); paused = false; setPP();
+  AI.scene = null; bi = 0; bassE = 0; lastT = off; integrateTo(off); paused = false; setPP();
   pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); pump(); pumpId = setInterval(pump, 1000);
 }
 function start() {
@@ -1235,12 +1247,16 @@ $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopP
 const TKEYS = { KeyZ: ['fx', -1, 'Effects'], KeyX: ['fx', 1, 'Effects'], KeyQ: ['kal', -1, 'Kaleidoscope'], KeyW: ['kal', 1, 'Kaleidoscope'], KeyE: ['tile', -1, 'Tiles'], KeyR: ['tile', 1, 'Tiles'],
   KeyY: ['fb', -1, 'Trails'], KeyU: ['fb', 1, 'Trails'], KeyI: ['inten', -1, 'Intensity'], KeyO: ['inten', 1, 'Intensity'] };   // left key = less, right key = more
 const trTxt = () => USER.trans ? ' → ' + USER.trans + ' s' : '';
+const AIS = [0, 30, 60, -1], aiTxt = v => v === 0 ? 'off' : v < 0 ? 'each scene' : v + ' s';
+const markAI = () => document.querySelectorAll('#ais button').forEach(b => b.classList.toggle('on', +b.dataset.ai === USER.auto));
+function setAuto(v, quiet) { USER.auto = v; AI.acc = 0; markAI(); autosave(); if (CT.helpOn) ctrlHelp(); if (!quiet) toast('Auto image: ' + aiTxt(v) + (IM.length < 2 ? '  (add a second image first)' : ''), 1800); }
 const TRS = [0, 1, 3, 5, 10];
 const markTR = () => document.querySelectorAll('#trs button').forEach(b => b.classList.toggle('on', +b.dataset.tr === USER.trans));
 function setTrans(v, quiet) { USER.trans = v; markTR(); autosave(); if (CT.helpOn) ctrlHelp(); if (!quiet) toast('Transition: ' + (v ? v + ' s' : 'instant'), 1400); }
 function tweakKey(e) {   // keyboard twins of the #tune sliders (non-controlled modes); returns true when the key was used
   const d = TKEYS[e.code];
   if (d) { const el = $(SLID[d[0]]), v = Math.round(clamp(USER[d[0]] + d[1] * .1, +el.min, +el.max) * 100) / 100; USER[d[0]] = v; el.value = v; autosave(); toast(d[2] + ' ' + Math.round(v * 100) + ' %' + trTxt(), 1200); return true; }
+  if (e.code === 'Semicolon') { setAuto(AIS[(Math.max(0, AIS.indexOf(USER.auto)) + 1) % AIS.length]); return true; }   // ; cycles the auto-image setting
   if (e.code === 'Comma' || e.code === 'Period') { const i = TRS.indexOf(USER.trans), j = clamp((i < 0 ? 2 : i) + (e.code === 'Period' ? 1 : -1), 0, TRS.length - 1); setTrans(TRS[j]); return true; }   // , shorter / . longer transition
   if (e.code === 'KeyP') { USER.style = (USER.style + 1) % 4; markSM(); autosave(); toast('Style: ' + ['none', 'Kali', 'Julia', 'auto'][USER.style] + trTxt(), 1200); return true; }
   if (e.code === 'KeyC') { $('u-col').click(); toast('Colour: ' + COLS[USER.col] + trTxt(), 1200); return true; }
@@ -1274,6 +1290,7 @@ addEventListener('keydown', e => {
   $(id).addEventListener('change', e => e.target.blur());   // keep the keyboard free for pause / seek / fullscreen
 });
 const markSM = () => document.querySelectorAll('#smodes button').forEach(b => b.classList.toggle('on', +b.dataset.sm === USER.style));
+$('ais').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setAuto(+b.dataset.ai, true); });
 $('trs').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTrans(+b.dataset.tr, true); });
 $('smodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) { USER.style = +b.dataset.sm; markSM(); } });
 if (Q.has('fx')) { USER.fx = +Q.get('fx'); $('u-fx').value = USER.fx; } { const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; } markSM();
@@ -1287,7 +1304,7 @@ const markTM = () => document.querySelectorAll('#tmodes button').forEach(b => b.
 const setTileMode = m => { USER.force = m; markTM(); };
 $('tmodes').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setTileMode(+b.dataset.tm); });
 markTM();
-const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['trans', 'fx', 'inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { fx: 'u-fx', inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
+const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['auto', 'trans', 'fx', 'inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { fx: 'u-fx', inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
 { const m = Q.has('code') ? +Q.get('code') : +lsGet('code'); CODE.mode = m >= 1 && m <= 2 ? Math.round(m) : 0; document.body.classList.toggle('code', CODE.mode === 1); document.body.classList.toggle('codec', CODE.mode === 2); }   // (an old saved 'true' = overlay)
@@ -1300,7 +1317,7 @@ $('u-mg').addEventListener('change', e => e.target.blur());
 function applyTweaks(o) {   // push saved values into USER and into the panel widgets
   KEYS_U.forEach(k => { if (typeof o[k] === 'number') USER[k] = o[k]; });
   for (const k in SLID) $(SLID[k]).value = USER[k]; markTM(); markSM();
-  markTR(); $('u-col').textContent = 'Colour: ' + COLS[USER.col]; $('u-src').textContent = 'Source: ' + (USER.src ? 'on' : 'off');
+  markTR(); markAI(); $('u-col').textContent = 'Colour: ' + COLS[USER.col]; $('u-src').textContent = 'Source: ' + (USER.src ? 'on' : 'off');
 }
 const snapTweaks = () => Object.fromEntries(KEYS_U.map(k => [k, USER[k]]));
 // B = bookmark this moment: state + final render params + tiny thumbnail → localStorage ('bicycleday.snaps'), clipboard and a downloaded bicycle-<ID>.json
@@ -1327,7 +1344,8 @@ $('tune').addEventListener('click', e => {
   else if (b.dataset.load) { const o = lsGet('slot' + b.dataset.load); if (o) { applyTweaks(o); autosave(); toast('Preset ' + b.dataset.load, 1500); } else toast('Preset ' + b.dataset.load + ' is empty — use Save', 2000); }
 });
 { const o = lsGet('last'); if (o) applyTweaks(o); }
-if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();   // ?trans=<s> (tests)
+if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();
+if (Q.has('autoimg')) USER.auto = +Q.get('autoimg') || 0; markAI();   // ?autoimg=<s> (tests; -1 = each scene)   // ?trans=<s> (tests)
 $('u-col').addEventListener('click', e => { USER.col = (USER.col + 1) % 3; e.target.textContent = 'Colour: ' + COLS[USER.col]; });
 $('u-src').addEventListener('click', e => { USER.src = 1 - USER.src; e.target.textContent = 'Source: ' + (USER.src ? 'on' : 'off'); });
 // mouse / touch on the picture: move = centre of the kaleidoscope, click = ripple, drag = rotate, wheel = zoom
@@ -1412,7 +1430,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
   LB = bandsFor(k);
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
   LIVE = newLive();
-  liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99;
+  liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99; AI.scene = null; AI.acc = 0;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
   gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
   requestAnimationFrame(liveLoop);
