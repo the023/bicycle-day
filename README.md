@@ -32,6 +32,27 @@ Everything can also be set in the URL:
 | `hue` | start hue shift: `random` or radians | `0` |
 | `t`, `res`, `step` | debug: render one silent still at `t` seconds (see AGENTS.md) | – |
 
+## Keyboard
+
+Keys work at any time while playing (no need to click first); **H** shows this list on screen (also the *Keyboard shortcuts* button on the start screen), click or Esc closes it.
+
+| Key | Action |
+|---|---|
+| Space | pause / resume |
+| ← → | seek −10 s / +10 s |
+| Esc | stop (in fullscreen the first Esc only leaves fullscreen) |
+| F | fullscreen |
+| H | help overlay |
+| B | bookmark this moment: downloads `bicycle-bd-<seed>-<sec>s.json` (state, render values, thumbnail) and keeps it in localStorage — give the file/ID to the developer |
+| T / 1 2 3 | tiles on-off / tile mode (again = auto) |
+| [ ] V / Shift+1..5 | previous-next image / image number |
+| mouse | move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom |
+
+Controlled mode adds Q W E R Y U I O P (effects), A S D G (moods), Space (surge), Z X (intensity), C (palette), arrows (rotate / zoom).
+
+**Debug / effects gallery:** open `dist/bicycle-day.html?showcase=1&quality=high` — one effect at a time on a plain image (`seg=<sec>` per effect, N / P = next / previous, click the bar to jump).
+**Reproduce a bookmarked frame:** the `url` field in the B file (`?t=<sec>&seed=<n>&arc=…`), see AGENTS.md for the headless-Chrome still command.
+
 ## Layout
 
 ```

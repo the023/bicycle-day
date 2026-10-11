@@ -11,13 +11,14 @@
   #toast.on{opacity:1}
   #fxlabel{position:fixed;left:0;right:0;top:5vh;text-align:center;color:#fff;font:800 clamp(22px,4.2vw,56px)/1.1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.04em;text-shadow:0 2px 14px #000,0 0 3px #000;pointer-events:none;z-index:6;display:none}
   body.playing #fxlabel,body.still #fxlabel{display:block}
-  #help{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000c;color:#f4f1ea;z-index:9;font:700 12px/1.6 "Helvetica Neue",Arial,sans-serif;letter-spacing:.08em;pointer-events:none}
+  #help{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:#000d;color:#f4f1ea;z-index:20;font:700 clamp(13px,1.25vw,17px)/1.7 "Helvetica Neue",Arial,sans-serif;letter-spacing:.06em;cursor:pointer}
+  #help a{color:#ffd60a}
   #help.on{display:flex}
-  #help .box{max-width:min(760px,94vw);max-height:92dvh;overflow:auto;padding:22px 28px;border:1px solid #f4f1ea55;border-radius:18px;background:#000a}
-  #help h3{margin:0 0 10px;font-size:13px;letter-spacing:.3em;text-transform:uppercase}
-  #help .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:2px 22px;margin-bottom:12px}
-  #help .g div{opacity:.55}#help .g div.on{opacity:1;color:#ffd60a}
-  #help kbd{display:inline-block;min-width:22px;padding:0 5px;margin-right:8px;text-align:center;border:1px solid #f4f1ea77;border-radius:5px;font:inherit}
+  #help .box{max-width:min(1000px,94vw);cursor:auto;max-height:92dvh;overflow:auto;padding:22px 28px;border:1px solid #f4f1ea55;border-radius:18px;background:#000a}
+  #help h3{margin:14px 0 8px;font-size:1.1em;letter-spacing:.3em;text-transform:uppercase}
+  #help .g{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:2px 22px;margin-bottom:12px}
+  #help .g div{opacity:.8}#help .g div.off{opacity:.55}#help .g div.on{opacity:1;color:#ffd60a}
+  #help kbd{display:inline-block;min-width:26px;padding:1px 7px;margin-right:8px;text-align:center;border:1px solid #f4f1ea77;border-radius:5px;font:inherit}
   #help .n{font-weight:400;opacity:.7;letter-spacing:.04em}
   body.ctrl #bar,body.ctrl #tm{display:none}
   #thumbs{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);display:none;gap:6px;z-index:6;opacity:0;transition:opacity .4s;pointer-events:none}
@@ -49,6 +50,7 @@
   #qual{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
   #qual span{opacity:.6;margin-right:4px}
   #qual button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
+  #helpbtn{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
   #qual button.on{background:#f4f1ea;color:#05030c}
   #qnote{font-size:10px!important;letter-spacing:.1em!important;text-transform:none!important;color:#ffd60a;min-height:12px}
   #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
@@ -159,6 +161,7 @@
   </div>
   <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
   <div class="sub" id="qnote"></div>
+  <div class="sub"><button id="helpbtn">Keyboard shortcuts (H)</button></div>
   <div class="sub" id="hint">Loading…</div>
 </div>
 
@@ -671,15 +674,19 @@ function ctrlParams(P, t, dt) {
   for (const k of ['tile', 'tun', 'stretch', 'kali', 'julia', 'dark', 'blaze', 'mono', 'strobe']) P[k] = clamp(P[k]);
   P.fb = clamp(P.fb, 0, .9);
 }
-function ctrlHelp() {
+function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when CTRL, then the keys common to all modes
   const row = e => `<div class="${e.on ? 'on' : ''}"><kbd>${e.key}</kbd>${e.label}</div>`, k = (key, txt, on) => `<div class="${on ? 'on' : ''}"><kbd>${key}</kbd>${txt}</div>`;
-  $('help').innerHTML = `<div class="box"><h3>Controlled mode</h3>
-    <div class="g">${CT_KEYS.slice(0, 9).map(row).join('')}</div><div class="g">${CT_KEYS.slice(9, 13).map(row).join('')}</div>
-    <div class="g">${row(CT_KEYS[13])}${k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('V', 'next image')}${k('← →', 'rotate')}${k('↑ ↓', 'zoom')}
-    ${k('1 2 3', 'tile mode')}${k('K / Enter', 'pause')}${k('F', 'fullscreen')}${k('Esc', 'stop')}${k('H', 'this help')}</div>
-    <div class="n">Highlighted = on. Mouse: move = centre · click = ripple · drag = turn · wheel = zoom. [ ] or Shift+1..5 = switch image.</div></div>`;
+  const ctrl = CTRL ? `<h3>Controlled mode (highlighted = on)</h3>
+    <div class="g">${CT_KEYS.map(row).join('')}${k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom')}${k('Enter', 'pause')}</div>` : '';
+  $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
+    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('H', 'this help')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
+    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
+    <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
+    <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
+    <div class="n">In live / mic mode only F, Esc, H, B, T, 1-3 and the image keys apply. Click anywhere to close.</div></div>`;
 }
-const ctrlHelpToggle = on => { CT.helpOn = on ?? !CT.helpOn; $('help').classList.toggle('on', CT.helpOn); if (CT.helpOn) ctrlHelp(); };
+const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
+  CT.helpOn = on ?? !CT.helpOn; $('help').classList.toggle('on', CT.helpOn); if (CT.helpOn) ctrlHelp(); };
 function ctrlKey(e) {   // returns true when the key belongs to controlled mode
   const el = CT_KEYS.find(x => x.code === e.code || (e.code === 'KeyT' && x.code === 'KeyY'));
   if (el) {
@@ -708,14 +715,15 @@ function enterCtrl() {   // sound = a long 'waves' piece underneath (it does not
 let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp(u0 + USER.inten * .25), u = lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
+  const g15 = (LIVE && !LOC) || CTRL || SHOW ? 1 : smooth(.13, .18, t / TOTAL);   // generated + local: no deformation, tiles, tilt or scene punches during the first ~15 % (live / controlled / showcase excluded)
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
   const ph = t / 45 + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
   const mi = LIVE ? LIVE.minors : Math.floor(t / 15 + PH * .2), mf = t / 15 + PH * .2 - mi;
   if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
-  const tm = LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2) * calm(t);   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  const tm = g15 * (LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2) * calm(t));   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
   const tk = scene * 50 + mi;
-  const tr = LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) * calm(t) : 0;   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
+  const tr = g15 * (LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) * calm(t) : 0);   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
   const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
   const kindOf = n => LIVE ? (LIVE.kinds[n] ?? 1) : 1;   // 1 = energetic section, 0 = calm one
   const palRaw = n => { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[Math.floor(hsh(n, 4) * pool.length)]; };
@@ -730,7 +738,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   LOOK.sk += ((sIdx === 1 ? sAmt : 0) - LOOK.sk) * ez; LOOK.sj += ((sIdx === 2 ? sAmt : 0) - LOOK.sj) * ez;
   for (let i = 0; i < 3; i++) { LOOK.c[i] += (PL.c[i] - LOOK.c[i]) * ez; LOOK.d[i] += (PL.d[i] - LOOK.d[i]) * ez; }
   // camera tilt amplitude by state; tilt direction drifts slowly and re-rolls per scene
-  const camT = LIVE ? (kindOf(scene) ? .26 : .08) * (1 + .3 * (({ drop: .32, groove: .26, build: .2 }[st] ?? .1) / .26 - 1)) : .18 * smooth(.2, .5, u);
+  const camT = g15 * (LIVE ? (kindOf(scene) ? .26 : .08) * (1 + .3 * (({ drop: .32, groove: .26, build: .2 }[st] ?? .1) / .26 - 1)) : .18 * smooth(.2, .5, u));
   CAM.a += (camT - CAM.a) * ez;
   const tilt = [CAM.a * Math.sin(t * .11 + hsh(scene, 5) * 6.28), CAM.a * Math.cos(t * .087 + hsh(scene, 6) * 6.28)];
   // band reactivity: mids spin the picture, bass speeds the tiles up, highs add sparkle (live only where it would break the pure f(t))
@@ -739,15 +747,15 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
   // tunnel: seeded stretches (generated), or on drops / strong builds (live, eased); stretch of the source ghost grows with intensity + surges
   if (LIVE) tunLive += ((st === 'drop' ? .85 : st === 'build' ? .5 * smooth(.25, .6, LIVE.tension) : 0) - tunLive) * (1 - Math.exp(-dt / 1.5));
-  const tun = Q.has('tunnel') ? +Q.get('tunnel') : LIVE ? tunLive : tunnelAt(t);
-  const cz = calm(t), sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t) * cz, md = moodAt(t);
-  const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
+  const tun = g15 * (Q.has('tunnel') ? +Q.get('tunnel') : LIVE ? tunLive : tunnelAt(t));
+  const cz = calm(t) * g15, sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t) * cz, md = moodAt(t);
+  const kal = g15 * clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
   hue += (USER.col === 1 ? 0 : hueSpd) * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
-  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * USER.tile), tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
-  if (USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * USER.tile)); tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
+  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * USER.tile) * g15, tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
+  if (USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * USER.tile)) * g15; tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
   let pulse = 0;
   if (LIVE) pulse = LIVE.pulse;
@@ -756,7 +764,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
   if (ARC.piano) pulse = .12 * noteGlow(t);   // piano: no heartbeat, only a very soft breath after each melody note
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
-  const op = opening(u0); pulse *= op;
+  const op = opening(u0) * g15; pulse *= op;
   const zoom = (1 + zoomAmp * op * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
   const stretch = Q.has('stretch') ? +Q.get('stretch') : clamp((.15 + .6 * u + .5 * sg) * (LIVE ? smooth(10, 50, t) : cz * op) * .9);
   const wr = warp * op * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg), ab = (aber * op + BAND.hi * .6) * (1 + .5 * sg);
@@ -1022,7 +1030,8 @@ $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopP
 addEventListener('keydown', e => {
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
-  if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
+  if (e.code === 'KeyH' && !CTRL && !e.ctrlKey && !e.metaKey && !e.altKey) { ctrlHelpToggle(); return; }
+  if (e.code === 'Escape') { if (CT.helpOn) { ctrlHelpToggle(false); return; } if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
   if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // mark this moment ("bad")
   if (CTRL && !liveOn && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
@@ -1044,6 +1053,8 @@ $('smodes').addEventListener('click', e => { const b = e.target.closest('button'
 { const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; } markSM();
 const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
 function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
+$('helpbtn').addEventListener('click', e => { e.stopPropagation(); ctrlHelpToggle(true); });
+$('help').addEventListener('click', e => { if (e.target.tagName !== 'A') ctrlHelpToggle(false); });
 $('qual').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
 $('u-q').addEventListener('click', () => { const k = Object.keys(QUAL); setQuality(k[(k.indexOf(quality) + 1) % 3]); });
 const markTM = () => document.querySelectorAll('#tmodes button').forEach(b => b.classList.toggle('on', +b.dataset.tm === USER.force));
