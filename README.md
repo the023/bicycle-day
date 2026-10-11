@@ -35,7 +35,7 @@ Everything can also be set in the URL:
 
 ## Keyboard
 
-Keys work at any time while playing (no need to click first); **H** shows this list on screen (also the *Keyboard shortcuts* button on the start screen), click or Esc closes it.
+Keys work at any time while playing (no need to click first); **H** shows a drawn keyboard on screen (keys coloured by category, labels follow the control level, lit = effect on, dim = unused; the table is `KB` / `KB_ACT` in `src/index.html`) (also the *Keyboard shortcuts* button on the start screen), click or Esc closes it.
 
 | Key | Action |
 |---|---|
