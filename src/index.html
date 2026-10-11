@@ -65,6 +65,9 @@
   body.playing #settings,body.live #settings{display:block}
   body.side-ui #settings,body.tuning #settings,#settings:focus-visible{visibility:visible}
   body.playing:not(.ui):not(.tuning) #fullscreen,body.live:not(.ui):not(.tuning) #fullscreen{visibility:hidden}
+  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
+  body.playing #actions #xclose,body.live #actions #xclose{display:block}
+  body.ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
   #tune label{display:flex;flex-direction:column;gap:5px}
   body:not(.mic) .micOnly{display:none}
   #mlev{position:relative;width:110px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
@@ -97,6 +100,7 @@
   @media (max-width:600px),(max-height:600px),(hover:none),(pointer:coarse){
     #actions{top:calc(8px + env(safe-area-inset-top));right:max(10px,env(safe-area-inset-right));gap:6px}
     #actions button{min-height:32px;padding:7px 10px;font-size:10px}
+    #actions #xclose{min-width:40px;min-height:40px;width:40px;padding:0!important}
     body.ui #settings{visibility:visible}
     #pp,#stopb{width:32px;height:32px}
     #live{left:max(10px,env(safe-area-inset-left));right:auto;top:calc(8px + env(safe-area-inset-top));gap:6px;opacity:1}
@@ -131,7 +135,7 @@
 </div>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
-<div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button></div>
+<div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
 <div id="tune" hidden>
   <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
   <label title="Shifts the whole animation up or down the intensity curve">Intensity<small>how wild overall: calmer ↔ more effects</small><input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
@@ -707,6 +711,7 @@ bar.addEventListener('pointerup', e => { if (!dragging) return; dragging = false
 $('pp').addEventListener('click', togglePause);
 $('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
 $('stopb').addEventListener('click', stopPlay);
+$('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopPlay(); });   // same as Esc
 addEventListener('keydown', e => {
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
