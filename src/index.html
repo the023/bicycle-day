@@ -448,8 +448,9 @@ void main(){
 
 const FS_SHOW = `#version 300 es
 precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate,uCells;
 out vec4 o;
+float h1(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 void main(){
   vec2 uv=gl_FragCoord.xy/uRes, d=uv-.5; float r=length(d);
   float ab=.002+uAber*.004+uPulse*.003+uHi*.002;
@@ -460,6 +461,13 @@ void main(){
   float th=uDark*.45; c=max(c-th,0.)/(1.-th); c*=1.+.5*uDark;
   c=c*(1.+1.3*uBlaze)+uBlaze*.3;
   c=mix(c,fract(uT*uRate)<.5?vec3(1.):c*.12,uStrobe*.85);
+  if(uCells>.001){   // strobe grid: a 4x4 grid, 3-5 random cells (re-rolled ~every second, a pure function of uT) flash white / dark / inverted at 8-14 Hz, the rest is untouched
+    vec2 cl=floor(uv*4.); float id=cl.x+4.*cl.y, ep=floor(uT/1.05); int n=3+int(h1(vec2(ep,9.))*3.); float sel=0.;
+    for(int k=0;k<5;k++){ if(k<n && floor(h1(vec2(ep,float(k)))*16.)==id) sel=1.; }
+    float hh=h1(vec2(ep,id+20.)), on=step(fract(uT*(8.+6.*hh)+hh*3.),.5), md=floor(h1(vec2(ep,id+40.))*3.);
+    vec3 fl=md<.5?vec3(1.):md<1.5?vec3(.02):1.-c;
+    c=mix(c,fl,uCells*sel*on);
+  }
   if(uFx>.5){ float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi); }
   o=vec4(c,1.);
 }`;
@@ -475,7 +483,7 @@ function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformL
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
   uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
-  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate']);
+  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate', 'uCells']);
   makeTargets();
 }
 // graphics quality: internal resolution, warp layers, colour fringing / grain. Default depends on the renderer (software GL = low).
@@ -630,13 +638,14 @@ const FX = [
   { name: 'mood: black and white', set: (p, k) => { p.mono = k; } },
   { name: 'mood: blaze', set: (p, k) => { p.blaze = k; } },
   { name: 'mood: strobe', set: (p, k) => { p.strobe = k; p.rate = 7; } },
+  { name: 'strobe grid', set: (p, k) => { p.cells = k; } },
 ];
 if (SHOW) { TOTAL = FX.length * SHOW.seg; applyArc(); }
 const fxIndex = t => clamp(Math.floor(t / SHOW.seg), 0, FX.length - 1);
 let fxShown = -1;
 function showcaseParams(p, t) {   // pure function of t: neutral baseline (plain image) + the active effect
   const f = t / SHOW.seg - Math.floor(t / SHOW.seg), k = t >= TOTAL ? 0 : smooth(0, .2, f) * (1 - smooth(.8, 1, f)), i = fxIndex(t);
-  Object.assign(p, { warp: 0, kal: 0, fold: 6, fb: 0, hue: 0, pal: 0, side: 0, breath: 0, melt: 0, zoom: 1, rot: 0, ab: 0, pulse: 0, bright: 1, anchor: 0, tilt: [0, 0], srcZ: 1, srcRot: 0, palC: PALS[0].c, palD: PALS[0].d, ha: 1, stretch: 0, tun: 0, mono: 0, tile: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8 });
+  Object.assign(p, { warp: 0, kal: 0, fold: 6, fb: 0, hue: 0, pal: 0, side: 0, breath: 0, melt: 0, zoom: 1, rot: 0, ab: 0, pulse: 0, bright: 1, anchor: 0, tilt: [0, 0], srcZ: 1, srcRot: 0, palC: PALS[0].c, palD: PALS[0].d, ha: 1, stretch: 0, tun: 0, mono: 0, tile: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0 });
   FX[i].set(p, k); p.fbHue = (.006 + .02 * p.pal) * p.ha; p.zoom *= USER.zoom;
   if (i !== fxShown) { fxShown = i; $('fxlabel').textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; }
 }
@@ -649,12 +658,12 @@ const CT_KEYS = [   // [key code, key cap, label, FX name, mode ('t' toggle, 'h'
   ['KeyR', 'R', 'melt', 'melt', 't', .8, .8], ['KeyY', 'Y', 'tiles', 'tiles: checker', 't', .5, .5], ['KeyU', 'U', 'Kali', 'style: Kali', 't', .7, .7],
   ['KeyI', 'I', 'Julia', 'style: Julia', 't', .7, .7], ['KeyO', 'O', 'tunnel', 'tunnel', 't', .8, .8], ['KeyP', 'P', 'stretch', 'source stretch', 't', .8, .8],
   ['KeyA', 'A', 'dark', 'mood: dark', 't', .6, .6], ['KeyS', 'S', 'black and white', 'mood: black and white', 't', .6, .6], ['KeyD', 'D', 'blaze', 'mood: blaze', 't', .5, .8],
-  ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['Space', 'Space', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
+  ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['KeyJ', 'J', 'strobe grid (hold)', 'strobe grid', 'h', 0, 0], ['Space', 'Space', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
 ].map(([code, key, label, fx, mode, rin, rout]) => ({ code, key, label, fx: FX.find(f => f.name === fx), mode, rin, rout, on: false, r: 0, mood: /^mood/.test(fx) }));
 const CT = { I: .5, Ie: .5, pal: 0, palK: 0, c: PALS[0].c.slice(), d: PALS[0].d.slice(), ha: 1, held: new Set(), helpOn: false };   // pal 0 = original colours, 1..6 = PALS[0..5]
 function ctrlParams(P, t, dt) {
   const keep = { pulse: P.pulse, rot: P.rot - USER.rot, hue: P.hue, srcZ: P.srcZ, srcRot: P.srcRot };
-  Object.assign(P, { warp: .12, kal: 0, fold: 6, fb: 0, pal: 0, side: 0, breath: 1.2, melt: 0, ab: .1, bright: 1, anchor: 0, palC: CT.c, palD: CT.d, ha: CT.ha, stretch: 0, tun: 0, mono: 0, tile: 0, tileN: 12, tileMode: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8 });
+  Object.assign(P, { warp: .12, kal: 0, fold: 6, fb: 0, pal: 0, side: 0, breath: 1.2, melt: 0, ab: .1, bright: 1, anchor: 0, palC: CT.c, palD: CT.d, ha: CT.ha, stretch: 0, tun: 0, mono: 0, tile: 0, tileN: 12, tileMode: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0 });
   P.pulse = keep.pulse * .6; P.hue = keep.hue; P.srcZ = keep.srcZ; P.srcRot = keep.srcRot;
   CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
   USER.zoom = clamp(USER.zoom, .5, 2.5); P.rot = keep.rot * .5 + USER.rot;
@@ -662,7 +671,7 @@ function ctrlParams(P, t, dt) {
   CT.Ie += (CT.I - CT.Ie) * (1 - Math.exp(-dt / .25));
   const S = .4 + 1.2 * CT.Ie, base = { ...P, tilt: [0, 0] };
   for (const e of CT_KEYS) {
-    const strobe = e.fx.name === 'mood: strobe';
+    const strobe = e.rin === 0;   // held hard effects (strobe, strobe grid): on / off, no easing
     e.r = strobe ? (e.on ? 1 : 0) : clamp(e.r + (e.on ? dt / Math.max(.05, e.rin) : -dt / Math.max(.05, e.rout)));
     if (e.r <= 0) continue;
     const q = { ...base, tilt: [0, 0] }; e.fx.set(q, strobe ? 1 : smooth(0, 1, e.r) * (e.mood ? 1 : S));
@@ -680,7 +689,7 @@ function ctrlParams(P, t, dt) {
   if (CT.pal) { for (let i = 0; i < 3; i++) { CT.c[i] += (PALS[pi].c[i] - CT.c[i]) * ez; CT.d[i] += (PALS[pi].d[i] - CT.d[i]) * ez; } CT.ha += (PALS[pi].ha - CT.ha) * ez; }
   P.pal = clamp(P.pal + CT.palK); P.palC = CT.c; P.palD = CT.d; P.ha = CT.ha;
   P.fbHue = (.006 + .02 * P.pal) * P.ha;
-  for (const k of ['tile', 'tun', 'stretch', 'kali', 'julia', 'dark', 'blaze', 'mono', 'strobe']) P[k] = clamp(P[k]);
+  for (const k of ['tile', 'tun', 'stretch', 'kali', 'julia', 'dark', 'blaze', 'mono', 'strobe', 'cells']) P[k] = clamp(P[k]);
   P.fb = clamp(P.fb, 0, .9);
 }
 function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when CTRL, then the keys common to all modes
@@ -688,7 +697,7 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
   const ctrl = CTRL ? `<h3>Controlled mode (highlighted = on)</h3>
     <div class="g">${CT_KEYS.map(row).join('')}${k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom')}${k('Enter', 'pause')}</div>` : '';
   $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
-    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('H', 'this help')}${k('L', 'live-coding overlay on / off')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
+    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding overlay on / off')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
     ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
     <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
@@ -712,8 +721,8 @@ function ctrlKey(e) {   // returns true when the key belongs to controlled mode
   else return false;
   e.preventDefault(); if (CT.helpOn) ctrlHelp(); return true;
 }
-addEventListener('keyup', e => { CT.held.delete(e.code); const el = CT_KEYS.find(x => x.code === e.code && x.mode === 'h'); if (el) el.on = false; });
-addEventListener('blur', () => { CT.held.clear(); CT_KEYS.forEach(x => { if (x.mode === 'h') x.on = false; }); });
+addEventListener('keyup', e => { CT.held.delete(e.code); if (e.code === 'KeyJ') GRID.held = false; const el = CT_KEYS.find(x => x.code === e.code && x.mode === 'h'); if (el) el.on = false; });
+addEventListener('blur', () => { CT.held.clear(); GRID.held = false; CT_KEYS.forEach(x => { if (x.mode === 'h') x.on = false; }); });
 function leaveCtrl() {   // back to the normal generative setup
   if (!CTRL) return; CTRL = false; document.body.classList.remove('ctrl'); ctrlHelpToggle(false); TOTAL = MIN * 60; applyArc(); drawProfile();
 }
@@ -747,6 +756,7 @@ function codeFeed(P, ex) {   // called once per frame from render(); ex = { scen
   codeFlush(now);
 }
 function codeToggle(on) { CODE.on = on ?? !CODE.on; lsSet('code', CODE.on); document.body.classList.toggle('code', CODE.on); toast('Live coding ' + (CODE.on ? 'on' : 'off'), 1200); }
+const GRID = { held: false };   // J held = strobe grid (generated / local / live modes; in controlled mode it is a CT_KEYS row)
 let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp(u0 + USER.inten * .25), u = lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
@@ -806,9 +816,10 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // final parameters of this frame: in showcase mode they are replaced by a neutral baseline + the active FX entry
   const P = { t, warp: wr, kal, fold, fb: fb * (1 - .75 * (Q.get('tile') ? 1 : tile)), fbHue: USER.col === 1 ? 0 : (.006 + .02 * pal) * LOOK.ha, hue: hue + LOOK.hj, pal: pal * LOOK.p, side, breath: breath * op, melt: melt * op * (.5 + sg), zoom, rot: rotA + USER.rot, ab, pulse, bright, anchor, tilt,
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(USER.col === 2 ? 1 : 0, md.bw), tile, tileN, tileMode,
-    kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate };
+    kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: 0 };
   if (USER.fx !== 1) { const f = USER.fx; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
   if (SHOW) showcaseParams(P, t); else if (CTRL && !LIVE) ctrlParams(P, t, dt);
+  if (GRID.held) P.cells = 1;   // J held (non-controlled modes)
   lastP = P;   // for the B snapshot
   codeFeed(P, { scene, palI: Q.has('pal') ? +Q.get('pal') : palIdx(scene), lead: leadTile });
   // pass 1 → offscreen (with feedback from the previous frame)
@@ -837,7 +848,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex[w]); gl.uniform1i(uD.uTex, 0);
   gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, P.ab); gl.uniform1f(uD.uPulse, P.pulse); gl.uniform1f(uD.uHi, BAND.hi); gl.uniform1f(uD.uFx, QUAL[quality].fx);
-  gl.uniform1f(uD.uDark, P.dark); gl.uniform1f(uD.uBlaze, P.blaze); gl.uniform1f(uD.uStrobe, P.strobe); gl.uniform1f(uD.uRate, P.rate);
+  gl.uniform1f(uD.uDark, P.dark); gl.uniform1f(uD.uBlaze, P.blaze); gl.uniform1f(uD.uStrobe, P.strobe); gl.uniform1f(uD.uRate, P.rate); gl.uniform1f(uD.uCells, P.cells);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   cur = w;
 }
@@ -1086,6 +1097,7 @@ addEventListener('keydown', e => {
   if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
   if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
   if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
+  if (e.code === 'KeyJ' && !CTRL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }   // strobe grid while held
   if (!CTRL && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;   // Z X effects, Q W / E R / Y U / I O sliders, P style, C colour
   if (liveOn) return;
   if (SHOW && (e.code === 'KeyN' || e.code === 'KeyP')) { seekTo(fxStart(fxIndex(lastT) + (e.code === 'KeyN' ? 1 : -1))); return; }

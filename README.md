@@ -43,6 +43,7 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 | Esc | stop (in fullscreen the first Esc only leaves fullscreen) |
 | F | fullscreen |
 | H | help overlay |
+| J (hold) | strobe grid: 3-5 cells of a 4x4 grid flash white / dark / inverted at 8-14 Hz, the rest of the picture stays (also a held row in controlled mode) |
 | L | live-coding overlay: a terminal in the corner that "types" the current values (cosmetic, remembered) |
 | B | bookmark this moment: downloads `bicycle-bd-<seed>-<sec>s.json` (state, render values, thumbnail) and keeps it in localStorage — give the file/ID to the developer |
 | T / 1 2 3 | tiles on-off / tile mode (again = auto) |
@@ -52,7 +53,7 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 | [ ] V / Shift+1..5 | previous-next image / image number |
 | mouse | move = kaleidoscope centre, click = ripple, drag = rotate, wheel = zoom |
 
-Controlled mode adds Q W E R Y U I O P (effects), A S D G (moods), Space (surge), Z X (intensity), C (palette), arrows (rotate / zoom).
+Controlled mode adds Q W E R Y U I O P (effects), A S D G J (moods, G = strobe, J = strobe grid), Space (surge), Z X (intensity), C (palette), arrows (rotate / zoom).
 
 **Debug / effects gallery:** open `dist/bicycle-day.html?showcase=1&quality=high` — one effect at a time on a plain image (`seg=<sec>` per effect, N / P = next / previous, click the bar to jump).
 **Reproduce a bookmarked frame:** the `url` field in the B file (`?t=<sec>&seed=<n>&arc=…`), see AGENTS.md for the headless-Chrome still command.
