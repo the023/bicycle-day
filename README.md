@@ -20,7 +20,7 @@ Chrome / Edge / Firefox / Safari with WebGL2, sound on. Tab-audio capture (Strea
 
 | Source | What it does |
 |---|---|
-| **Generative** | Original music composed by the app (length 1–15 min; journey / waves / slam / intense / hardcore curves; ambient or piano: Gnossienne / Gymnopédie) |
+| **Generative** | Original music composed by the app (length 1–15 min; journey / waves / slam / intense / extreme curves; ambient or piano: Gnossienne / Gymnopédie) |
 | **Local file** | Pick an audio file; it is analysed first, then played with visuals. You can queue a **next track** (start screen or Settings, during play) and "Play next now" |
 | **Tab audio** | Follows music playing in another tab (pick the tab, tick *Share tab audio*; keep both windows visible) |
 | **Microphone** | Follows the music in the room (`?live=mic` also opens it) |
