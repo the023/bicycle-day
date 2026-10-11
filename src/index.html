@@ -59,7 +59,9 @@
     font:500 14px/1.5 "Helvetica Neue",Arial,sans-serif;transition:opacity .65s,visibility .65s}
   #gate.off{opacity:0;visibility:hidden;pointer-events:none}
   #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-  #home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;animation:home-breathe 36s ease-in-out infinite;animation-delay:5s;will-change:transform}
+  #home-art canvas,#home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;display:block}
+  #home-art img{animation:home-breathe 36s ease-in-out infinite;animation-delay:5s;will-change:transform}
+  #home-art canvas{display:none}
   @keyframes home-breathe{0%,50%,100%{transform:translate(0,0) scale(1);filter:hue-rotate(0deg)}25%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}75%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}}
   #gate.off #home-art img{animation-play-state:paused}
   #home-nav{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(24px + env(safe-area-inset-top)) max(32px,env(safe-area-inset-right)) 20px max(32px,env(safe-area-inset-left));z-index:2}
@@ -194,7 +196,7 @@
 <body>
 <div id="wrap"><canvas id="c"></canvas></div>
 <main id="gate">
-  <div id="home-art"><img src="__HOME_LOGO__" width="1672" height="941" alt="Bicycle Day"></div>
+  <div id="home-art"><canvas id="home-c" width="960" height="540"></canvas><img src="__HOME_LOGO__" width="1672" height="941" alt="Bicycle Day"></div>
   <nav id="home-nav" aria-label="Main menu">
     <button class="brand" id="home-brand" aria-label="Close menu">BICYCLE<span>DAY</span></button>
     <div id="home-menu">
@@ -302,6 +304,26 @@ const gl = cv.getContext('webgl2', { antialias: false, alpha: false });
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+/* ════════════════════════ home-screen logo animation (T6) ════════════════════════
+   Rendered through the same FS_SCENE/FS_SHOW shaders onto a small canvas inside #home-art.
+   Timeline seconds since page load while the gate is open:
+     0..HOME_STILL_END s : still (plain image)
+     HOME_STILL_END..HOME_SLIGHT_END s : very slight (HOME_SLIGHT of final)
+     after : smoothstep over HOME_RAMP_DUR s to a gentle level.
+   Strengths below are the gentle (final) levels, applied via g = homeLevel(t). */
+const HOME_STILL_END = 5;
+const HOME_SLIGHT_END = 15;
+const HOME_SLIGHT = 0.18;          // slight phase as a fraction of the gentle level
+const HOME_RAMP_DUR = 20;
+const HOME_WARP = 0.35;           // gentle warp strength
+const HOME_HUE_SPEED = 0.06;      // hue drift (rad/s)
+const HOME_PAL = 0.22;            // palette blend
+const HOME_BREATH = 0.15;        // breath
+const HOME_ABER = 0.18;          // aberration (param)
+const HOME_ZOOM_WOB = 0.02;       // tiny zoom wobble factor
+const HOME_FB = 0.08;            // weak feedback trails
+const HOME_ANCHOR = 0.06;        // faint source anchor
+const HOME_ROTT = 0.0;            // very slow rotation (kept 0 to stay readable)
 
 /* ════════════════════════ PRESET: everything that gives a piece its character ════════════════════════
    Generic parts: the engine (shaders + synth) and the energy "arc". Swappable parts: image, arc, scale, root, tempo, colour, seed.
@@ -590,6 +612,10 @@ void main(){
 
 /* ════════════════════════ GL setup ════════════════════════ */
 let progS, progD, uS = {}, uD = {}, IM = [], imFrom = 0, imTo = 0, imMix = 1, fbo = [], tex = [], FW = 1600, FH = 900, ready = false;
+// home-screen logo renderer state (second WebGL2 context, owned only while gate is open)
+let homeGL = null, homeProgS = null, homeProgD = null, homeUS = {}, homeUD = {}, homeFbo = [], homeTex = [], homeW = 0, homeH = 0, homeCur = 0, homeCanvas = null;
+let homeTexImg = null, homeAspect = 1672 / 941, homeStartedAt = 0, homeRaf = 0, homeFirstFrame = false, homeReduced = false;
+let homeFixedTime = Q.has('hometime') ? (parseFloat(Q.get('hometime')) || 0) : null;
 function prog(fs) {
   const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
   const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, VS)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
@@ -681,6 +707,143 @@ function addImages(files) {
     if (++n === fs.length) showImg(first, true), hint.textContent = IM.length + ' images loaded';
   }); });
 }
+/* ════════════════════════ home-screen logo renderer (T6) ════════════════════════ */
+function homeLevel(t) {
+  if (homeReduced) return 0;
+  if (t < HOME_STILL_END) return 0;
+  if (t < HOME_SLIGHT_END) return HOME_SLIGHT;
+  const x = clamp((t - HOME_SLIGHT_END) / HOME_RAMP_DUR, 0, 1);
+  return lerp(HOME_SLIGHT, 1, x * x * (3 - 2 * x));
+}
+function khprog(g, fs) {
+  const mk = (type, src) => { const sh = g.createShader(type); g.shaderSource(sh, src); g.compileShader(sh); if (!g.getShaderParameter(sh, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(sh)); return sh; };
+  const p = g.createProgram(); g.attachShader(p, mk(g.VERTEX_SHADER, VS)); g.attachShader(p, mk(g.FRAGMENT_SHADER, fs)); g.linkProgram(p);
+  if (!g.getProgramParameter(p, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(p)); return p;
+}
+function homeLocs(g, p, names) { const u = {}; names.forEach(n => u[n] = g.getUniformLocation(p, n)); return u; }
+function initHomeGL(canvas) {
+  if (!canvas) return;
+  homeCanvas = canvas;
+  homeGL = canvas.getContext('webgl2', { antialias: false, alpha: false });
+  if (!homeGL) { console.log('home: WebGL2 unavailable'); return; }
+  const g = homeGL;
+  try {
+    homeProgS = khprog(g, FS_SCENE); homeProgD = khprog(g, FS_SHOW);
+    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uCode','uCodeAmt']);
+    homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells']);
+    // blank code texture
+    const ct = g.createTexture(); g.bindTexture(g.TEXTURE_2D, ct); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+    // store on a global-ish via homeCodeTex
+    homeCodeTex = ct;
+    makeHomeTargets();
+  } catch (e) { console.log('home shader error:', e.message); homeGL = null; }
+}
+let homeCodeTex = null;
+function makeHomeTargets() {
+  const g = homeGL; if (!g) return;
+  homeTex.forEach(t => g.deleteTexture(t)); homeFbo.forEach(f => g.deleteFramebuffer(f)); homeTex.length = 0; homeFbo.length = 0;
+  homeCur = 0;
+  const res = parseFloat(Q.get('res')) || QUAL[quality].res;
+  homeW = Math.max(16, Math.round(640 * res)); homeH = Math.max(16, Math.round(homeW / homeAspect));
+  const half = !!g.getExtension('EXT_color_buffer_float');
+  for (let i = 0; i < 2; i++) {
+    const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
+    g.texImage2D(g.TEXTURE_2D, 0, half ? g.RGBA16F : g.RGBA8, homeW, homeH, 0, g.RGBA, half ? g.HALF_FLOAT : g.UNSIGNED_BYTE, null);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+    const f = g.createFramebuffer(); g.bindFramebuffer(g.FRAMEBUFFER, f); g.framebufferTexture2D(g.FRAMEBUFFER, g.COLOR_ATTACHMENT0, g.TEXTURE_2D, t, 0);
+    g.clearColor(0, 0, 0, 1); g.clear(g.COLOR_BUFFER_BIT); homeTex.push(t); homeFbo.push(f);
+  }
+  g.bindFramebuffer(g.FRAMEBUFFER, null);
+}
+function loadHomeLogo(src, done) {
+  if (!homeGL) { done && done(); return; }
+  const g = homeGL;
+  const img = new Image();
+  img.onload = () => {
+    const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true);
+    g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, img); g.generateMipmap(g.TEXTURE_2D);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR_MIPMAP_LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.MIRRORED_REPEAT); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.MIRRORED_REPEAT);
+    homeTexImg = t; homeAspect = img.naturalWidth / img.naturalHeight;
+    if (homeCanvas) { homeCanvas.width = 960; homeCanvas.height = Math.round(960 / homeAspect); }
+    makeHomeTargets();
+    done && done();
+  };
+  img.onerror = () => { console.log('home: logo load failed'); done && done(); };
+  img.src = src;
+}
+function homeFrame(t) {
+  const g = homeGL; if (!g || !homeTexImg || !homeCanvas) return;
+  const canvas = homeCanvas;
+  // size canvas drawing buffer if needed
+  if (canvas.width !== homeW * (parseFloat(Q.get('res'))||QUAL[quality].res?1:1)) {} 
+  const gLevel = homeLevel(t);
+  const P = {
+    t, warp: HOME_WARP * gLevel,
+    kal: 0, fold: 6,
+    fb: HOME_FB * gLevel,
+    fbHue: .006 * gLevel,
+    hue: t * HOME_HUE_SPEED * gLevel,
+    pal: HOME_PAL * gLevel,
+    side: 0, breath: HOME_BREATH * gLevel,
+    melt: 0, zoom: 1 + HOME_ZOOM_WOB * gLevel * Math.sin(t * .2),
+    rot: 0,
+    ab: HOME_ABER * gLevel,
+    pulse: 0, bright: 1,
+    anchor: HOME_ANCHOR * gLevel,
+    tilt: [0, 0], mono: 0,
+    srcZ: 1, srcRot: 0, stretch: 0,
+    tun: 0, tile: 0, tileN: 8, tileMode: 0,
+    kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0
+  };
+  // pass1
+  const w = homeCur ^ 1;
+  g.bindFramebuffer(g.FRAMEBUFFER, homeFbo[w]); g.viewport(0, 0, homeW, homeH); g.useProgram(homeProgS);
+  g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D, homeTexImg); g.uniform1i(homeUS.uTex, 0);
+  g.activeTexture(g.TEXTURE2); g.bindTexture(g.TEXTURE_2D, homeTexImg); g.uniform1i(homeUS.uTex2, 2); g.uniform1f(homeUS.uImgMix, 0);
+  g.activeTexture(g.TEXTURE1); g.bindTexture(g.TEXTURE_2D, homeTex[homeCur]); g.uniform1i(homeUS.uPrev, 1);
+  g.uniform2f(homeUS.uRes, homeW, homeH); g.uniform1f(homeUS.uT, t); g.uniform1f(homeUS.uWarp, P.warp); g.uniform1f(homeUS.uKal, P.kal); g.uniform1f(homeUS.uKalN, P.fold);
+  g.uniform1f(homeUS.uFb, P.fb); g.uniform1f(homeUS.uFbHue, P.fbHue); g.uniform1f(homeUS.uHue, P.hue); g.uniform1f(homeUS.uPal, P.pal);
+  g.uniform1f(homeUS.uSide, P.side); g.uniform1f(homeUS.uBreath, P.breath); g.uniform1f(homeUS.uMelt, P.melt); g.uniform1f(homeUS.uZoom, P.zoom);
+  g.uniform1f(homeUS.uRot, P.rot); g.uniform1f(homeUS.uAber, P.ab); g.uniform1f(homeUS.uPulse, P.pulse); g.uniform1f(homeUS.uBright, P.bright); g.uniform1f(homeUS.uAspect, homeAspect); g.uniform1f(homeUS.uAnchor, P.anchor);
+  const rAge = 0; g.uniform4f(homeUS.uRip, 0, 0, rAge, 0);
+  g.uniform2f(homeUS.uTilt, 0, 0); g.uniform1f(homeUS.uTT, 0); g.uniform1f(homeUS.uSrcZ, P.srcZ); g.uniform1f(homeUS.uSrcRot, P.srcRot); g.uniform3f(homeUS.uPalC, 1.3, 1.3, 1.3); g.uniform3f(homeUS.uPalD, 0, .33, .67); g.uniform1f(homeUS.uHueAmt, 1);
+  g.uniform1f(homeUS.uStretch, P.stretch); g.uniform1f(homeUS.uTunnel, 0);
+  g.uniform2f(homeUS.uCenter, 0, 0); g.uniform1f(homeUS.uMono, 0);
+  g.uniform1f(homeUS.uTile, P.tile); g.uniform1f(homeUS.uTileN, P.tileN); g.uniform1f(homeUS.uTileMode, P.tileMode); g.uniform1f(homeUS.uTileSeed, homeSeedVal || 1);
+  const qfx = QUAL[quality].fx; g.uniform1f(homeUS.uWarpN, QUAL[quality].warpN); g.uniform1f(homeUS.uFx, qfx);
+  g.uniform1f(homeUS.uKali, 0); g.uniform1f(homeUS.uJulia, 0);
+  g.activeTexture(g.TEXTURE3); g.bindTexture(g.TEXTURE_2D, homeCodeTex); g.uniform1i(homeUS.uCode, 3); g.uniform1f(homeUS.uCodeAmt, 0);
+  g.drawArrays(g.TRIANGLES, 0, 3);
+  // pass2
+  g.bindFramebuffer(g.FRAMEBUFFER, null); g.viewport(0, 0, canvas.width, canvas.height); g.useProgram(homeProgD);
+  g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D, homeTex[w]); g.uniform1i(homeUD.uTex, 0);
+  g.uniform2f(homeUD.uRes, canvas.width, canvas.height); g.uniform1f(homeUD.uT, t); g.uniform1f(homeUD.uAber, P.ab); g.uniform1f(homeUD.uPulse, 0); g.uniform1f(homeUD.uHi, 0); g.uniform1f(homeUD.uFx, qfx);
+  g.uniform1f(homeUD.uDark, 0); g.uniform1f(homeUD.uBlaze, 0); g.uniform1f(homeUD.uStrobe, 0); g.uniform1f(homeUD.uRate, 8); g.uniform1f(homeUD.uCells, 0);
+  g.drawArrays(g.TRIANGLES, 0, 3);
+  homeCur = w;
+  // show fallback handling
+  if (!homeFirstFrame) { homeFirstFrame = true; canvas.style.display = 'block'; const img = canvas.parentElement.querySelector('img'); if (img) img.style.display = 'none'; }
+}
+let homeSeedVal = (Math.random() * 7) | 0;
+function startHomeLoop() {
+  if (homeRaf || !homeGL) return;
+  homeStartedAt = performance.now() / 1000;
+  const tick = () => {
+    if (!homeRaf) return;
+    const t = homeFixedTime !== null ? homeFixedTime : (performance.now() / 1000 - homeStartedAt);
+    homeFrame(t);
+    homeRaf = requestAnimationFrame(tick);
+  };
+  homeRaf = requestAnimationFrame(tick);
+}
+function stopHomeLoop() {
+  if (homeRaf) { cancelAnimationFrame(homeRaf); homeRaf = 0; }
+}
+
 function resize() {   // keep the canvas a 16:9 box, centred, as large as the window allows
   const w = Math.min(innerWidth, innerHeight * 16 / 9), h = w * 9 / 16, dpr = Math.min(devicePixelRatio || 1, QUAL[quality].dpr);
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
@@ -1747,6 +1910,7 @@ function homePanel(name, focus = false) {
 function homeGate(open) {
   gate.classList.toggle('off', !open); gate.inert = !open;
   if (!open) homePanel(null);
+  if (open) startHomeLoop(); else stopHomeLoop();
 }
 document.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', () => {
   homePanel(b.getAttribute('aria-expanded') === 'true' ? null : b.dataset.home);
@@ -1774,6 +1938,9 @@ addEventListener('load', () => {
   { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
   resize();
+  homeReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  initHomeGL($('home-c'));
+  loadHomeLogo('__HOME_LOGO__', () => { if (!playing && !liveOn && !document.body.classList.contains('still')) startHomeLoop(); });
   loadPoster(IMG, async () => {
     ready = true; $('playgen').disabled = false; updateHint(); drawProfile(); renderImgs();
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)

@@ -9,8 +9,8 @@ const homeLogo = readFileSync('assets/bicycle-day-logo-combined-soft-v6.png').to
 if (!html.includes('__POSTER__')) throw new Error('src/index.html has no __POSTER__ placeholder');
 if (!html.includes('__HOME_LOGO__')) throw new Error('src/index.html has no __HOME_LOGO__ placeholder');
 const out = html
-  .replace('__POSTER__', `data:image/jpeg;base64,${poster}`)
-  .replace('__HOME_LOGO__', `data:image/png;base64,${homeLogo}`);
+  .replaceAll('__POSTER__', `data:image/jpeg;base64,${poster}`)
+  .replaceAll('__HOME_LOGO__', `data:image/png;base64,${homeLogo}`);
 
 // syntax-check every inline script so a typo fails the build instead of the browser
 for (const m of out.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(m[1], { filename: 'inline-script' });
