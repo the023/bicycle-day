@@ -663,7 +663,7 @@ function loadImg(src, ok) {
   img.src = src;
 }
 function loadPoster(src, done) { loadImg(src, e => { IM[0] = e; imFrom = imTo = 0; imMix = 1; ASPECT = e.aspect; done && done(); }); }
-// several images: #1 is the poster, #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
+// several images: #1 is the default picture (the logo), #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
 function showImg(n, quiet, auto) {
   if (n < 0 || n >= IM.length || (n === imTo && imMix >= 1)) return;
   if (!auto) AI.acc = 0;   // a manual switch restarts the auto-image timer
@@ -2001,6 +2001,6 @@ addEventListener('load', () => {
   });
 });
 </script>
-<script>const IMG="__POSTER__";</script>
+<script>const IMG=document.querySelector("#home-art img").src;</script>   <!-- default picture = the logo (same inlined data URI as the home screen) -->
 </body>
 </html>

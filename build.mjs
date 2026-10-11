@@ -1,15 +1,12 @@
-// Builds dist/bicycle-day.html: src/index.html with its image assets inlined as data URIs.
-// (The poster must be inlined: WebGL refuses to use an image loaded from file:// as a texture.)
+// Builds dist/bicycle-day.html: src/index.html with the logo (home screen + default picture) inlined as a data URI.
+// (The image must be inlined: WebGL refuses to use an image loaded from file:// as a texture.)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import vm from 'node:vm';
 
 const html = readFileSync('src/index.html', 'utf8');
-const poster = readFileSync('assets/poster.jpg').toString('base64');
 const homeLogo = readFileSync('assets/bicycle-day-logo-home.webp').toString('base64');
-if (!html.includes('__POSTER__')) throw new Error('src/index.html has no __POSTER__ placeholder');
 if (!html.includes('__HOME_LOGO__')) throw new Error('src/index.html has no __HOME_LOGO__ placeholder');
 const out = html
-  .replaceAll('__POSTER__', `data:image/jpeg;base64,${poster}`)
   .replaceAll('__HOME_LOGO__', `data:image/webp;base64,${homeLogo}`);
 
 // syntax-check every inline script so a typo fails the build instead of the browser
