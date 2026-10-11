@@ -43,6 +43,7 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 | Esc | stop (in fullscreen the first Esc only leaves fullscreen) |
 | F | fullscreen |
 | H | help overlay |
+| L | live-coding overlay: a terminal in the corner that "types" the current values (cosmetic, remembered) |
 | B | bookmark this moment: downloads `bicycle-bd-<seed>-<sec>s.json` (state, render values, thumbnail) and keeps it in localStorage — give the file/ID to the developer |
 | T / 1 2 3 | tiles on-off / tile mode (again = auto) |
 | Z / X | **effects down / up** (0 = original image, 100 % = normal, up to 150 %), same as the Effects slider |
