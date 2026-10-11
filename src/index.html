@@ -276,7 +276,7 @@
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
-  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
 </div>
@@ -1255,6 +1255,11 @@ function loop() {
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
+  if (LOC && NEXT && (NEXTGO || t >= TOTAL + .3)) {   // a queued next track: play it when this one ends (or on "Play next now")
+    if (NEXTDATA) { goNext(); requestAnimationFrame(loop); return; }
+    if (NEXTFAIL) { toast('Next track could not be read'); clearNext(); }
+    else { if (!NEXTGO) toast('Loading next track…', 60000); NEXTGO = true; if (t >= TOTAL + .3) { requestAnimationFrame(loop); return; } }   // still decoding: hold the last picture, silent
+  }
   if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
   requestAnimationFrame(loop);
 }
@@ -1591,7 +1596,7 @@ $('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
 /* ════════════════════════ LOCAL MODE: play an audio file; the whole file is analysed first (offline, so it can look ahead) ════════════════════════
    Same features and section/drop detector as liveStep(), but zero-phase smoothing and back-dated scene starts. The result is a timeline sampled at the audio clock
    time t (localView), written into the LIVE-shaped object so render() runs its live look path unchanged: the picture stays a pure function of t. */
-let LOC = null, localData = null, FFT = null, NEXT = null;
+let LOC = null, localData = null, FFT = null, NEXT = null, NEXTDATA = null, NEXTGO = false, NEXTFAIL = false;   // NEXT = chosen File; NEXTDATA = its analysed timeline (kept apart from LOC until it plays)
 const LST = ['', 'drop', 'build', 'groove', 'breakdown', 'calm'];
 const zp = (a, tau, fps) => { const k = 1 - Math.exp(-1 / (tau * fps)), o = new Float32Array(a.length); let y = a[0]; for (let i = 0; i < a.length; i++) { y += (a[i] - y) * k; o[i] = y; } for (let i = a.length - 1; i >= 0; i--) { y += (o[i] - y) * k; o[i] = y; } return o; };   // forward + backward EMA = no lag
 function fft(re, im) {   // in-place radix-2
@@ -1682,26 +1687,41 @@ function playLocal(a, t0, off) {   // the decoded file through the speakers; ret
   const src = a.createBufferSource(), outG = a.createGain(); src.buffer = LOC.buf; outG.gain.value = +$('vol').value; volNode = outG; src.connect(outG); outG.connect(a.destination); src.start(t0 + off, off);
   return () => {};
 }
-function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; TOTAL = MIN * 60; applyArc(); drawProfile(); }
+function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; TOTAL = MIN * 60; applyArc(); drawProfile(); syncNext(); }
+async function decodeLocal(src, progress = () => {}) {   // File or URL → decoded + analysed timeline. No UI side effects, so it can run in the background
+  const ab = await (src instanceof Blob ? src : await (await fetch(src)).blob()).arrayBuffer();
+  const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(ab);
+  if (!buf.length) throw new Error('empty file');
+  return analyseLocal(buf, progress);
+}
 async function loadLocal(src) {   // File or URL → decode → analyse; enables Play
   const note = $('localnote'), go = $('playlocal'); go.disabled = true; localData = null; note.style.color = '';
   try {
     note.textContent = 'Decoding…';
-    const ab = await (src instanceof Blob ? src : await (await fetch(src)).blob()).arrayBuffer();
-    const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(ab);
-    if (!buf.length) throw new Error('empty file');
-    localData = await analyseLocal(buf, p => { note.textContent = 'Analysing… ' + Math.round(p * 100) + '%'; });
-    note.textContent = `Ready · ${fmt(buf.duration)} · ${localData.sceneT.length + 1} scenes`; go.disabled = false;
+    localData = await decodeLocal(src, p => { note.textContent = 'Analysing… ' + Math.round(p * 100) + '%'; });
+    note.textContent = `Ready · ${fmt(localData.dur)} · ${localData.sceneT.length + 1} scenes`; go.disabled = false;
   } catch (e) { note.textContent = 'Cannot read this file as audio (' + (e.message || e.name) + ')'; note.style.color = '#ff6b6b'; console.log('local:', e); }
 }
 function startLocal() {
   if (!localData || playing || !ready || liveOn) return;
-  LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); start();
+  LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); syncNext(); start();
 }
 const nfile = document.querySelector('#nextpick input');
 $('nextpick').addEventListener('click', e => e.stopPropagation());
-nfile.addEventListener('change', () => { const f = nfile.files && nfile.files[0]; if (f) { NEXT = f; $('nextname').textContent = f.name; $('nextclear').style.display = ''; } });
-$('nextclear').addEventListener('click', e => { e.stopPropagation(); NEXT = null; nfile.value = ''; $('nextname').textContent = ''; $('nextclear').style.display = 'none'; });
+function syncNext() { $('nextnow').style.display = LOC && NEXT ? '' : 'none'; }   // "Play next now": Local mode with a next track chosen
+function clearNext() { NEXT = null; NEXTDATA = null; NEXTGO = false; NEXTFAIL = false; nfile.value = ''; $('nextname').textContent = ''; $('nextclear').style.display = 'none'; syncNext(); }
+function prepNext(f) {   // decode + analyse the chosen next file in the background (the result waits in NEXTDATA)
+  NEXTDATA = null; NEXTFAIL = false;
+  decodeLocal(f).then(d => { if (NEXT === f) NEXTDATA = d; }, e => { if (NEXT === f) NEXTFAIL = true; console.log('local next:', e); });
+}
+function goNext() {   // swap the queued track in as LOC and restart at t = 0; begin() closes the old AudioContext (and its source) and re-derives the state
+  const d = NEXTDATA, name = NEXT.name; clearNext();
+  LOC = d; LIVE = newLive(); TOTAL = LOC.dur; drawProfile(); begin(0, true); toast('Now: ' + name, 3000);
+}
+function playNextNow() { if (!playing || !LOC || !NEXT) return; NEXTGO = true; }   // the loop picks it up on the next frame (waits there if still decoding)
+$('nextnow').addEventListener('click', e => { e.stopPropagation(); playNextNow(); });
+nfile.addEventListener('change', () => { const f = nfile.files && nfile.files[0]; if (f) { NEXT = f; $('nextname').textContent = f.name; $('nextclear').style.display = ''; prepNext(f); syncNext(); } });
+$('nextclear').addEventListener('click', e => { e.stopPropagation(); clearNext(); });
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());
 function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Extreme: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
