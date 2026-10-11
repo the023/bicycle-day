@@ -55,36 +55,69 @@
   #tune .imgs{justify-content:flex-start;padding-top:4px}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
-  #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
-    background:#05030c;color:#f4f1ea;font:700 14px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.55em;text-transform:uppercase;transition:opacity .8s;overflow:hidden}
-  #gate.off{opacity:0;pointer-events:none}
-  #gate .t{font-weight:900;font-size:clamp(40px,8vw,128px);letter-spacing:.04em;line-height:.9;text-align:center;
-    background:linear-gradient(90deg,#ff2d95,#ffd60a,#2cff8a,#00e5ff,#7c4dff,#ff2d95);background-size:300% 100%;
-    -webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 6s linear infinite,hue 9s linear infinite}
-  @keyframes flow{to{background-position:300% 0}}
-  @keyframes hue{to{filter:hue-rotate(360deg)}}
-  #gate .sub{opacity:.55;font-size:clamp(10px,1vw,14px)}
-  #opts,#dur,#mus{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-  @media (max-height:800px){#gate{gap:18px}#gate .t{font-size:clamp(30px,6vw,76px)}}
-  #qual,#lvl{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
-  #qual span,#lvl span{opacity:.6;margin-right:4px}
-  #qual button,#lvl button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
-  #helpbtn{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
-  #qual button.on,#lvl button.on{background:#f4f1ea;color:#05030c}
-  #qnote{font-size:10px!important;letter-spacing:.1em!important;text-transform:none!important;color:#ffd60a;min-height:12px}
-  #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
-  .card{width:230px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 16px;border:1px solid #f4f1ea33;border-radius:18px;text-align:center;letter-spacing:.08em;text-transform:none;background:#ffffff08}
-  .card b{font-size:15px;letter-spacing:.3em;text-transform:uppercase}
-  .card span{font-weight:400;font-size:12px;line-height:1.5;opacity:.75;flex:1}
-  .card.off{opacity:.4}
-  .card .warn{font-style:normal;font-size:11px;color:#ffd60a}
-  .card .go{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
-  .card .go:hover:not(:disabled){background:#fff}
-  .card .go:disabled{opacity:.35;cursor:not-allowed}
-  #opts button,#dur button,#mus button,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
-  .hcb{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}#hclocal.on{background:#f4f1ea;color:#05030c}
-  #opts button.on,#dur button.on,#mus button.on{background:#f4f1ea;color:#05030c}
-  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#ffd60a}
+  #gate{position:fixed;inset:0;z-index:10;overflow:hidden;background:#000;color:#eeeee5;cursor:default;
+    font:500 14px/1.5 "Helvetica Neue",Arial,sans-serif;transition:opacity .65s,visibility .65s}
+  #gate.off{opacity:0;visibility:hidden;pointer-events:none}
+  #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  #home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;animation:home-breathe 18s ease-in-out infinite;will-change:transform}
+  @keyframes home-breathe{0%,100%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}50%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}}
+  #gate.off #home-art img{animation-play-state:paused}
+  #home-nav{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(24px + env(safe-area-inset-top)) max(32px,env(safe-area-inset-right)) 20px max(32px,env(safe-area-inset-left));z-index:2}
+  #home-nav button,#home-close{font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;color:inherit;background:none;border:0;cursor:pointer}
+  #home-nav .brand{padding:8px 0;font-size:12px;letter-spacing:.16em;text-align:left;line-height:1.1}
+  #home-nav .brand span{display:block;color:#a2b29f}
+  #home-menu{display:flex;gap:8px;align-items:center}
+  #home-menu button{padding:11px 15px;border-radius:99px;color:#a8b1ab}
+  #home-menu button:hover,#home-menu button[aria-expanded="true"]{color:#f4f1ea;background:#ffffff10}
+  #home-menu button[data-home="play"]{border:1px solid #a6c99b55;color:#e0edda}
+  #home-intro{position:absolute;left:20px;right:20px;bottom:calc(42px + env(safe-area-inset-bottom));text-align:center}
+  #home-intro p{margin:0 0 16px;color:#acb8b0;font-size:13px;letter-spacing:.08em}
+  #home-start{border:1px solid #a6c99b66;border-radius:99px;padding:13px 23px;color:#e0edda;background:#0b120c;font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;cursor:pointer}
+  #home-start:hover{background:#1b2a1d;border-color:#afcc9d}
+  #hint{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom));left:20px;right:20px;text-align:center;color:#a8b1ab;font-size:11px;margin:0;pointer-events:none}
+  #home-drawer{position:absolute;top:calc(92px + env(safe-area-inset-top));right:max(32px,env(safe-area-inset-right));width:min(400px,calc(100vw - 48px));max-height:calc(100dvh - 156px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;box-sizing:border-box;border:1px solid #a6c99b33;border-radius:18px;background:#090e0ced;box-shadow:0 20px 70px #000a;backdrop-filter:blur(18px);padding:24px;z-index:3}
+  #gate [hidden]{display:none!important}
+  #home-drawer h2{font-size:20px;letter-spacing:-.03em;font-weight:500;margin:0 28px 5px 0}
+  #home-drawer p{color:#a8b1ab;font-size:13px;margin:0 0 18px}
+  #home-close{position:absolute;right:14px;top:14px;width:32px;height:32px;border-radius:50%;color:#a8b1ab}
+  #home-close:hover{background:#ffffff10}
+  #source{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:20px 0}
+  #source button{padding:12px 8px;background:#ffffff04;border:1px solid #ffffff16;color:#a8b1ab;border-radius:8px;cursor:pointer;font:500 12px/1.2 "Helvetica Neue",Arial,sans-serif}
+  #source button[aria-pressed="true"]{background:#b7d7a81a;border-color:#b7d7a877;color:#e0edda}
+  #cards{padding:0}
+  .card{display:flex;flex-direction:column;align-items:stretch;gap:16px}
+  .card p{margin:0!important}
+  .card .warn{font-style:normal;font-size:12px;line-height:1.4;color:#e5c467}
+  #gate .go{font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;color:#0a130d;background:#c5e1ad;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
+  #gate .go:hover:not(:disabled){background:#e0edda}
+  #gate .go:disabled{opacity:.4;cursor:not-allowed}
+  #opts,#dur,#mus{display:flex;flex-wrap:wrap;gap:6px}
+  #gate .field{display:block;color:#a8b1ab;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 8px}
+  #home-drawer details{border-top:1px solid #ffffff16;padding-top:14px}
+  #home-drawer summary{cursor:pointer;color:#a8b1ab;font-size:12px}
+  #home-drawer details .field{margin-top:16px}
+  #qual,#lvl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:18px 0}
+  #qual span,#lvl span{width:100%;color:#a8b1ab;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+  #qual button,#lvl button,#opts button,#dur button,#mus button,#lpick,.hcb{font:500 11px/1.2 "Helvetica Neue",Arial,sans-serif;color:#f4f1ea;background:none;border:1px solid #f4f1ea33;border-radius:99px;padding:9px 12px;cursor:pointer}
+  #qual button.on,#lvl button.on,#opts button.on,#dur button.on,#mus button.on,#hclocal.on{background:#c5e1ad;color:#0a130d;border-color:#c5e1ad}
+  #lpick{display:block;text-align:center;font-size:13px;padding:13px}
+  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#c5e1ad}
+  #home-drawer #qnote{color:#e5c467;font-size:12px;margin-top:12px}
+  #home-drawer .imgs{justify-content:flex-start;margin:24px 0;gap:16px}
+  #home-drawer .imgs .im,#home-drawer .imgs label{width:52px;height:52px}
+  #gate button:focus-visible,#gate summary:focus-visible{outline:2px solid #c5e1ad;outline-offset:4px}
+  body:not(.playing):not(.live):not(.still) #actions{display:none}
+  @media(prefers-reduced-motion:reduce){#home-art img{animation:none}#gate{transition:none}}
+  @media(max-width:600px){
+    #home-nav{padding:calc(16px + env(safe-area-inset-top)) 16px 16px;gap:6px}
+    #home-nav .brand{font-size:9px;letter-spacing:.1em}
+    #home-menu{gap:0}#home-menu button{font-size:12px;padding:10px}
+    #home-art img{width:110vw;max-width:none}
+    #home-drawer{top:calc(78px + env(safe-area-inset-top));right:12px;width:calc(100vw - 24px);max-height:calc(100dvh - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:22px}
+    #home-intro{bottom:calc(58px + env(safe-area-inset-bottom))}
+    #hint{font-size:10px}
+  }
+  @media(max-height:500px){#home-intro p{display:none}#home-intro{bottom:32px}#home-drawer{max-height:calc(100dvh - 110px);top:72px}}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
     font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
   body.playing #ctl{display:flex}
@@ -133,12 +166,6 @@
   #tune .prow{display:flex;align-items:center;gap:6px}
   #tune .prow button{flex:1;padding:6px 0}
   @media (max-width:600px),(max-height:600px){
-    #gate{box-sizing:border-box;justify-content:flex-start;overflow-y:auto;padding:calc(80px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));gap:18px}
-    #gate>*{flex-shrink:0}
-    #gate .sub{text-align:center;letter-spacing:.08em;line-height:1.5}
-    #cards{padding:0;gap:12px;width:100%}
-    .card{box-sizing:border-box;width:min(100%,320px)}
-    #qual{flex-wrap:wrap;justify-content:center}
     #ctl{flex-wrap:wrap;gap:10px;padding:16px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
     #bar{min-width:100px}#tm{font-size:10px;letter-spacing:0}#vol{width:70px}
     #pp,#stopb{width:44px;height:44px}
@@ -164,28 +191,68 @@
 </head>
 <body>
 <div id="wrap"><canvas id="c"></canvas></div>
-<div id="gate">
-  <div class="t">BICYCLE<br>DAY</div>
-  <div id="cards">
-    <div class="card" id="c-gen"><b>Generative</b><span>Up to 5 images (✕ removes, + adds; also in Settings while playing). The app composes its own music and the picture follows it.</span>
-      <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">hardcore</button></div>
-      <div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
-      <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
-      <div class="imgs" id="gimgs"></div>
-      <button class="hcb" id="hcgen" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="playgen">▶ Play</button></div>
-    <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
-      <i class="warn" id="streamwarn"></i><button class="hcb" id="hcstream" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="tabmode">● Listen to a tab</button></div>
-    <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
-      <button class="hcb" id="hclive" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="micmode">● Use the microphone</button></div>
-    <div class="card" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn" id="localnote"></i>
-      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button class="hcb" id="hclocal" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="playlocal" disabled>▶ Play</button></div>
-  </div>
-  <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
-  <div id="lvl" title="How much you steer the picture: Auto = the engine alone; Assisted = engine + effect keys that fade by themselves; Manual = quiet base + only what you toggle. Key M."><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
-  <div class="sub" id="qnote"></div>
-  <div class="sub"><button id="helpbtn">Keyboard shortcuts (H)</button></div>
-  <div class="sub" id="hint">Loading…</div>
-</div>
+<main id="gate">
+  <div id="home-art"><img src="__HOME_LOGO__" width="1672" height="941" alt="Bicycle Day"></div>
+  <nav id="home-nav" aria-label="Main menu">
+    <button class="brand" id="home-brand" aria-label="Close menu">BICYCLE<span>DAY</span></button>
+    <div id="home-menu">
+      <button data-home="play" aria-controls="home-play" aria-expanded="false">Play</button>
+      <button data-home="images" aria-controls="home-images" aria-expanded="false">Images</button>
+      <button data-home="settings" aria-controls="home-settings" aria-expanded="false">Settings</button>
+      <button id="helpbtn">Help</button>
+    </div>
+  </nav>
+  <div id="home-intro"><p>Sound into colour. A trip at your own pace.</p><button id="home-start" aria-controls="home-play" aria-expanded="false">Choose your sound <span aria-hidden="true">↗</span></button></div>
+  <section id="home-drawer" aria-label="Setup" hidden>
+    <button id="home-close" aria-label="Close menu">✕</button>
+    <div id="home-play" hidden>
+      <h2>Choose your sound</h2><p>Four ways to start a trip.</p>
+      <div id="source" role="group" aria-label="Sound source">
+        <button data-source="gen" aria-pressed="true" aria-controls="c-gen">Generative</button>
+        <button data-source="local" aria-pressed="false" aria-controls="c-local">Local file</button>
+        <button data-source="stream" aria-pressed="false" aria-controls="c-stream">Tab audio</button>
+        <button data-source="live" aria-pressed="false" aria-controls="c-live">Microphone</button>
+      </div>
+      <div id="cards">
+        <div class="card" id="c-gen">
+          <p>Original music, composed by the app. Your images follow the sound.</p>
+          <div><span class="field">Length</span><div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div></div>
+          <details><summary>Music &amp; journey</summary>
+            <span class="field">Journey</span><div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">hardcore</button></div>
+            <span class="field">Music</span><div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
+          </details>
+          <button class="go" id="playgen" disabled>Start trip</button>
+        </div>
+        <div class="card" id="c-local" hidden>
+          <p>Pick an audio file. The app analyses it, then plays it with visuals.</p>
+          <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label>
+          <i class="warn" id="localnote" role="status"></i><button class="go" id="playlocal" disabled>Play file</button>
+        </div>
+        <div class="card" id="c-stream" hidden>
+          <p>Follow music in another tab. Choose a browser tab and enable “Share tab audio”.</p>
+          <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">Listen to a tab</button>
+        </div>
+        <div class="card" id="c-live" hidden>
+          <p>Let music in the room guide the picture through your microphone.</p>
+          <button class="go" id="micmode">Use microphone</button>
+        </div>
+      </div>
+    </div>
+    <div id="home-images" hidden>
+      <h2>Your images</h2><p>Use up to five images with any sound source.</p>
+      <div class="imgs" id="gimgs"></div><p>Select a thumbnail to use it. Add with +, remove with ✕, or drop images onto the page.</p>
+    </div>
+    <div id="home-settings" hidden>
+      <h2>Make it yours</h2><p>A few choices before you start. More controls are available during the trip.</p>
+      <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
+      <div id="lvl"><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
+      <p>Auto follows the music. Assisted adds your effect keys. Manual puts you in control; generated music uses a 20-minute waves piece.</p>
+      <button class="hcb" id="hcgen" title="Stronger visuals and strobe. Look only; music stays the same. Key N.">Hardcore: off</button>
+      <p id="qnote" role="status"></p>
+    </div>
+  </section>
+  <p id="hint" role="status">Loading…</p>
+</main>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
 <div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
@@ -1164,7 +1231,7 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
 function start() {
   if (playing || !ready || liveOn) return;
   if (CTRL && !LOC && !ARCSWAP) enterCtrl();   // manual + generated music
-  begin(0, true); playing = true; gate.classList.add('off'); document.body.classList.add('playing');
+  begin(0, true); playing = true; homeGate(false); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
   if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Space = surge  ·  K = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
   requestAnimationFrame(loop);
@@ -1184,7 +1251,7 @@ function loop() {
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
   requestAnimationFrame(loop);
 }
 // Transport follows pointer activity; settings only open by explicit click.
@@ -1222,7 +1289,7 @@ const toggleFullscreen = async () => {
 $('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
   if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
+  HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); homeGate(true); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
@@ -1263,6 +1330,7 @@ function tweakKey(e) {   // keyboard twins of the #tune sliders (non-controlled 
   return false;
 }
 addEventListener('keydown', e => {
+  if (e.code === 'Escape' && CT.helpOn) { ctrlHelpToggle(false); return; }
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
   if (e.code === 'KeyH' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { ctrlHelpToggle(); return; }
@@ -1369,7 +1437,7 @@ function drawProfile() {   // the arc's intensity curve, drawn behind the seek b
   if (SHOW) { x.strokeStyle = 'rgba(244,241,234,.7)'; x.fillStyle = '#fff'; x.font = '14px sans-serif'; x.lineWidth = 2;   // showcase: one tick + number per effect
     FX.forEach((_, i) => { const X = i / FX.length * w; x.beginPath(); x.moveTo(X, 0); x.lineTo(X, h); x.stroke(); x.fillText(i + 1, X + 3, 14); }); }
 }
-const updateHint = () => { if (ready) hint.textContent = `Choose a mode · generative: ${MIN} min, sound on`; };
+const updateHint = () => { if (ready) hint.textContent = ''; };
 const chips = [...document.querySelectorAll('#opts button')];
 chips.forEach(b => b.classList.toggle('on', b.dataset.arc === arcName));
 document.getElementById('opts').addEventListener('click', e => {
@@ -1432,7 +1500,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
   LIVE = newLive();
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99; AI.scene = null; AI.acc = 0;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
-  gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
+  homeGate(false); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
   requestAnimationFrame(liveLoop);
 }
 function liveStep(dt) {   // causal features from the current spectrum → intensity, tension, drop, state
@@ -1507,7 +1575,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  HCX = null; markHC(); resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); applyArc(); updateHint();
+  HCX = null; markHC(); resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
@@ -1638,18 +1706,53 @@ $('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
 $('lvl').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 $('lvls').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 setLevel(Q.has('level') ? Math.max(0, ['auto', 'assisted', 'manual'].indexOf(Q.get('level'))) : CTRL_URL ? 2 : [0, 1, 2].includes(lsGet('level')) ? lsGet('level') : 0, false, true);   // (a URL level is not saved)
+// Home uses only a CSS logo animation: no audio clock, render history or user image state.
+function homePanel(name, focus = false) {
+  const drawer = $('home-drawer'); drawer.hidden = !name;
+  ['play', 'images', 'settings'].forEach(n => {
+    $('home-' + n).hidden = n !== name;
+    document.querySelector('[data-home="' + n + '"]').setAttribute('aria-expanded', String(n === name));
+  });
+  $('home-start').setAttribute('aria-expanded', String(name === 'play'));
+  if (focus && name) $('home-close').focus();
+}
+function homeGate(open) {
+  gate.classList.toggle('off', !open); gate.inert = !open;
+  if (!open) homePanel(null);
+}
+document.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', () => {
+  homePanel(b.getAttribute('aria-expanded') === 'true' ? null : b.dataset.home);
+}));
+$('home-start').addEventListener('click', () => homePanel('play', true));
+$('home-close').addEventListener('click', () => {
+  const active = document.querySelector('[data-home][aria-expanded="true"]'); homePanel(null); active && active.focus();
+});
+$('home-brand').addEventListener('click', () => homePanel(null));
+$('source').addEventListener('click', e => {
+  const b = e.target.closest('[data-source]'); if (!b) return;
+  document.querySelectorAll('[data-source]').forEach(c => {
+    const selected = c === b; c.setAttribute('aria-pressed', String(selected)); $('c-' + c.dataset.source).hidden = !selected;
+  });
+});
+gate.addEventListener('click', e => { if (e.target === gate || e.target === $('home-intro')) homePanel(null); });
+gate.addEventListener('keydown', e => {
+  if (e.code === 'Escape' && CT.helpOn) { e.stopPropagation(); ctrlHelpToggle(false); }
+  else if (e.code === 'Escape' && !$('home-drawer').hidden) { e.stopPropagation(); $('home-close').click(); }
+  // Keep native button activation/navigation while choosing a source or setup.
+  else if (e.target.closest('button,summary,input,label')) e.stopPropagation();
+});
 addEventListener('load', () => {
   if (!gl) { hint.textContent = 'WebGL2 is not available in this browser'; return; }
   { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
   resize();
   loadPoster(IMG, async () => {
-    ready = true; updateHint(); drawProfile(); renderImgs();
+    ready = true; $('playgen').disabled = false; updateHint(); drawProfile(); renderImgs();
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
     if (dbg !== null) {   // silent still: step the feedback loop up to the requested time
-      gate.classList.add('off'); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
+      homeGate(false); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
       const fr = x => { if (LOC) localView(x); render(x, step, LOC ? LIVE.bn : 0, LOC ? LIVE.mn : 0, LOC ? LIVE.hn : 0); };
       for (; t < T; t += step) fr(t); fr(T);
     }
