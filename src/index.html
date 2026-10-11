@@ -61,7 +61,7 @@
   #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
   #home-art canvas,#home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;display:block}
   #home-art img{animation:home-breathe 36s ease-in-out infinite;animation-delay:5s;will-change:transform}
-  #home-art canvas{display:none}
+  #home-art canvas{display:none;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%)}
   @keyframes home-breathe{0%,50%,100%{transform:translate(0,0) scale(1);filter:hue-rotate(0deg)}25%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}75%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}}
   #gate.off #home-art img{animation-play-state:paused}
   #home-nav{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(24px + env(safe-area-inset-top)) max(32px,env(safe-area-inset-right)) 20px max(32px,env(safe-area-inset-left));z-index:2}
@@ -315,13 +315,13 @@ const HOME_STILL_END = 5;
 const HOME_SLIGHT_END = 15;
 const HOME_SLIGHT = 0.18;          // slight phase as a fraction of the gentle level
 const HOME_RAMP_DUR = 20;
-const HOME_WARP = 0.35;           // gentle warp strength
-const HOME_HUE_SPEED = 0.06;      // hue drift (rad/s)
-const HOME_PAL = 0.22;            // palette blend
-const HOME_BREATH = 0.15;        // breath
-const HOME_ABER = 0.18;          // aberration (param)
+const HOME_WARP = 0.14;           // gentle warp strength
+const HOME_HUE_SPEED = 0.07;      // hue sway speed (rad/s); the hue swings back and forth, it never runs away
+const HOME_PAL = 0.08;            // palette blend
+const HOME_BREATH = 0.08;        // breath
+const HOME_ABER = 0.1;          // aberration (param)
 const HOME_ZOOM_WOB = 0.02;       // tiny zoom wobble factor
-const HOME_FB = 0.08;            // weak feedback trails
+const HOME_FB = 0.02;            // weak feedback trails
 const HOME_ANCHOR = 0.06;        // faint source anchor
 const HOME_ROTT = 0.0;            // very slow rotation (kept 0 to stay readable)
 
@@ -786,7 +786,7 @@ function homeFrame(t) {
     kal: 0, fold: 6,
     fb: HOME_FB * gLevel,
     fbHue: .006 * gLevel,
-    hue: t * HOME_HUE_SPEED * gLevel,
+    hue: .7 * Math.sin(t * HOME_HUE_SPEED) * gLevel,
     pal: HOME_PAL * gLevel,
     side: 0, breath: HOME_BREATH * gLevel,
     melt: 0, zoom: 1 + HOME_ZOOM_WOB * gLevel * Math.sin(t * .2),
@@ -1984,7 +1984,7 @@ addEventListener('load', () => {
   resize();
   homeReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
   initHomeGL($('home-c'));
-  loadHomeLogo('__HOME_LOGO__', () => { if (!playing && !liveOn && !document.body.classList.contains('still')) startHomeLoop(); });
+  loadHomeLogo(document.querySelector('#home-art img').src, () => { if (!playing && !liveOn && !document.body.classList.contains('still')) startHomeLoop(); });
   loadPoster(IMG, async () => {
     ready = true; $('playgen').disabled = false; updateHint(); drawProfile(); renderImgs();
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
