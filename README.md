@@ -46,7 +46,7 @@ Keys work at any time while playing (no need to click first); **H** shows this l
 | H | help overlay |
 | J (hold) | strobe grid: 3-5 cells of a 4x4 grid flash white / dark / inverted at 8-14 Hz, the rest of the picture stays (also a held row in controlled mode) |
 | L | live-coding, cycles off / overlay / crazy: a terminal bottom-left that "types" the current values (~1 line/s, remembered); crazy = the text is part of the picture and goes through warp, kaleidoscope, tiles, trails, palette (`?code=0\|1\|2` forces it) |
-| B | bookmark this moment: downloads `bicycle-bd-<seed>-<sec>s.json` (state, render values, thumbnail) and keeps it in localStorage — give the file/ID to the developer |
+| B | bookmark this moment: downloads `bicycle-bd-<seed>-<sec>s.json` (state, render values, thumbnail) and a full-resolution `bicycle-bd-<seed>-<sec>s.png` and keeps it in localStorage — give the file/ID to the developer |
 | T / 1 2 3 | tiles on-off / tile mode (again = auto) |
 | Z / X | **effects down / up** (0 = original image, 100 % = normal, up to 150 %), same as the Effects slider |
 | Q W · E R · Y U · I O | kaleidoscope · tiles amount · trails · intensity: − / + by 10 % (Settings sliders) |

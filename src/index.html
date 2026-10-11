@@ -750,7 +750,7 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
   const ctrl = `<h3>Control level: ${LVL[CL]} (M cycles auto / assisted / manual)</h3>` + (CL ? `<div class="n">${CL === 1 ? 'Assisted: the engine keeps running, the keys below add an effect that fades out by itself after ' + ASSIST_T + ' s (held keys stay while held). Highlighted = on.' : 'Manual: a quiet base plus only what you toggle (stays on until switched off). Highlighted = on.'}</div>
     <div class="g">${CT_KEYS.map(row).join('')}${CL === 2 ? k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%') : k('Z / X', 'effects amount ' + Math.round(USER.fx * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom (no seek)')}${k('K / Enter', 'pause')}</div>` : '<div class="n">Auto: the engine alone; Q W / E R / Y U / I O / P / C / Z X are the Settings sliders below.</div>');
   $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
-    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding: off / overlay / crazy (text inside the picture)')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
+    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding: off / overlay / crazy (text inside the picture)')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json + a full-resolution .png in Downloads')}
     ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image (every level)')}${k('M', 'control level: auto / assisted / manual')}${k('N', 'hardcore look on / off (look only, not in manual)')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
     <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>Showcase: hover the right edge for the effect list, click one to jump to it</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
@@ -1252,7 +1252,8 @@ function takeSnapshot(t) {
   const json = JSON.stringify(snap, null, 1);
   try { navigator.clipboard.writeText(json).catch(() => {}); } catch (e) {}
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([json], { type: 'application/json' })); a.download = 'bicycle-' + id + '.json'; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  toast('Saved ' + id + ' · luma ' + snap.meanLuma, 4000);
+  cv.toBlob(b => { if (!b) return; const a2 = document.createElement('a'); a2.href = URL.createObjectURL(b); a2.download = 'bicycle-' + id + '.png'; setTimeout(() => { a2.click(); setTimeout(() => URL.revokeObjectURL(a2.href), 1000); }, 400); }, 'image/png');   // (the click is delayed: browsers drop two downloads in the same instant)   // full-resolution frame next to the JSON (toBlob copies the drawing buffer at call time, i.e. right after render())
+  toast('Saved ' + id + ' (.json + .png) · luma ' + snap.meanLuma, 4000);
 }
 let saveT = 0; const autosave = () => { clearTimeout(saveT); saveT = setTimeout(() => lsSet('last', snapTweaks()), 300); };   // the panel remembers where you left it
 $('tune').addEventListener('input', autosave); $('tune').addEventListener('click', autosave);
@@ -1409,6 +1410,7 @@ function liveLoop() {
   if (!liveOn) return;
   const t = ac.currentTime - liveT0, dt = clamp(t - lastT, 0, .1); lastT = t;
   liveStep(dt); render(t, dt, LIVE.bn, LIVE.mn, LIVE.hn);
+  if (snapWant) { snapWant = false; takeSnapshot(t); }
   $('lstate').textContent = LIVE.state; $('lbar').firstElementChild.style.width = (LIVE.I * 100) + '%';
   analyser.getFloatTimeDomainData(TD);   // input meter: RMS in dBFS (smoothed) and clipping
   let sq = 0, pk = 0; for (let i = 0; i < TD.length; i++) { const v = TD[i]; sq += v * v; if (Math.abs(v) > pk) pk = Math.abs(v); }
