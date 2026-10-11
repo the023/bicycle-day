@@ -359,11 +359,14 @@ void main(){ vec2 p=vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position=vec4(p*
 const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev,uTex2,uCode; uniform float uImgMix,uCodeAmt;
-vec4 texI(sampler2D t,vec2 uv){ return uImgMix<=0.?texture(t,uv):mix(texture(t,uv),texture(uTex2,uv),uImgMix); }   // crossfade between two source images (display pass of the source only, not the feedback)
 uniform vec2 uRes;
 uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot,uStretch,uTunnel;
 uniform float uWarpN,uFx,uKali,uJulia;
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
+vec2 gX=vec2(0.),gY=vec2(0.); bool gOn=false;   // tunnel only: analytic screen gradients of the sampling coordinate, so the mip level never sees the ring wrap
+vec4 texI(sampler2D t,vec2 uv){
+  if(gOn){ vec2 ax=gX*vec2(1./uAspect,1.), ay=gY*vec2(1./uAspect,1.); return uImgMix<=0.?textureGrad(t,uv,ax,ay):mix(textureGrad(t,uv,ax,ay),textureGrad(uTex2,uv,ax,ay),uImgMix); }
+  return uImgMix<=0.?texture(t,uv):mix(texture(t,uv),texture(uTex2,uv),uImgMix); }   // crossfade between two source images (display pass of the source only, not the feedback)
 out vec4 o;
 const float TAU=6.28318530718;
 vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);return c*co+cross(k,c)*s+k*dot(k,c)*(1.-co);}
@@ -408,13 +411,20 @@ vec3 tx(vec2 p){
   float d=uAber*.012; vec2 dir=normalize(p+1e-4);
   return vec3(texI(uTex,uv+dir*d).r,texI(uTex,uv).g,texI(uTex,uv-dir*d).b);
 }
-// EFFECT tunnel: log-polar infinite zoom, the picture rings itself inward forever (with a slow twist); mixed in by uTunnel
-vec2 tunnelLogPolar(vec2 p){
-  float r=length(p)+1e-4, lr=log(r), a=atan(p.y,p.x);
-  float ph=fract((lr-uT*.22)/.7+a*0.0);
-  float r2=.07*exp(ph*1.95);
-  float a2=a+lr*.35+uT*.05;
-  return mix(p,r2*vec2(cos(a2),sin(a2)),uTunnel);
+// everything between the coordinate map and the source anchor for ONE coordinate p: tiles, styles, kaleidoscope + warp, source sample, code text, palette, hue
+vec3 layer(vec2 p,out vec4 cd){
+  float n0=floor(uKalN),f=fract(uKalN);
+  if(uTile>.001) p=tile(p);
+  if(uKali>.001) p=mix(p,kaliFold(p),uKali);
+  if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
+  vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
+  vec3 c=mix(tx(pa),tx(pb),f);
+  cd=vec4(0.);
+  if(uCodeAmt>.001){ cd=mix(codeS(pa),codeS(pb),f); float ca=cd.a*uCodeAmt; c=mix(c*(1.-.4*ca),cd.rgb,ca); }   // the code text is part of the SOURCE: everything below (palette, hue, trails, mono) acts on it; never above 1, so the feedback stays stable
+  float lum=dot(c,vec3(.299,.587,.114));
+  vec3 pal=.5+.5*cos(TAU*(lum*uPalC+uHue*.2*uHueAmt+uPalD));
+  c=mix(c,pal*(.55+.6*lum),uPal*.85);
+  return hueRot(c,(uHue+length(p)*1.5*uPal)*uHueAmt);
 }
 void main(){
   vec2 fc=gl_FragCoord.xy/uRes;
@@ -425,19 +435,21 @@ void main(){
   vec2 p=rot(pr/uZoom,uRot);
   p*=1.+uBreath*.05*sin(length(p)*9.-uT*1.6);
   p*=1.-uPulse*.04;
-  float n0=floor(uKalN),f=fract(uKalN);
-  if(uTunnel>.001) p=tunnelLogPolar(p);
-  if(uTile>.001) p=tile(p);
-  if(uKali>.001) p=mix(p,kaliFold(p),uKali);
-  if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
-  vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
-  vec3 c=mix(tx(pa),tx(pb),f);
-  vec4 cd=vec4(0.);
-  if(uCodeAmt>.001){ cd=mix(codeS(pa),codeS(pb),f); float ca=cd.a*uCodeAmt; c=mix(c*(1.-.4*ca),cd.rgb,ca); }   // the code text is part of the SOURCE: everything below (palette, hue, trails, mono) acts on it; never above 1, so the feedback stays stable
-  float lum=dot(c,vec3(.299,.587,.114));
-  vec3 pal=.5+.5*cos(TAU*(lum*uPalC+uHue*.2*uHueAmt+uPalD));
-  c=mix(c,pal*(.55+.6*lum),uPal*.85);
-  c=hueRot(c,(uHue+length(p)*1.5*uPal)*uHueAmt);
+  vec3 c; vec4 cd;
+  if(uTunnel>.001){
+    // EFFECT tunnel: log-polar infinite zoom, the picture rings itself inward forever (with a slow twist); mixed in by uTunnel.
+    // The ring phase wraps (fract), so two layers one ring apart are cross-faded across the wrap (no hard seam), and each gets analytic
+    // gradients of its sampling coordinate (hardware derivatives would explode at the wrap and pick the blockiest mip level)
+    vec2 dpx=dFdx(p), dpy=dFdy(p);
+    float r=length(p)+1e-4, r2=r*r, lr=log(r), a2=atan(p.y,p.x)+lr*.35+uT*.05, u=(lr-uT*.22)/.7, fr=fract(u), w=smoothstep(.6,1.,fr);
+    vec2 e=vec2(cos(a2),sin(a2)), nn=vec2(-e.y,e.x);
+    float dlx=dot(p,dpx)/r2, dly=dot(p,dpy)/r2, dax=(p.x*dpx.y-p.y*dpx.x)/r2+.35*dlx, day=(p.x*dpy.y-p.y*dpy.x)/r2+.35*dly;
+    float rA=.07*exp(fr*1.95), rB=rA*exp(-1.95); vec4 cdA,cdB;
+    gOn=true;
+    gX=mix(dpx,rA*(1.95*dlx/.7*e+dax*nn),uTunnel); gY=mix(dpy,rA*(1.95*dly/.7*e+day*nn),uTunnel); vec3 cA=layer(mix(p,rA*e,uTunnel),cdA);
+    gX=mix(dpx,rB*(1.95*dlx/.7*e+dax*nn),uTunnel); gY=mix(dpy,rB*(1.95*dly/.7*e+day*nn),uTunnel); vec3 cB=layer(mix(p,rB*e,uTunnel),cdB);
+    gOn=false; c=mix(cA,cB,w); cd=mix(cdA,cdB,w);
+  } else c=layer(p,cd);
   // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
   // EFFECT source-stretch: the ghost is elongated along a slowly turning axis, sheared, swayed and swirled (uStretch = strength)
   vec2 ps=rot(p0/uSrcZ,uSrcRot);
