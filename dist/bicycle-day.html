@@ -306,7 +306,7 @@ vec2 kaliFold(vec2 p){   // Kaliset-like: fold |p+1|-1, inversion, scale, repeat
   return q*.35;
 }
 vec2 juliaWarp(vec2 p){   // a few Julia iterations: the picture is smeared along the orbit
-  vec2 z=p*1.6, c=vec2(-.74+.08*sin(uT*.07),.12+.1*cos(uT*.09));
+  vec2 z=p*.7+vec2(.1*sin(uT*.04),-.6+.05*cos(uT*.05)), c=vec2(-.74+.08*sin(uT*.07),.12+.1*cos(uT*.09));   // zoomed in on the set's lower border (seen up close), drifting slowly along it
   for(int i=0;i<6;i++) z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;
   return z*.35/(1.+.1*dot(z,z));
 }
