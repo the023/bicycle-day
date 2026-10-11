@@ -31,7 +31,7 @@
   #help .g div{opacity:.8}#help .g div.off{opacity:.55}#help .g div.on{opacity:1;color:#ffd60a}
   #help kbd{display:inline-block;min-width:26px;padding:1px 7px;margin-right:8px;text-align:center;border:1px solid #f4f1ea77;border-radius:5px;font:inherit}
   #help .n{font-weight:400;opacity:.7;letter-spacing:.04em}
-  body.ctrl #bar,body.ctrl #tm{display:none}
+  body.ctrl #bar,body.ctrl #tm{display:none}   /* (manual level with the generated 20 min piece: nothing to seek) */
   #thumbs{position:fixed;left:50%;bottom:64px;transform:translateX(-50%);display:none;gap:6px;z-index:6;opacity:0;transition:opacity .4s;pointer-events:none}
   body.ui #thumbs{opacity:1;pointer-events:auto}
   body.playing.multi #thumbs,body.live.multi #thumbs{display:flex}
@@ -58,11 +58,11 @@
   #gate .sub{opacity:.55;font-size:clamp(10px,1vw,14px)}
   #opts,#dur,#mus{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
   @media (max-height:800px){#gate{gap:18px}#gate .t{font-size:clamp(30px,6vw,76px)}}
-  #qual{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
-  #qual span{opacity:.6;margin-right:4px}
-  #qual button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
+  #qual,#lvl{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
+  #qual span,#lvl span{opacity:.6;margin-right:4px}
+  #qual button,#lvl button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
   #helpbtn{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
-  #qual button.on{background:#f4f1ea;color:#05030c}
+  #qual button.on,#lvl button.on{background:#f4f1ea;color:#05030c}
   #qnote{font-size:10px!important;letter-spacing:.1em!important;text-transform:none!important;color:#ffd60a;min-height:12px}
   #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
   .card{width:230px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 16px;border:1px solid #f4f1ea33;border-radius:18px;text-align:center;letter-spacing:.08em;text-transform:none;background:#ffffff08}
@@ -162,8 +162,6 @@
       <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
       <div class="imgs" id="gimgs"></div>
       <button class="go" id="playgen">▶ Play</button></div>
-    <div class="card" id="c-ctrl"><b>Controlled</b><span>You drive the picture from the keyboard: toggle effects, moods, palettes. Generated music underneath (not the stream / mic / local modes). H shows the keys.</span>
-      <button class="go" id="playctrl">▶ Play</button></div>
     <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
       <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">● Listen to a tab</button></div>
     <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
@@ -172,6 +170,7 @@
       <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button id="hclocal" title="Hardcore look: strobe grid, surges, big punches">Hardcore: off</button><button class="go" id="playlocal" disabled>▶ Play</button></div>
   </div>
   <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
+  <div id="lvl" title="How much you steer the picture: Auto = the engine alone; Assisted = engine + effect keys that fade by themselves; Manual = quiet base + only what you toggle. Key M."><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
   <div class="sub" id="qnote"></div>
   <div class="sub"><button id="helpbtn">Keyboard shortcuts (H)</button></div>
   <div class="sub" id="hint">Loading…</div>
@@ -188,6 +187,7 @@
   <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
   <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
+  <div class="tmodes" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Control: Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
   <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button>
@@ -209,8 +209,8 @@
 const Q = new URLSearchParams(location.search);
 let MIN = parseFloat(Q.get('min')) || 5, TOTAL = MIN * 60;
 const SHOW = Q.get('showcase') ? { seg: Math.max(2, parseFloat(Q.get('seg')) || 10) } : null;   // ?showcase=1[&seg=<s>]: one effect at a time on a plain image (see FX)
-let CTRL = false;   // controlled mode (?ctrl=1 or the Controlled card): the user toggles the effects from the keyboard (see CT)
-const CTRL_URL = Q.get('ctrl') !== null && Q.get('ctrl') !== '0';
+let CL = 0, CTRL = false, ARCSWAP = false;   // control level (0 auto, 1 assisted, 2 manual; any music source); CTRL = manual (the old 'controlled mode'); ARCSWAP = generated music runs the 20 min 'waves' base (see CT)
+const CTRL_URL = Q.get('ctrl') !== null && Q.get('ctrl') !== '0';   // ?ctrl=1 = alias for level manual (?level=auto|assisted|manual)
 const cv = document.getElementById('c'), gate = document.getElementById('gate'), hint = document.getElementById('hint');
 const gl = cv.getContext('webgl2', { antialias: false, alpha: false });
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
@@ -677,72 +677,83 @@ function showcaseParams(p, t) {   // pure function of t: neutral baseline (plain
   FX[i].set(p, k); p.fbHue = (.006 + .02 * p.pal) * p.ha; p.zoom *= USER.zoom;
   if (i !== fxShown) { fxShown = i; $('fxlabel').textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; fxPanelMark(i); }
 }
-/* ════════════════════════ CONTROLLED MODE (?ctrl=1 or the Controlled card) ════════════════════════
-   The engine's P is replaced by a quiet base (small breath, heartbeat, drift) and the effects the user has switched on are layered on top.
-   Each FX entry runs on a scratch copy of the base and only its difference is added, so effects stack. Every effect has an eased envelope
-   (0.5-0.8 s in/out); strobe is a hard, momentary (held) exception and only reaches the display pass. Not a pure function of t (live input). */
+/* ════════════════════════ CONTROL LEVELS (key M, chips on the home screen / in Settings, ?level=auto|assisted|manual, ?ctrl=1 = manual) ════════════════════════
+   Any music source (generated, local, stream, mic). auto = engine only (slider-twin keys). assisted = the engine runs as usual and the effect keys (CT_KEYS) add their
+   delta on top of its P; a toggled effect fades out by itself after ASSIST_T s (held keys stay while held). manual = the engine's P is replaced by a quiet base (small
+   breath, heartbeat, drift) + only what the user toggled (stays on until switched off). Each FX entry runs on a scratch copy of the QUIET base and only its difference
+   is added, so effects stack; every effect has an eased envelope (0.5-0.8 s in/out); strobe is a hard, momentary (held) exception and only reaches the display pass.
+   Not a pure function of t (live input). */
 const CT_KEYS = [   // [key code, key cap, label, FX name, mode ('t' toggle, 'h' held), ease in s, ease out s]
   ['KeyQ', 'Q', 'warp', 'warp', 't', .6, .6], ['KeyW', 'W', 'kaleidoscope', 'kaleidoscope: 6 folds', 't', .7, .7], ['KeyE', 'E', 'trails', 'feedback trails', 't', .8, .8],
   ['KeyR', 'R', 'melt', 'melt', 't', .8, .8], ['KeyY', 'Y', 'tiles', 'tiles: checker', 't', .5, .5], ['KeyU', 'U', 'Kali', 'style: Kali', 't', .7, .7],
   ['KeyI', 'I', 'Julia', 'style: Julia', 't', .7, .7], ['KeyO', 'O', 'tunnel', 'tunnel', 't', .8, .8], ['KeyP', 'P', 'stretch', 'source stretch', 't', .8, .8],
   ['KeyA', 'A', 'dark', 'mood: dark', 't', .6, .6], ['KeyS', 'S', 'black and white', 'mood: black and white', 't', .6, .6], ['KeyD', 'D', 'blaze', 'mood: blaze', 't', .5, .8],
   ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['KeyJ', 'J', 'strobe grid (hold)', 'strobe grid', 'h', 0, 0], ['Space', 'Space', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
-].map(([code, key, label, fx, mode, rin, rout]) => ({ code, key, label, fx: FX.find(f => f.name === fx), mode, rin, rout, on: false, r: 0, mood: /^mood/.test(fx) }));
-const CT = { I: .5, Ie: .5, pal: 0, palK: 0, c: PALS[0].c.slice(), d: PALS[0].d.slice(), ha: 1, held: new Set(), helpOn: false };   // pal 0 = original colours, 1..6 = PALS[0..5]
-function ctrlParams(P, t, dt) {
-  const keep = { pulse: P.pulse, rot: P.rot - USER.rot, hue: P.hue, srcZ: P.srcZ, srcRot: P.srcRot };
-  Object.assign(P, { warp: .12, kal: 0, fold: 6, fb: 0, pal: 0, side: 0, breath: 1.2, melt: 0, ab: .1, bright: 1, anchor: 0, palC: CT.c, palD: CT.d, ha: CT.ha, stretch: 0, tun: 0, mono: 0, tile: 0, tileN: 12, tileMode: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0 });
-  P.pulse = keep.pulse * .6; P.hue = keep.hue; P.srcZ = keep.srcZ; P.srcRot = keep.srcRot;
+].map(([code, key, label, fx, mode, rin, rout]) => ({ code, key, label, fx: FX.find(f => f.name === fx), mode, rin, rout, on: false, r: 0, age: 0, mood: /^mood/.test(fx) }));
+const ASSIST_T = 4.5;   // assisted level: a toggled effect switches itself off after this many seconds
+const CT = { I: .5, Ie: .5, pal: 0, palK: 0, palAge: 0, c: PALS[0].c.slice(), d: PALS[0].d.slice(), ha: 1, held: new Set(), helpOn: false };   // pal 0 = original colours, 1..6 = PALS[0..5]
+const QUIET = { warp: .12, kal: 0, fold: 6, fb: 0, pal: 0, side: 0, breath: 1.2, melt: 0, ab: .1, bright: 1, anchor: 0, stretch: 0, tun: 0, mono: 0, tile: 0, tileN: 12, tileMode: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0 };
+function ctrlParams(P, t, dt) {   // level assisted (CL 1): add the effects' deltas to the engine's P; level manual (CL 2): replace P by the quiet base first
+  const as = CL === 1, keep = { pulse: P.pulse, rot: P.rot - USER.rot, hue: P.hue, srcZ: P.srcZ, srcRot: P.srcRot };
+  const qb = { ...P, ...QUIET, palC: CT.c, palD: CT.d, ha: CT.ha, tilt: [0, 0] };   // the scratch every effect runs on (the same numbers P gets in manual)
   CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
-  USER.zoom = clamp(USER.zoom, .5, 2.5); P.rot = keep.rot * .5 + USER.rot;
-  P.zoom = USER.zoom * (1 + .015 * Math.sin(t * .23)); P.tilt = [.04 * Math.sin(t * .11), .04 * Math.cos(t * .087)];
+  USER.zoom = clamp(USER.zoom, .5, 2.5);
+  if (!as) {
+    Object.assign(P, QUIET, { palC: CT.c, palD: CT.d, ha: CT.ha }); P.pulse = keep.pulse * .6; P.hue = keep.hue; P.srcZ = keep.srcZ; P.srcRot = keep.srcRot;
+    P.rot = keep.rot * .5 + USER.rot; P.zoom = USER.zoom * (1 + .015 * Math.sin(t * .23)); P.tilt = [.04 * Math.sin(t * .11), .04 * Math.cos(t * .087)];
+  }
   CT.Ie += (CT.I - CT.Ie) * (1 - Math.exp(-dt / .25));
-  const S = .4 + 1.2 * CT.Ie, base = { ...P, tilt: [0, 0] };
+  const S = as ? 1 : .4 + 1.2 * CT.Ie, pal0 = P.pal;
   for (const e of CT_KEYS) {
+    if (as && e.mode === 't' && e.on && (e.age += dt) > ASSIST_T) e.on = false;
     const strobe = e.rin === 0;   // held hard effects (strobe, strobe grid): on / off, no easing
     e.r = strobe ? (e.on ? 1 : 0) : clamp(e.r + (e.on ? dt / Math.max(.05, e.rin) : -dt / Math.max(.05, e.rout)));
     if (e.r <= 0) continue;
-    const q = { ...base, tilt: [0, 0] }; e.fx.set(q, strobe ? 1 : smooth(0, 1, e.r) * (e.mood ? 1 : S));
+    const q = { ...qb, tilt: [0, 0] }, q0 = { ...qb, tilt: [0, 0] }; e.fx.set(q, strobe ? 1 : smooth(0, 1, e.r) * (e.mood ? 1 : S));
+    if (as) e.fx.set(q0, 0);   // assisted: the delta is measured from the effect at rest, so a fading effect never leaves a quiet-base offset in the engine's values
+    const z = as ? q0 : qb;
     for (const k in q) {
-      if (k === 'zoom' || k === 'srcZ') P[k] *= q[k] / base[k];
+      if (k === 'zoom' || k === 'srcZ') P[k] *= q[k] / z[k];
       else if (k === 'tilt') P.tilt = [P.tilt[0] + q.tilt[0], P.tilt[1] + q.tilt[1]];
-      else if (typeof q[k] === 'number') { if (q[k] !== base[k]) P[k] += q[k] - base[k]; }
-      else if (q[k] !== base[k] && k !== 'palC' && k !== 'palD') P[k] = q[k];
+      else if (typeof q[k] === 'number') { if (q[k] !== z[k]) P[k] += q[k] - z[k]; }
+      else if (q[k] !== z[k] && k !== 'palC' && k !== 'palD') P[k] = q[k];
     }
-    if (e.fx.name === 'tiles: checker') P.tileMode = USER.force >= 0 ? USER.force : 0;
+    if (e.fx.name === 'tiles: checker' && (!as || USER.force >= 0)) P.tileMode = USER.force >= 0 ? USER.force : 0;
   }
-  // palette (C): original colours, then the 6 palettes; colours ease, the amount fades
+  // palette (C): original colours, then the 6 palettes; colours ease, the amount fades (assisted: from the engine's colours, and it lets go by itself)
   const ez = 1 - Math.exp(-dt / .5), pi = CT.pal - 1;
+  if (as && CT.pal && (CT.palAge += dt) > ASSIST_T) CT.pal = 0;
   CT.palK += ((CT.pal ? .8 * Math.min(1.3, S) : 0) - CT.palK) * ez;
   if (CT.pal) { for (let i = 0; i < 3; i++) { CT.c[i] += (PALS[pi].c[i] - CT.c[i]) * ez; CT.d[i] += (PALS[pi].d[i] - CT.d[i]) * ez; } CT.ha += (PALS[pi].ha - CT.ha) * ez; }
-  P.pal = clamp(P.pal + CT.palK); P.palC = CT.c; P.palD = CT.d; P.ha = CT.ha;
-  P.fbHue = (.006 + .02 * P.pal) * P.ha;
+  P.pal = clamp(P.pal + CT.palK);
+  if (as) { const w = clamp(CT.palK * 2); if (w > 0) { P.palC = P.palC.map((v, i) => lerp(v, CT.c[i], w)); P.palD = P.palD.map((v, i) => lerp(v, CT.d[i], w)); P.ha = lerp(P.ha, CT.ha, w); } P.fbHue = USER.col === 1 ? 0 : (.006 + .02 * P.pal) * P.ha; }
+  else { P.palC = CT.c; P.palD = CT.d; P.ha = CT.ha; P.fbHue = (.006 + .02 * P.pal) * P.ha; }
   for (const k of ['tile', 'tun', 'stretch', 'kali', 'julia', 'dark', 'blaze', 'mono', 'strobe', 'cells']) P[k] = clamp(P[k]);
   P.fb = clamp(P.fb, 0, .9);
 }
 function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when CTRL, then the keys common to all modes
   const row = e => `<div class="${e.on ? 'on' : ''}"><kbd>${e.key}</kbd>${e.label}</div>`, k = (key, txt, on) => `<div class="${on ? 'on' : ''}"><kbd>${key}</kbd>${txt}</div>`;
-  const ctrl = CTRL ? `<h3>Controlled mode (highlighted = on)</h3>
-    <div class="g">${CT_KEYS.map(row).join('')}${k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom')}${k('Enter', 'pause')}</div>` : '';
+  const ctrl = `<h3>Control level: ${LVL[CL]} (M cycles auto / assisted / manual)</h3>` + (CL ? `<div class="n">${CL === 1 ? 'Assisted: the engine keeps running, the keys below add an effect that fades out by itself after ' + ASSIST_T + ' s (held keys stay while held). Highlighted = on.' : 'Manual: a quiet base plus only what you toggle (stays on until switched off). Highlighted = on.'}</div>
+    <div class="g">${CT_KEYS.map(row).join('')}${CL === 2 ? k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%') : k('Z / X', 'effects amount ' + Math.round(USER.fx * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom (no seek)')}${k('K / Enter', 'pause')}</div>` : '<div class="n">Auto: the engine alone; Q W / E R / Y U / I O / P / C / Z X are the Settings sliders below.</div>');
   $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
     <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding: off / overlay / crazy (text inside the picture)')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
-    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
+    ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image (every level)')}${k('M', 'control level: auto / assisted / manual')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
     <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>Showcase: hover the right edge for the effect list, click one to jump to it</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
-    <div class="n">In live / mic mode only F, Esc, H, L, B, T, 1-3, the image keys and the slider keys (Z X Q W E R Y U I O P C) apply. Click anywhere to close.</div></div>`;
+    <div class="n">In live / mic mode only F, Esc, H, M, L, B, T, 1-3, the image keys and the slider / effect keys apply. Click anywhere to close.</div></div>`;
 }
 const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
   CT.helpOn = on ?? !CT.helpOn; $('help').classList.toggle('on', CT.helpOn); if (CT.helpOn) ctrlHelp(); };
-function ctrlKey(e) {   // returns true when the key belongs to controlled mode
+function ctrlKey(e) {   // levels assisted / manual: returns true when the key belongs to the effect keys
   const el = CT_KEYS.find(x => x.code === e.code || (e.code === 'KeyT' && x.code === 'KeyY'));
   if (el) {
     e.preventDefault(); if (e.repeat) return true;
-    if (el.mode === 't') { el.on = !el.on; toast(el.label + (el.on ? ' on' : ' off'), 1200); } else el.on = true;
+    if (el.mode === 't') { el.on = !el.on; el.age = 0; toast(el.label + (el.on ? (CL === 1 ? ' on (fades in ' + ASSIST_T + ' s)' : ' on') : ' off'), 1200); } else el.on = true;
     if (CT.helpOn) ctrlHelp(); return true;
   }
+  if ((e.code === 'KeyZ' || e.code === 'KeyX') && CL === 1) return false;   // assisted: Z / X stay the global Effects amount (tweakKey)
   if (e.code === 'KeyZ' || e.code === 'KeyX') { CT.I = clamp(Math.round((CT.I + (e.code === 'KeyX' ? .1 : -.1)) * 10) / 10); toast('Intensity ' + Math.round(CT.I * 100) + '%', 1200); }
-  else if (e.code === 'KeyC') { CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); }
-  else if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: add more in Settings', 2000); }
+  else if (e.code === 'KeyC') { if (CL === 1 && !CT.pal && CT.palK < .02 && lastP) { CT.c = lastP.palC.slice(); CT.d = lastP.palD.slice(); CT.ha = lastP.ha; } CT.palAge = 0; CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); }
   else if (e.code === 'KeyH') ctrlHelpToggle();
   else if (e.code === 'KeyK' || e.code === 'Enter') togglePause();
   else if (/^Arrow(Up|Down|Left|Right)$/.test(e.code)) CT.held.add(e.code);
@@ -751,12 +762,19 @@ function ctrlKey(e) {   // returns true when the key belongs to controlled mode
 }
 addEventListener('keyup', e => { CT.held.delete(e.code); if (e.code === 'KeyJ') GRID.held = false; const el = CT_KEYS.find(x => x.code === e.code && x.mode === 'h'); if (el) el.on = false; });
 addEventListener('blur', () => { CT.held.clear(); GRID.held = false; CT_KEYS.forEach(x => { if (x.mode === 'h') x.on = false; }); });
-function leaveCtrl() {   // back to the normal generative setup
-  if (!CTRL) return; CTRL = false; document.body.classList.remove('ctrl'); ctrlHelpToggle(false); TOTAL = MIN * 60; applyArc(); drawProfile();
+function resetFx() { CT.held.clear(); GRID.held = false; CT.I = CT.Ie = .5; CT.pal = 0; CT.palK = 0; CT.palAge = 0; CT_KEYS.forEach(x => { x.on = false; x.r = 0; x.age = 0; }); }   // Esc / stop / level change: no held key or effect survives
+function leaveCtrl() {   // stop: back to the normal generative setup (undo the 20 min 'waves' base)
+  resetFx(); if (!ARCSWAP) return; ARCSWAP = false; document.body.classList.remove('ctrl'); TOTAL = MIN * 60; applyArc(); drawProfile();
 }
-function enterCtrl() {   // sound = a long 'waves' piece underneath (it does not react to the keys); the picture ignores the arc
-  CTRL = true; document.body.classList.add('ctrl'); TOTAL = 20 * 60; setArc('waves');
-  CT.I = CT.Ie = .5; CT.pal = 0; CT.palK = 0; CT_KEYS.forEach(x => { x.on = false; x.r = 0; });
+function enterCtrl() {   // manual + generated music: sound = a long 'waves' piece underneath (it does not react to the keys); the picture ignores the arc
+  ARCSWAP = true; document.body.classList.add('ctrl'); TOTAL = 20 * 60; setArc('waves'); resetFx();
+}
+const LVL = ['Auto', 'Assisted', 'Manual'];
+function setLevel(l, save = true, quiet = false) {
+  if (SHOW) l = 0; CL = l; CTRL = l === 2; resetFx(); ctrlHelpToggle(CT.helpOn);
+  if (save) lsSet('level', l);
+  document.querySelectorAll('#lvl button,#lvls button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
+  if (!quiet) toast('Control: ' + LVL[l] + ['  ·  engine only, Z X Q W E R Y U I O P C are the sliders', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500);
 }
 // live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
 // overlay = DOM box bottom-left; crazy = the same text drawn on a 2D canvas that FS_SCENE mixes into the SOURCE sampling (uCode), so warp, kaleidoscope, tiles, trails, palette all deform it.
@@ -868,8 +886,8 @@ function render(t, dt, bass, mid = 0, hi = 0) {
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(USER.col === 2 ? 1 : 0, md.bw), tile, tileN, tileMode,
     kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: HC ? smooth(.5, .7, sg) : 0 };
   if (USER.fx !== 1) { const f = USER.fx; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
-  if (SHOW) showcaseParams(P, t); else if (CTRL && !LIVE) ctrlParams(P, t, dt);
-  if (GRID.held) P.cells = 1;   // J held (non-controlled modes)
+  if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
+  if (GRID.held) P.cells = 1;   // J held (level auto)
   lastP = P;   // for the B snapshot
   codeFeed(P, { scene, palI: Q.has('pal') ? +Q.get('pal') : palIdx(scene), lead: leadTile, t }, dt);
   // pass 1 → offscreen (with feedback from the previous frame)
@@ -1060,9 +1078,10 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
 }
 function start() {
   if (playing || !ready || liveOn) return;
+  if (CTRL && !LOC && !ARCSWAP) enterCtrl();   // manual + generated music
   begin(0, true); playing = true; gate.classList.add('off'); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
-  if (CTRL) toast('Controlled mode  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Space = surge  ·  K = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
+  if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Space = surge  ·  K = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
   requestAnimationFrame(loop);
 }
 function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); } }
@@ -1152,18 +1171,20 @@ function tweakKey(e) {   // keyboard twins of the #tune sliders (non-controlled 
 addEventListener('keydown', e => {
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
-  if (e.code === 'KeyH' && !CTRL && !e.ctrlKey && !e.metaKey && !e.altKey) { ctrlHelpToggle(); return; }
+  if (e.code === 'KeyH' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { ctrlHelpToggle(); return; }
   if (e.code === 'Escape') { if (CT.helpOn) { ctrlHelpToggle(false); return; } if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
   if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // mark this moment ("bad")
   if (e.code === 'KeyL' && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) codeToggle(); return; }   // live-coding overlay, every mode
-  if (CTRL && !liveOn && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
+  if (e.code === 'KeyM' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setLevel((CL + 1) % 3); return; }   // control level: auto / assisted / manual
+  if (CL && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
   if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
   if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
+  if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: add more in Settings', 2000); return; }   // next image, every mode and level
   if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
   if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
-  if (e.code === 'KeyJ' && !CTRL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }   // strobe grid while held
-  if (!CTRL && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;   // Z X effects, Q W / E R / Y U / I O sliders, P style, C colour
+  if (e.code === 'KeyJ' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }   // strobe grid while held
+  if (CL < 2 && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;   // Z X effects, Q W / E R / Y U / I O sliders, P style, C colour
   if (liveOn) return;
   if (SHOW && (e.code === 'KeyN' || e.code === 'KeyP')) { seekTo(fxStart(fxIndex(lastT) + (e.code === 'KeyN' ? 1 : -1))); return; }
   if (e.code === 'Space') { e.preventDefault(); togglePause(); }
@@ -1385,7 +1406,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); applyArc(); updateHint();
+  resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
@@ -1510,9 +1531,10 @@ $('hclocal').addEventListener('click', e => { e.stopPropagation(); HCLOC = !HCLO
 lfile.addEventListener('change', () => { if (lfile.files[0]) loadLocal(lfile.files[0]); });
 $('playlocal').addEventListener('click', e => { e.stopPropagation(); startLocal(); });
 addEventListener('resize', resize);
-$('playgen').addEventListener('click', e => { e.stopPropagation(); if (CTRL_URL) enterCtrl(); start(); });
-$('playctrl').addEventListener('click', e => { e.stopPropagation(); enterCtrl(); start(); });
-if (CTRL_URL) $('c-ctrl').style.borderColor = '#ffd60a';
+$('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
+$('lvl').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
+$('lvls').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
+setLevel(Q.has('level') ? Math.max(0, ['auto', 'assisted', 'manual'].indexOf(Q.get('level'))) : CTRL_URL ? 2 : [0, 1, 2].includes(lsGet('level')) ? lsGet('level') : 0, false, true);   // (a URL level is not saved)
 addEventListener('load', () => {
   if (!gl) { hint.textContent = 'WebGL2 is not available in this browser'; return; }
   { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
