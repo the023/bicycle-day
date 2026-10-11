@@ -117,6 +117,6 @@ MIT, see [`LICENSE`](LICENSE). The logo is part of this project. Images you load
 |---|---|
 | `poster.jpg` | Bicycle Day poster, 1943 |
 | `manet-dejeuner-sur-lherbe.jpg` | Édouard Manet, *Le Déjeuner sur l'herbe* (1863) |
-| `bosch-garden-of-earthly-delights.jpg` | Hieronymus Bosch, *The Garden of Earthly Delights* (detail of the right panel) |
+| `bosch-garden-of-earthly-delights.jpg` | Hieronymus Bosch, *The Garden of Earthly Delights* (detail) |
 | `huys-temptation-of-saint-anthony.jpg` | Pieter Huys, *The Temptation of Saint Anthony* (Louvre) |
 | `bruegel-fall-of-the-rebel-angels.jpg` | Pieter Bruegel the Elder, *The Fall of the Rebel Angels* (1562) |
