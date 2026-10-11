@@ -416,15 +416,17 @@ let lastScene = 0, trT0 = -99, lastMinor = 0, tmT0 = -99;   // live: when the cu
 const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 };
 // surges + moods: irregular seeded timelines, pure functions of t (so seek and still-rendering work)
 // surge = intensity swell (rises 15-30 s, falls 6-15 s, then the picture recomposes for a while); mood = dark / blaze / b&w / strobe stretch
-let TL = null, TLph = null;
+let TL = null, TLph = null, TLtot = 0;
+// slow start (generated mode): the moves that don't follow the arc (surges, moods, zoom swing, scene punches) fade in over the first quarter of the piece (20 s..3 min)
+const rampT = () => clamp(TOTAL * .25, 20, 180), calm = t => LIVE ? 1 : smooth(6, rampT(), t);
 function timelines() {
-  if (TL && TLph === PH) return TL;
+  if (TL && TLph === PH && TLtot === TOTAL) return TL;
   const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [];
-  let t = rr(5, 20);
+  let t = rampT() * .5 + rr(5, 20);
   while (t < 7200) { const rise = rr(15, 30), fall = rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: rr(.5, 1) }); t += rise + fall + rr(4, 25); }
-  t = rr(15, 40);
+  t = rampT() + rr(15, 40);
   while (t < 7200) { const k = ['dark', 'bw', 'strobe', 'blaze'][Math.floor(r() * 4)], d = k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(6, 14) : rr(10, 25); moods.push({ k, a: t, b: t + d, rate: rr(5, 11) }); t += d + rr(20, 50); }
-  TLph = PH; return TL = { sur, moods };
+  TLph = PH; TLtot = TOTAL; return TL = { sur, moods };
 }
 function surgeAt(t) {
   const s = timelines().sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
@@ -446,9 +448,9 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
   const mi = LIVE ? LIVE.minors : Math.floor(t / 15 + PH * .2), mf = t / 15 + PH * .2 - mi;
   if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
-  const tm = LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2);   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  const tm = LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * 15 / 1.2) * calm(t);   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
   const tk = scene * 50 + mi;
-  const tr = LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) : 0;   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
+  const tr = LIVE ? Math.exp(-(t - trT0) / 1.4) : wi > 0 ? Math.exp(-wf * 45 / 1.4) * calm(t) : 0;   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
   const hsh = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
   const kindOf = n => LIVE ? (LIVE.kinds[n] ?? 1) : 1;   // 1 = energetic section, 0 = calm one
   const palRaw = n => { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[Math.floor(hsh(n, 4) * pool.length)]; };
@@ -470,7 +472,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   BAND.hi += (hi - BAND.hi) * (1 - Math.exp(-dt * 3)); BAND.mid += (mid - BAND.mid) * (1 - Math.exp(-dt * 3)); BAND.zt += ((LIVE ? .45 * LIVE.tension : 0) - BAND.zt) * (1 - Math.exp(-dt * 2)); BAND.tt = LIVE ? BAND.tt + dt * (1 + 2.5 * bass) : t;
   USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
-  const sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t), md = moodAt(t);
+  const cz = calm(t), sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t) * cz, md = moodAt(t);
   const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * USER.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
@@ -485,7 +487,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (!LIVE && t >= BEATS[0]) { const d = t - BEATS[bi], d2 = d - .22; pulse = (Math.exp(-d * 7) + (d2 > 0 ? .6 * Math.exp(-d2 * 7) : 0)) * hbW(u0); }
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
-  const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
+  const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
   const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg), ab = (aber + BAND.hi * .6) * (1 + .5 * sg);
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
@@ -498,13 +500,13 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt * (.5 + sg)); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
-  gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform1f(uS.uSrcZ, 1 + .3 * Math.sin(t * .045 + PH)); gl.uniform1f(uS.uSrcRot, .5 * Math.sin(t * .031 + PH * 2)); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
+  gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform1f(uS.uSrcZ, 1 + .3 * cz * Math.sin(t * .045 + PH)); gl.uniform1f(uS.uSrcRot, .5 * cz * Math.sin(t * .031 + PH * 2)); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
   gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, Math.max(USER.col === 2 ? 1 : 0, md.bw));
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
   else { gl.uniform1f(uS.uTile, tile); gl.uniform1f(uS.uTileN, tileN); gl.uniform1f(uS.uTileMode, tileMode); }
   gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
-  gl.uniform1f(uS.uKali, Math.min(1, LOOK.sk * (.3 + sg))); gl.uniform1f(uS.uJulia, Math.min(1, LOOK.sj * (.3 + sg)));
+  gl.uniform1f(uS.uKali, Math.min(1, LOOK.sk * (.3 + sg) * cz)); gl.uniform1f(uS.uJulia, Math.min(1, LOOK.sj * (.3 + sg) * cz));
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
