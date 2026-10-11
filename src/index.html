@@ -278,7 +278,7 @@
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · T cycles tile mode · 1-8 presets (Shift 1-8 save) · [ ] images · Shift+Arrows seek</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
-  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button><button data-save="4">4</button><button data-save="5">5</button><button data-save="6">6</button><button data-save="7">7</button><button data-save="8">8</button></div>
 </div>
@@ -1915,7 +1915,7 @@ function startLocal() {
 }
 const nfile = document.querySelector('#nextpick input');
 $('nextpick').addEventListener('click', e => e.stopPropagation());
-function syncNext() { $('nextnow').style.display = LOC && NEXT ? '' : 'none'; }   // "Play next now": Local mode with a next track chosen
+function syncNext() { $('nextnow').style.display = LOC && NEXT ? '' : 'none'; $('tnext').style.display = LOC ? '' : 'none'; $('tnext').textContent = NEXT ? 'Next: ' + NEXT.name : 'Next track…'; }   // "Play next now": Local mode with a next track chosen
 function clearNext() { NEXT = null; NEXTDATA = null; NEXTGO = false; NEXTFAIL = false; nfile.value = ''; $('nextname').textContent = ''; $('nextclear').style.display = 'none'; syncNext(); }
 function prepNext(f) {   // decode + analyse the chosen next file in the background (the result waits in NEXTDATA)
   NEXTDATA = null; NEXTFAIL = false;
@@ -1927,7 +1927,10 @@ function goNext() {   // swap the queued track in as LOC and restart at t = 0; b
 }
 function playNextNow() { if (!playing || !LOC || !NEXT) return; NEXTGO = true; if (!NEXTDATA && !NEXTFAIL) toast('Loading next track…', 60000); }   // the loop picks it up on the next frame (waits there if still decoding)
 $('nextnow').addEventListener('click', e => { e.stopPropagation(); playNextNow(); });
-nfile.addEventListener('change', () => { const f = nfile.files && nfile.files[0]; if (f) { NEXT = f; $('nextname').textContent = f.name; $('nextclear').style.display = ''; prepNext(f); syncNext(); } });
+const setNext = f => { if (f) { NEXT = f; $('nextname').textContent = f.name; $('nextclear').style.display = ''; prepNext(f); syncNext(); } };
+nfile.addEventListener('change', () => setNext(nfile.files && nfile.files[0]));
+$('tnext').addEventListener('click', e => { e.stopPropagation(); $('tnextfile').click(); });   // Settings: pick the next file while playing
+$('tnextfile').addEventListener('change', e => { setNext(e.target.files && e.target.files[0]); e.target.value = ''; });
 $('nextclear').addEventListener('click', e => { e.stopPropagation(); clearNext(); });
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());

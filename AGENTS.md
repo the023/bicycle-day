@@ -7,6 +7,11 @@
 Single-file generative animation: a WebGL2 fragment shader warps one image (kaleidoscope, domain warp, feedback trails, hue/palette cycling) while a Web Audio synth plays generative music. The picture and the sound follow a shared "arc" (intensity over time).
 **Stack:** plain HTML/CSS/JS, WebGL2, Web Audio. No runtime dependencies. Node ≥ 18 only for `build.mjs`.
 
+## Git rules (owner's call)
+
+- Commits are NOT signed or co-authored by Claude/any AI: no `Co-Authored-By`, no "Generated with" lines, in commits or PR descriptions.
+- Agent working files are never tracked: `.claude/`, `.playwright-mcp/`, ticket files (`TICKETS.md`). They are in `.gitignore`; don't `git add -A` blindly.
+
 ## Commands
 
 ```bash
