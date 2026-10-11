@@ -53,38 +53,80 @@
   .imgs label{width:44px;height:44px;box-sizing:border-box;display:grid;place-items:center;border:2px dashed #f4f1ea66;border-radius:6px;font:400 22px/1 Arial,sans-serif;letter-spacing:0;cursor:pointer}
   .imgs label:hover{border-color:#ffd60a}
   #tune .imgs{justify-content:flex-start;padding-top:4px}
+  .imgs .gal{position:relative;width:44px;height:44px;padding:0;border:2px solid #f4f1ea44;border-radius:6px;background:#000 center/cover;cursor:pointer}
+  .imgs .gal:hover,.imgs .gal:focus-visible{border-color:#ffd60a;outline:none}
+  .imgs .gal.in::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#ffd60a;box-shadow:0 0 0 2px #000}
+  #home-drawer .imgs .gal{width:52px;height:52px}
+  .gal-lbl{margin:18px 0 0;font-size:12px}
   #wrap{position:fixed;inset:0;display:grid;place-items:center}
   canvas{display:block;background:#000}
-  #gate{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:28px;
-    background:#05030c;color:#f4f1ea;font:700 14px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.55em;text-transform:uppercase;transition:opacity .8s;overflow:hidden}
-  #gate.off{opacity:0;pointer-events:none}
-  #gate .t{font-weight:900;font-size:clamp(40px,8vw,128px);letter-spacing:.04em;line-height:.9;text-align:center;
-    background:linear-gradient(90deg,#ff2d95,#ffd60a,#2cff8a,#00e5ff,#7c4dff,#ff2d95);background-size:300% 100%;
-    -webkit-background-clip:text;background-clip:text;color:transparent;animation:flow 6s linear infinite,hue 9s linear infinite}
-  @keyframes flow{to{background-position:300% 0}}
-  @keyframes hue{to{filter:hue-rotate(360deg)}}
-  #gate .sub{opacity:.55;font-size:clamp(10px,1vw,14px)}
-  #opts,#dur,#mus{display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
-  @media (max-height:800px){#gate{gap:18px}#gate .t{font-size:clamp(30px,6vw,76px)}}
-  #qual,#lvl{display:flex;gap:6px;align-items:center;font-size:10px;letter-spacing:.2em;text-transform:uppercase}
-  #qual span,#lvl span{opacity:.6;margin-right:4px}
-  #qual button,#lvl button{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
-  #helpbtn{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 12px;cursor:pointer}
-  #qual button.on,#lvl button.on{background:#f4f1ea;color:#05030c}
-  #qnote{font-size:10px!important;letter-spacing:.1em!important;text-transform:none!important;color:#ffd60a;min-height:12px}
-  #cards{display:flex;gap:16px;align-items:stretch;justify-content:center;flex-wrap:wrap;padding:0 20px}
-  .card{width:230px;display:flex;flex-direction:column;align-items:center;gap:12px;padding:20px 16px;border:1px solid #f4f1ea33;border-radius:18px;text-align:center;letter-spacing:.08em;text-transform:none;background:#ffffff08}
-  .card b{font-size:15px;letter-spacing:.3em;text-transform:uppercase}
-  .card span{font-weight:400;font-size:12px;line-height:1.5;opacity:.75;flex:1}
-  .card.off{opacity:.4}
-  .card .warn{font-style:normal;font-size:11px;color:#ffd60a}
-  .card .go{font:800 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;color:#05030c;background:#ffd60a;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
-  .card .go:hover:not(:disabled){background:#fff}
-  .card .go:disabled{opacity:.35;cursor:not-allowed}
-  #opts button,#dur button,#mus button,#lpick{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}
-  .hcb{font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#f4f1ea;background:none;border:1px solid #f4f1ea55;border-radius:99px;padding:8px 11px;cursor:pointer}#hclocal.on{background:#f4f1ea;color:#05030c}
-  #opts button.on,#dur button.on,#mus button.on{background:#f4f1ea;color:#05030c}
-  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#ffd60a}
+  #gate{position:fixed;inset:0;z-index:10;overflow:hidden;background:#000;color:#eeeee5;cursor:default;
+    font:500 14px/1.5 "Helvetica Neue",Arial,sans-serif;transition:opacity .65s,visibility .65s}
+  #gate.off{opacity:0;visibility:hidden;pointer-events:none}
+  #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  #home-art canvas,#home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;display:block}
+  #home-art img{animation:home-breathe 36s ease-in-out infinite;animation-delay:5s;will-change:transform}
+  #home-art canvas{display:none;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%)}
+  @keyframes home-breathe{0%,50%,100%{transform:translate(0,0) scale(1);filter:hue-rotate(0deg)}25%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}75%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}}
+  #gate.off #home-art img{animation-play-state:paused}
+  #home-nav{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(24px + env(safe-area-inset-top)) max(32px,env(safe-area-inset-right)) 20px max(32px,env(safe-area-inset-left));z-index:2}
+  #home-nav button,#home-close{font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;color:inherit;background:none;border:0;cursor:pointer}
+  #home-nav .brand{padding:8px 0;font-size:12px;letter-spacing:.16em;text-align:left;line-height:1.1}
+  #home-nav .brand span{display:block;color:#a2b29f}
+  #home-menu{display:flex;gap:8px;align-items:center}
+  #home-menu button{padding:11px 15px;border-radius:99px;color:#a8b1ab}
+  #home-menu button:hover,#home-menu button[aria-expanded="true"]{color:#f4f1ea;background:#ffffff10}
+  #home-menu button[data-home="play"]{border:1px solid #a6c99b55;color:#e0edda}
+  #home-intro{position:absolute;left:20px;right:20px;bottom:calc(42px + env(safe-area-inset-bottom));text-align:center}
+  #home-intro p{margin:0 0 16px;color:#acb8b0;font-size:13px;letter-spacing:.08em}
+  #home-start{border:1px solid #a6c99b66;border-radius:99px;padding:13px 23px;color:#e0edda;background:#0b120c;font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;cursor:pointer}
+  #home-start:hover{background:#1b2a1d;border-color:#afcc9d}
+  #hint{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom));left:20px;right:20px;text-align:center;color:#a8b1ab;font-size:11px;margin:0;pointer-events:none}
+  #home-drawer{position:absolute;top:calc(92px + env(safe-area-inset-top));right:max(32px,env(safe-area-inset-right));width:min(400px,calc(100vw - 48px));max-height:calc(100dvh - 156px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;box-sizing:border-box;border:1px solid #a6c99b33;border-radius:18px;background:#090e0ced;box-shadow:0 20px 70px #000a;backdrop-filter:blur(18px);padding:24px;z-index:3}
+  #gate [hidden]{display:none!important}
+  #home-drawer h2{font-size:20px;letter-spacing:-.03em;font-weight:500;margin:0 28px 5px 0}
+  #home-drawer p{color:#a8b1ab;font-size:13px;margin:0 0 18px}
+  #home-close{position:absolute;right:14px;top:14px;width:32px;height:32px;border-radius:50%;color:#a8b1ab}
+  #home-close:hover{background:#ffffff10}
+  #source{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin:20px 0}
+  #source button{padding:12px 8px;background:#ffffff04;border:1px solid #ffffff16;color:#a8b1ab;border-radius:8px;cursor:pointer;font:500 12px/1.2 "Helvetica Neue",Arial,sans-serif}
+  #source button[aria-pressed="true"]{background:#b7d7a81a;border-color:#b7d7a877;color:#e0edda}
+  #cards{padding:0}
+  .card{display:flex;flex-direction:column;align-items:stretch;gap:16px}
+  .card p{margin:0!important}
+  .card .warn{font-style:normal;font-size:12px;line-height:1.4;color:#e5c467}
+  #gate .go{font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;color:#0a130d;background:#c5e1ad;border:0;border-radius:99px;padding:13px 18px;cursor:pointer}
+  #gate .go:hover:not(:disabled){background:#e0edda}
+  #gate .go:disabled{opacity:.4;cursor:not-allowed}
+  #opts,#dur,#mus{display:flex;flex-wrap:wrap;gap:6px}
+  #gate .field{display:block;color:#a8b1ab;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin:0 0 8px}
+  #home-drawer details{border-top:1px solid #ffffff16;padding-top:14px}
+  #home-drawer summary{cursor:pointer;color:#a8b1ab;font-size:12px}
+  #home-drawer details .field{margin-top:16px}
+  #qual,#lvl{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:18px 0}
+  #qual span,#lvl span{width:100%;color:#a8b1ab;font-size:11px;text-transform:uppercase;letter-spacing:.1em;margin-bottom:2px}
+  #qual button,#lvl button,#opts button,#dur button,#mus button,#lpick,#nextpick,.hcb{font:500 11px/1.2 "Helvetica Neue",Arial,sans-serif;color:#f4f1ea;background:none;border:1px solid #f4f1ea33;border-radius:99px;padding:9px 12px;cursor:pointer}  #qual button.on,#lvl button.on,#opts button.on,#dur button.on,#mus button.on,#hclocal.on{background:#c5e1ad;color:#0a130d;border-color:#c5e1ad}
+  #lpick,#nextpick{display:block;text-align:center;font-size:13px;padding:13px}
+  #nextrow{display:flex;align-items:center;gap:8px;margin-top:6px;min-height:18px;font-size:12px;color:#f4f1ea}
+  #nextname{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;opacity:.85}
+  #nextclear{background:none;border:none;color:#f4f1ea;cursor:pointer;font-size:14px;padding:0 4px;opacity:.6}
+  #nextclear:hover{opacity:1}  #lpick:hover,#opts button:hover,#dur button:hover,#mus button:hover{border-color:#c5e1ad}
+  #home-drawer #qnote{color:#e5c467;font-size:12px;margin-top:12px}
+  #home-drawer .imgs{justify-content:flex-start;margin:24px 0;gap:16px}
+  #home-drawer .imgs .im,#home-drawer .imgs label{width:52px;height:52px}
+  #gate button:focus-visible,#gate summary:focus-visible{outline:2px solid #c5e1ad;outline-offset:4px}
+  body:not(.playing):not(.live):not(.still) #actions{display:none}
+  @media(prefers-reduced-motion:reduce){#home-art img{animation:none}#gate{transition:none}}
+  @media(max-width:600px){
+    #home-nav{padding:calc(16px + env(safe-area-inset-top)) 16px 16px;gap:6px}
+    #home-nav .brand{font-size:9px;letter-spacing:.1em}
+    #home-menu{gap:0}#home-menu button{font-size:12px;padding:10px}
+    #home-art{display:flex;justify-content:center;align-items:center}#home-art img,#home-art canvas{width:125vw;max-width:none;flex:none}
+    #home-drawer{top:calc(78px + env(safe-area-inset-top));right:12px;width:calc(100vw - 24px);max-height:calc(100dvh - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:22px}
+    #home-intro{bottom:calc(58px + env(safe-area-inset-bottom))}
+    #hint{font-size:10px}
+  }
+  @media(max-height:500px){#home-intro p{display:none}#home-intro{bottom:32px}#home-drawer{max-height:calc(100dvh - 110px);top:72px}}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
     font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
   body.playing #ctl{display:flex}
@@ -133,12 +175,6 @@
   #tune .prow{display:flex;align-items:center;gap:6px}
   #tune .prow button{flex:1;padding:6px 0}
   @media (max-width:600px),(max-height:600px){
-    #gate{box-sizing:border-box;justify-content:flex-start;overflow-y:auto;padding:calc(80px + env(safe-area-inset-top)) 16px calc(24px + env(safe-area-inset-bottom));gap:18px}
-    #gate>*{flex-shrink:0}
-    #gate .sub{text-align:center;letter-spacing:.08em;line-height:1.5}
-    #cards{padding:0;gap:12px;width:100%}
-    .card{box-sizing:border-box;width:min(100%,320px)}
-    #qual{flex-wrap:wrap;justify-content:center}
     #ctl{flex-wrap:wrap;gap:10px;padding:16px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
     #bar{min-width:100px}#tm{font-size:10px;letter-spacing:0}#vol{width:70px}
     #pp,#stopb{width:44px;height:44px}
@@ -164,28 +200,71 @@
 </head>
 <body>
 <div id="wrap"><canvas id="c"></canvas></div>
-<div id="gate">
-  <div class="t">BICYCLE<br>DAY</div>
-  <div id="cards">
-    <div class="card" id="c-gen"><b>Generative</b><span>Up to 5 images (✕ removes, + adds; also in Settings while playing). The app composes its own music and the picture follows it.</span>
-      <div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">hardcore</button></div>
-      <div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
-      <div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div>
-      <div class="imgs" id="gimgs"></div>
-      <button class="hcb" id="hcgen" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="playgen">▶ Play</button></div>
-    <div class="card" id="c-stream"><b>Stream</b><span>Follow a song playing in another tab (YouTube…). Keep both windows visible side by side.</span>
-      <i class="warn" id="streamwarn"></i><button class="hcb" id="hcstream" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="tabmode">● Listen to a tab</button></div>
-    <div class="card" id="c-live"><b>Live</b><span>Follow the music in the room through the microphone. Works in any browser.</span>
-      <button class="hcb" id="hclive" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="micmode">● Use the microphone</button></div>
-    <div class="card" id="c-local"><b>Local</b><span>Give an audio file: it is analysed first, then played as a finished clip.</span><i class="warn" id="localnote"></i>
-      <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label><button class="hcb" id="hclocal" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed.">Hardcore: off</button><button class="go" id="playlocal" disabled>▶ Play</button></div>
-  </div>
-  <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
-  <div id="lvl" title="How much you steer the picture: Auto = the engine alone; Assisted = engine + effect keys that fade by themselves; Manual = quiet base + only what you toggle. Key M."><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
-  <div class="sub" id="qnote"></div>
-  <div class="sub"><button id="helpbtn">Keyboard shortcuts (H)</button></div>
-  <div class="sub" id="hint">Loading…</div>
-</div>
+<main id="gate">
+  <div id="home-art"><canvas id="home-c" width="960" height="540"></canvas><img src="__HOME_LOGO__" width="1672" height="941" alt="Bicycle Day"></div>
+  <nav id="home-nav" aria-label="Main menu">
+    <button class="brand" id="home-brand" aria-label="Close menu">BICYCLE<span>DAY</span></button>
+    <div id="home-menu">
+      <button data-home="play" aria-controls="home-play" aria-expanded="false">Play</button>
+      <button data-home="images" aria-controls="home-images" aria-expanded="false">Images</button>
+      <button data-home="settings" aria-controls="home-settings" aria-expanded="false">Settings</button>
+      <button id="helpbtn">Help</button>
+    </div>
+  </nav>
+  <div id="home-intro"><p>Sound into colour. A trip at your own pace.</p><button id="home-start" aria-controls="home-play" aria-expanded="false">Choose your sound <span aria-hidden="true">↗</span></button></div>
+  <section id="home-drawer" aria-label="Setup" hidden>
+    <button id="home-close" aria-label="Close menu">✕</button>
+    <div id="home-play" hidden>
+      <h2>Choose your sound</h2><p>Four ways to start a trip.</p>
+      <div id="source" role="group" aria-label="Sound source">
+        <button data-source="gen" aria-pressed="true" aria-controls="c-gen">Generative</button>
+        <button data-source="local" aria-pressed="false" aria-controls="c-local">Local file</button>
+        <button data-source="stream" aria-pressed="false" aria-controls="c-stream">Tab audio</button>
+        <button data-source="live" aria-pressed="false" aria-controls="c-live">Microphone</button>
+      </div>
+      <div id="cards">
+        <div class="card" id="c-gen">
+          <p>Original music, composed by the app. Your images follow the sound.</p>
+          <div><span class="field">Length</span><div id="dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div></div>
+          <details><summary>Music &amp; journey</summary>
+            <span class="field">Journey</span><div id="opts"><button data-arc="journey">journey</button><button data-arc="waves">waves</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="hardcore">extreme</button></div>
+            <span class="field">Music</span><div id="mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">piano: gnossienne</button><button data-music="gymnopedie">piano: gymnopédie</button></div>
+          </details>
+          <button class="go" id="playgen" disabled>Start trip</button>
+        </div>
+        <div class="card" id="c-local" hidden>
+          <p>Pick an audio file. The app analyses it, then plays it with visuals.</p>
+          <label id="lpick">Choose an audio file<input type="file" accept="audio/*" hidden></label>
+          <label id="nextpick">Next track (optional)<input type="file" accept="audio/*" hidden></label>
+          <div id="nextrow"><span id="nextname"></span><button id="nextclear" type="button" aria-label="Clear next track" title="Clear" style="display:none">✕</button></div>
+          <i class="warn" id="localnote" role="status"></i><button class="go" id="playlocal" disabled>Play file</button>
+        </div>
+        <div class="card" id="c-stream" hidden>
+          <p>Follow music in another tab. Choose a browser tab and enable “Share tab audio”.</p>
+          <i class="warn" id="streamwarn"></i><button class="go" id="tabmode">Listen to a tab</button>
+        </div>
+        <div class="card" id="c-live" hidden>
+          <p>Let music in the room guide the picture through your microphone.</p>
+          <button class="go" id="micmode">Use microphone</button>
+        </div>
+      </div>
+    </div>
+    <div id="home-images" hidden>
+      <h2>Your images</h2><p>Use up to five images with any sound source.</p>
+      <div class="imgs" id="gimgs"></div><p>Select a thumbnail to use it. Add with +, remove with ✕, or drop images onto the page.</p>
+      <p class="gal-lbl">Gallery: click to add (max 5), click again to show.</p><div class="imgs gal-row" id="ggal"></div>
+    </div>
+    <div id="home-settings" hidden>
+      <h2>Make it yours</h2><p>A few choices before you start. More controls are available during the trip.</p>
+      <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
+      <div id="lvl"><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
+      <p>Auto follows the music. Assisted adds your effect keys. Manual puts you in control; generated music uses a 20-minute waves piece.</p>
+      <button class="hcb" id="hcgen" title="Stronger visuals and strobe. Look only; music stays the same. Key N.">Extreme: off</button>
+      <p id="qnote" role="status"></p>
+    </div>
+  </section>
+  <p id="hint" role="status">Loading…</p>
+</main>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
 <div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
@@ -195,19 +274,20 @@
   <label title="Shifts the whole animation up or down the intensity curve">Intensity<small>how wild overall: calmer ↔ more effects</small><input type="range" id="u-inten" min="-1" max="1" step=".05" value="0"></label>
   <label title="Maximum amount of mirror symmetry">Kaleidoscope<small>mirror symmetry; 0 = never</small><input type="range" id="u-kal" min="0" max="1.5" step=".05" value="1"></label>
   <label title="Grid-of-tiles effect: each square turns or shifts on its own">Tiles<small>grid of rotating squares: 0 = never, 2 = a lot</small><input type="range" id="u-tile" min="0" max="2" step=".05" value="1"></label>
-  <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Keys 1 2 3 do the same."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
+  <div class="tmodes" id="tmodes" title="Which tile effect to use (Auto = changes with the scene). Key T cycles."><button data-tm="-1">Auto</button><button data-tm="0">Checker</button><button data-tm="1">Wave</button><button data-tm="2">Shatter</button></div>
   <label title="How long moving shapes leave ghost trails">Trails<small>ghost trails left by movement</small><input type="range" id="u-fb" min="0" max="1.1" step=".05" value="1"></label>
   <div class="tmodes" id="smodes" title="Extra look: the picture is re-drawn through a fractal map. Off keeps the classic look; Auto picks one per scene."><button data-sm="0">No style</button><button data-sm="1">Kali</button><button data-sm="2">Julia</button><button data-sm="3">Auto</button></div>
   <div class="tmodes tr3" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
   <div class="help">Control level (key M): engine only / engine + effect keys / quiet base + only your keys</div>
-  <div class="tmodes tr5" id="trs" title="Transition time: how long a key press (Z X Q W E R Y U I O P C, hardcore, effect fades) takes to reach its new value. Keys , and ."><button data-tr="0">Instant</button><button data-tr="1">1 s</button><button data-tr="3">3 s</button><button data-tr="5">5 s</button><button data-tr="10">10 s</button></div>
+  <div class="tmodes tr5" id="trs" title="Transition time: how long a key change takes to reach its new value. Keys , and ."><button data-tr="0">Instant</button><button data-tr="1">1 s</button><button data-tr="3">3 s</button><button data-tr="5">5 s</button><button data-tr="10">10 s</button></div>
   <div class="help">Transition: how long key changes take to arrive (keys , and .)</div>
-  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · keys 1 2 3 = tile mode, T = tiles on/off · [ ] or Shift+1..5 = switch image</div>
+  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · T cycles tile mode · 1-8 presets (Shift 1-8 save) · [ ] images · Shift+Arrows seek</div>
   <div>Images<div class="imgs" id="timgs"></div></div>
+  <div>Gallery<div class="imgs gal-row" id="tgal"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on every scene change. Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Each scene</button></div>
-  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button class="hcb" id="u-hc" title="Hardcore look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Hardcore: off</button>
-  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button></div>
-  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button></div>
+  <button id="u-col" title="Colour cycling: auto, frozen, or black and white">Colour: auto</button><button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="u-src" title="Show or hide the faint raw image in the middle">Source: on</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button><button class="hcb" id="u-hc" title="Extreme look (key N): strobe grid, surges, big punches. Look only: the music is not changed. Not in manual control.">Extreme: off</button>
+  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
+  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button><button data-save="4">4</button><button data-save="5">5</button><button data-save="6">6</button><button data-save="7">7</button><button data-save="8">8</button></div>
 </div>
 <div id="thumbs"></div>
 <div id="toast"></div>
@@ -231,6 +311,26 @@ const gl = cv.getContext('webgl2', { antialias: false, alpha: false });
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+/* ════════════════════════ home-screen logo animation (T6) ════════════════════════
+   Rendered through the same FS_SCENE/FS_SHOW shaders onto a small canvas inside #home-art.
+   Timeline seconds since page load while the gate is open:
+     0..HOME_STILL_END s : still (plain image)
+     HOME_STILL_END..HOME_SLIGHT_END s : very slight (HOME_SLIGHT of final)
+     after : smoothstep over HOME_RAMP_DUR s to a gentle level.
+   Strengths below are the gentle (final) levels, applied via g = homeLevel(t). */
+const HOME_STILL_END = 5;
+const HOME_SLIGHT_END = 15;
+const HOME_SLIGHT = 0.18;          // slight phase as a fraction of the gentle level
+const HOME_RAMP_DUR = 20;
+const HOME_WARP = 0.14;           // gentle warp strength
+const HOME_HUE_SPEED = 0.07;      // hue sway speed (rad/s); the hue swings back and forth, it never runs away
+const HOME_PAL = 0.08;            // palette blend
+const HOME_BREATH = 0.08;        // breath
+const HOME_ABER = 0.1;          // aberration (param)
+const HOME_ZOOM_WOB = 0.02;       // tiny zoom wobble factor
+const HOME_FB = 0.02;            // weak feedback trails
+const HOME_ANCHOR = 0.06;        // faint source anchor
+const HOME_ROTT = 0.0;            // very slow rotation (kept 0 to stay readable)
 
 /* ════════════════════════ PRESET: everything that gives a piece its character ════════════════════════
    Generic parts: the engine (shaders + synth) and the energy "arc". Swappable parts: image, arc, scale, root, tempo, colour, seed.
@@ -519,6 +619,10 @@ void main(){
 
 /* ════════════════════════ GL setup ════════════════════════ */
 let progS, progD, uS = {}, uD = {}, IM = [], imFrom = 0, imTo = 0, imMix = 1, fbo = [], tex = [], FW = 1600, FH = 900, ready = false;
+// home-screen logo renderer state (second WebGL2 context, owned only while gate is open)
+let homeGL = null, homeProgS = null, homeProgD = null, homeUS = {}, homeUD = {}, homeFbo = [], homeTex = [], homeW = 0, homeH = 0, homeCur = 0, homeCanvas = null;
+let homeTexImg = null, homeAspect = 1672 / 941, homeStartedAt = 0, homeRaf = 0, homeFirstFrame = false, homeReduced = false;
+let homeFixedTime = Q.has('hometime') ? (parseFloat(Q.get('hometime')) || 0) : null;
 function prog(fs) {
   const mk = (t, s) => { const sh = gl.createShader(t); gl.shaderSource(sh, s); gl.compileShader(sh); if (!gl.getShaderParameter(sh, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(sh)); return sh; };
   const p = gl.createProgram(); gl.attachShader(p, mk(gl.VERTEX_SHADER, VS)); gl.attachShader(p, mk(gl.FRAGMENT_SHADER, fs)); gl.linkProgram(p);
@@ -552,6 +656,7 @@ function makeTargets() {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
 let ASPECT = 1;
+const GALLERY = __GALLERY__;   // [{id, title, src}] inlined by build.mjs; a picture is decoded only when its thumb is clicked (galPick)
 function loadImg(src, ok) {
   const img = new Image();
   img.onload = () => {
@@ -566,7 +671,7 @@ function loadImg(src, ok) {
   img.src = src;
 }
 function loadPoster(src, done) { loadImg(src, e => { IM[0] = e; imFrom = imTo = 0; imMix = 1; ASPECT = e.aspect; done && done(); }); }
-// several images: #1 is the poster, #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
+// several images: #1 is the default picture (the logo), #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
 function showImg(n, quiet, auto) {
   if (n < 0 || n >= IM.length || (n === imTo && imMix >= 1)) return;
   if (!auto) AI.acc = 0;   // a manual switch restarts the auto-image timer
@@ -592,7 +697,25 @@ function renderImgs() {
     if (IM.length < 5) { const l = document.createElement('label'); l.title = 'Add images (or drop them on the page)'; l.innerHTML = '+<input type="file" accept="image/*" multiple hidden>'; tiles.push(l); }
     $(id).replaceChildren(...tiles);
   });
-  document.body.classList.toggle('multi', IM.length > 1); markThumbs();
+  document.body.classList.toggle('multi', IM.length > 1); markThumbs(); renderGallery();
+}
+// built-in gallery strip (home card #ggal and Settings #tgal): a thumb marked .in is already in IM[]
+function renderGallery() {
+  ['ggal', 'tgal'].forEach(id => $(id).replaceChildren(...GALLERY.map(g => {
+    const b = document.createElement('button'); b.type = 'button'; const inUse = IM.some(e => e.gid === g.id);
+    b.className = 'gal' + (inUse ? ' in' : ''); b.dataset.gid = g.id; b.style.backgroundImage = 'url("' + g.src + '")';
+    b.title = g.title + (inUse ? '  (in use)' : ''); b.setAttribute('aria-label', g.title + (inUse ? ', in use' : '')); return b;
+  })));
+}
+function galPick(gid) {
+  const g = GALLERY.find(x => x.id === gid); if (!g) return;
+  const k = IM.findIndex(e => e.gid === gid); if (k >= 0) return showImg(k);   // already in the list: just show it
+  if (IM.length >= 5) return toast('Max 5 images: remove one first (✕)', 2500);
+  loadImg(g.src, e => {   // decode on demand, same texture path as a user image
+    const have = IM.findIndex(x => x.gid === gid);
+    if (have >= 0 || IM.length >= 5) { gl.deleteTexture(e.tex); if (have >= 0) showImg(have); else toast('Max 5 images: remove one first (✕)', 2500); return; }
+    e.gid = gid; IM.push(e); renderImgs(); showImg(IM.length - 1);
+  });
 }
 function removeImg(k) {
   if (IM.length < 2 || k >= IM.length) return;
@@ -610,6 +733,143 @@ function addImages(files) {
     if (++n === fs.length) showImg(first, true), hint.textContent = IM.length + ' images loaded';
   }); });
 }
+/* ════════════════════════ home-screen logo renderer (T6) ════════════════════════ */
+function homeLevel(t) {
+  if (homeReduced) return 0;
+  if (t < HOME_STILL_END) return 0;
+  if (t < HOME_SLIGHT_END) return HOME_SLIGHT;
+  const x = clamp((t - HOME_SLIGHT_END) / HOME_RAMP_DUR, 0, 1);
+  return lerp(HOME_SLIGHT, 1, x * x * (3 - 2 * x));
+}
+function khprog(g, fs) {
+  const mk = (type, src) => { const sh = g.createShader(type); g.shaderSource(sh, src); g.compileShader(sh); if (!g.getShaderParameter(sh, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(sh)); return sh; };
+  const p = g.createProgram(); g.attachShader(p, mk(g.VERTEX_SHADER, VS)); g.attachShader(p, mk(g.FRAGMENT_SHADER, fs)); g.linkProgram(p);
+  if (!g.getProgramParameter(p, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(p)); return p;
+}
+function homeLocs(g, p, names) { const u = {}; names.forEach(n => u[n] = g.getUniformLocation(p, n)); return u; }
+function initHomeGL(canvas) {
+  if (!canvas) return;
+  homeCanvas = canvas;
+  homeGL = canvas.getContext('webgl2', { antialias: false, alpha: false });
+  if (!homeGL) { console.log('home: WebGL2 unavailable'); return; }
+  const g = homeGL;
+  try {
+    homeProgS = khprog(g, FS_SCENE); homeProgD = khprog(g, FS_SHOW);
+    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uCode','uCodeAmt']);
+    homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells']);
+    // blank code texture
+    const ct = g.createTexture(); g.bindTexture(g.TEXTURE_2D, ct); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+    // store on a global-ish via homeCodeTex
+    homeCodeTex = ct;
+    makeHomeTargets();
+  } catch (e) { console.log('home shader error:', e.message); homeGL = null; }
+}
+let homeCodeTex = null;
+function makeHomeTargets() {
+  const g = homeGL; if (!g) return;
+  homeTex.forEach(t => g.deleteTexture(t)); homeFbo.forEach(f => g.deleteFramebuffer(f)); homeTex.length = 0; homeFbo.length = 0;
+  homeCur = 0;
+  const res = parseFloat(Q.get('res')) || QUAL[quality].res;
+  homeW = Math.max(16, Math.round(640 * res)); homeH = Math.max(16, Math.round(homeW / homeAspect));
+  const half = !!g.getExtension('EXT_color_buffer_float');
+  for (let i = 0; i < 2; i++) {
+    const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
+    g.texImage2D(g.TEXTURE_2D, 0, half ? g.RGBA16F : g.RGBA8, homeW, homeH, 0, g.RGBA, half ? g.HALF_FLOAT : g.UNSIGNED_BYTE, null);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+    const f = g.createFramebuffer(); g.bindFramebuffer(g.FRAMEBUFFER, f); g.framebufferTexture2D(g.FRAMEBUFFER, g.COLOR_ATTACHMENT0, g.TEXTURE_2D, t, 0);
+    g.clearColor(0, 0, 0, 1); g.clear(g.COLOR_BUFFER_BIT); homeTex.push(t); homeFbo.push(f);
+  }
+  g.bindFramebuffer(g.FRAMEBUFFER, null);
+}
+function loadHomeLogo(src, done) {
+  if (!homeGL) { done && done(); return; }
+  const g = homeGL;
+  const img = new Image();
+  img.onload = () => {
+    const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
+    g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true);
+    g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, img); g.generateMipmap(g.TEXTURE_2D);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR_MIPMAP_LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
+    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.MIRRORED_REPEAT); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.MIRRORED_REPEAT);
+    homeTexImg = t; homeAspect = img.naturalWidth / img.naturalHeight;
+    if (homeCanvas) { homeCanvas.width = 960; homeCanvas.height = Math.round(960 / homeAspect); }
+    makeHomeTargets();
+    done && done();
+  };
+  img.onerror = () => { console.log('home: logo load failed'); done && done(); };
+  img.src = src;
+}
+function homeFrame(t) {
+  const g = homeGL; if (!g || !homeTexImg || !homeCanvas) return;
+  const canvas = homeCanvas;
+  // size canvas drawing buffer if needed
+  if (canvas.width !== homeW * (parseFloat(Q.get('res'))||QUAL[quality].res?1:1)) {} 
+  const gLevel = homeLevel(t);
+  const P = {
+    t, warp: HOME_WARP * gLevel,
+    kal: 0, fold: 6,
+    fb: HOME_FB * gLevel,
+    fbHue: .006 * gLevel,
+    hue: .7 * Math.sin(t * HOME_HUE_SPEED) * gLevel,
+    pal: HOME_PAL * gLevel,
+    side: 0, breath: HOME_BREATH * gLevel,
+    melt: 0, zoom: 1 + HOME_ZOOM_WOB * gLevel * Math.sin(t * .2),
+    rot: 0,
+    ab: HOME_ABER * gLevel,
+    pulse: 0, bright: 1,
+    anchor: HOME_ANCHOR * gLevel,
+    tilt: [0, 0], mono: 0,
+    srcZ: 1, srcRot: 0, stretch: 0,
+    tun: 0, tile: 0, tileN: 8, tileMode: 0,
+    kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0
+  };
+  // pass1
+  const w = homeCur ^ 1;
+  g.bindFramebuffer(g.FRAMEBUFFER, homeFbo[w]); g.viewport(0, 0, homeW, homeH); g.useProgram(homeProgS);
+  g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D, homeTexImg); g.uniform1i(homeUS.uTex, 0);
+  g.activeTexture(g.TEXTURE2); g.bindTexture(g.TEXTURE_2D, homeTexImg); g.uniform1i(homeUS.uTex2, 2); g.uniform1f(homeUS.uImgMix, 0);
+  g.activeTexture(g.TEXTURE1); g.bindTexture(g.TEXTURE_2D, homeTex[homeCur]); g.uniform1i(homeUS.uPrev, 1);
+  g.uniform2f(homeUS.uRes, homeW, homeH); g.uniform1f(homeUS.uT, t); g.uniform1f(homeUS.uWarp, P.warp); g.uniform1f(homeUS.uKal, P.kal); g.uniform1f(homeUS.uKalN, P.fold);
+  g.uniform1f(homeUS.uFb, P.fb); g.uniform1f(homeUS.uFbHue, P.fbHue); g.uniform1f(homeUS.uHue, P.hue); g.uniform1f(homeUS.uPal, P.pal);
+  g.uniform1f(homeUS.uSide, P.side); g.uniform1f(homeUS.uBreath, P.breath); g.uniform1f(homeUS.uMelt, P.melt); g.uniform1f(homeUS.uZoom, P.zoom);
+  g.uniform1f(homeUS.uRot, P.rot); g.uniform1f(homeUS.uAber, P.ab); g.uniform1f(homeUS.uPulse, P.pulse); g.uniform1f(homeUS.uBright, P.bright); g.uniform1f(homeUS.uAspect, homeAspect); g.uniform1f(homeUS.uAnchor, P.anchor);
+  const rAge = 0; g.uniform4f(homeUS.uRip, 0, 0, rAge, 0);
+  g.uniform2f(homeUS.uTilt, 0, 0); g.uniform1f(homeUS.uTT, 0); g.uniform1f(homeUS.uSrcZ, P.srcZ); g.uniform1f(homeUS.uSrcRot, P.srcRot); g.uniform3f(homeUS.uPalC, 1.3, 1.3, 1.3); g.uniform3f(homeUS.uPalD, 0, .33, .67); g.uniform1f(homeUS.uHueAmt, 1);
+  g.uniform1f(homeUS.uStretch, P.stretch); g.uniform1f(homeUS.uTunnel, 0);
+  g.uniform2f(homeUS.uCenter, 0, 0); g.uniform1f(homeUS.uMono, 0);
+  g.uniform1f(homeUS.uTile, P.tile); g.uniform1f(homeUS.uTileN, P.tileN); g.uniform1f(homeUS.uTileMode, P.tileMode); g.uniform1f(homeUS.uTileSeed, homeSeedVal || 1);
+  const qfx = QUAL[quality].fx; g.uniform1f(homeUS.uWarpN, QUAL[quality].warpN); g.uniform1f(homeUS.uFx, qfx);
+  g.uniform1f(homeUS.uKali, 0); g.uniform1f(homeUS.uJulia, 0);
+  g.activeTexture(g.TEXTURE3); g.bindTexture(g.TEXTURE_2D, homeCodeTex); g.uniform1i(homeUS.uCode, 3); g.uniform1f(homeUS.uCodeAmt, 0);
+  g.drawArrays(g.TRIANGLES, 0, 3);
+  // pass2
+  g.bindFramebuffer(g.FRAMEBUFFER, null); g.viewport(0, 0, canvas.width, canvas.height); g.useProgram(homeProgD);
+  g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D, homeTex[w]); g.uniform1i(homeUD.uTex, 0);
+  g.uniform2f(homeUD.uRes, canvas.width, canvas.height); g.uniform1f(homeUD.uT, t); g.uniform1f(homeUD.uAber, P.ab); g.uniform1f(homeUD.uPulse, 0); g.uniform1f(homeUD.uHi, 0); g.uniform1f(homeUD.uFx, qfx);
+  g.uniform1f(homeUD.uDark, 0); g.uniform1f(homeUD.uBlaze, 0); g.uniform1f(homeUD.uStrobe, 0); g.uniform1f(homeUD.uRate, 8); g.uniform1f(homeUD.uCells, 0);
+  g.drawArrays(g.TRIANGLES, 0, 3);
+  homeCur = w;
+  // show fallback handling
+  if (!homeFirstFrame) { homeFirstFrame = true; canvas.style.display = 'block'; const img = canvas.parentElement.querySelector('img'); if (img) img.style.display = 'none'; }
+}
+let homeSeedVal = (Math.random() * 7) | 0;
+function startHomeLoop() {
+  if (homeRaf || !homeGL) return;
+  homeStartedAt = performance.now() / 1000;
+  const tick = () => {
+    if (!homeRaf) return;
+    const t = homeFixedTime !== null ? homeFixedTime : (performance.now() / 1000 - homeStartedAt);
+    homeFrame(t);
+    homeRaf = requestAnimationFrame(tick);
+  };
+  homeRaf = requestAnimationFrame(tick);
+}
+function stopHomeLoop() {
+  if (homeRaf) { cancelAnimationFrame(homeRaf); homeRaf = 0; }
+}
+
 function resize() {   // keep the canvas a 16:9 box, centred, as large as the window allows
   const w = Math.min(innerWidth, innerHeight * 16 / 9), h = w * 9 / 16, dpr = Math.min(devicePixelRatio || 1, QUAL[quality].dpr);
   cv.style.width = w + 'px'; cv.style.height = h + 'px';
@@ -739,7 +999,7 @@ const CT_KEYS = [   // [key code, key cap, label, FX name, mode ('t' toggle, 'h'
   ['KeyR', 'R', 'melt', 'melt', 't', .8, .8], ['KeyY', 'Y', 'tiles', 'tiles: checker', 't', .5, .5], ['KeyU', 'U', 'Kali', 'style: Kali', 't', .7, .7],
   ['KeyI', 'I', 'Julia', 'style: Julia', 't', .7, .7], ['KeyO', 'O', 'tunnel', 'tunnel', 't', .8, .8], ['KeyP', 'P', 'stretch', 'source stretch', 't', .8, .8],
   ['KeyA', 'A', 'dark', 'mood: dark', 't', .6, .6], ['KeyS', 'S', 'black and white', 'mood: black and white', 't', .6, .6], ['KeyD', 'D', 'blaze', 'mood: blaze', 't', .5, .8],
-  ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['KeyJ', 'J', 'strobe grid (hold)', 'strobe grid', 'h', 0, 0], ['Space', 'Space', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
+  ['KeyG', 'G', 'strobe (hold)', 'mood: strobe', 'h', 0, 0], ['KeyJ', 'J', 'strobe grid (hold)', 'strobe grid', 'h', 0, 0], ['Enter', 'Enter', 'surge (hold)', 'surge (swell)', 'h', .5, 1.2],
 ].map(([code, key, label, fx, mode, rin, rout]) => ({ code, key, label, fx: FX.find(f => f.name === fx), mode, rin, rout, on: false, r: 0, age: 0, mood: /^mood/.test(fx) }));
 const ASSIST_T = 4.5;   // assisted level: a toggled effect switches itself off after this many seconds
 const CT = { I: .5, Ie: .5, pal: 0, palK: 0, palAge: 0, c: PALS[0].c.slice(), d: PALS[0].d.slice(), ha: 1, held: new Set(), helpOn: false };   // pal 0 = original colours, 1..6 = PALS[0..5]
@@ -747,8 +1007,7 @@ const QUIET = { warp: .12, kal: 0, fold: 6, fb: 0, pal: 0, side: 0, breath: 1.2,
 function ctrlParams(P, t, dt) {   // level assisted (CL 1): add the effects' deltas to the engine's P; level manual (CL 2): replace P by the quiet base first
   const as = CL === 1, keep = { pulse: P.pulse, rot: P.rot - USER.rot, hue: P.hue, srcZ: P.srcZ, srcRot: P.srcRot };
   const qb = { ...P, ...QUIET, palC: CT.c, palD: CT.d, ha: CT.ha, tilt: [0, 0] };   // the scratch every effect runs on (the same numbers P gets in manual)
-  CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
-  USER.zoom = clamp(USER.zoom, .5, 2.5);
+  // arrows handled per-frame below (all levels)
   if (!as) {
     Object.assign(P, QUIET, { palC: CT.c, palD: CT.d, ha: CT.ha }); P.pulse = keep.pulse * .6; P.hue = keep.hue; P.srcZ = keep.srcZ; P.srcRot = keep.srcRot;
     P.rot = keep.rot * .5 + USER.rot; P.zoom = USER.zoom * (1 + .015 * Math.sin(t * .23)); P.tilt = [.04 * Math.sin(t * .11), .04 * Math.cos(t * .087)];
@@ -791,43 +1050,49 @@ const KB = [   // rows of [code, cap, width in key units]; a number = blank spac
   [['ShiftLeft', 'Shift', 2.2], ...'ZXCVBNM'.split('').map(c => ['Key' + c, c]), ['Comma', ','], ['Period', '.']],
   [['Space', 'Space', 6.4], .3, ['ArrowLeft', '←'], ['ArrowUp', '↑'], ['ArrowDown', '↓'], ['ArrowRight', '→']],
 ];
-const KB_CAT = { tr: ['#7db4ff', 'transport'], fx: ['#5cf08a', 'picture effects'], mood: ['#ff6fae', 'moods / strobe / hardcore'], glob: ['#ffc94d', 'amount / colour / settings'], img: ['#4fe0ff', 'images / tile modes'], tool: ['#c9c9d6', 'tools'] };
+const KB_CAT = { tr: ['#7db4ff', 'transport'], fx: ['#5cf08a', 'picture effects'], mood: ['#ff6fae', 'moods / strobe / extreme'], glob: ['#ffc94d', 'amount / colour / settings'], img: ['#4fe0ff', 'images / tile modes'], tool: ['#c9c9d6', 'tools'] };
 const KB_ACT = {
-  Escape: [['tr', 'stop']], Space: [['tr', 'pause']], Enter: [null, ['tr', 'pause']], KeyK: [null, ['tr', 'pause']],
-  ArrowLeft: [['tr', 'seek −10 s'], ['fx', 'rotate ◂']], ArrowRight: [['tr', 'seek +10 s'], ['fx', 'rotate ▸']], ArrowUp: [null, ['fx', 'zoom in']], ArrowDown: [null, ['fx', 'zoom out']],
-  Digit1: [['img', 'checker']], Digit2: [['img', 'wave']], Digit3: [['img', 'shatter']], ShiftLeft: [['img', 'Shift+1-5 image']],
-  BracketLeft: [['img', 'prev image']], BracketRight: [['img', 'next image']], KeyV: [['img', 'next image']],
-  KeyQ: [['fx', 'kaleido −']], KeyW: [['fx', 'kaleido +']], KeyE: [['fx', 'tiles −']], KeyR: [['fx', 'tiles +']], KeyY: [['fx', 'trails −']], KeyU: [['fx', 'trails +']], KeyT: [['fx', 'tiles on/off']],
-  KeyI: [['glob', 'intens. −']], KeyO: [['glob', 'intens. +']], KeyP: [['glob', 'style']], KeyC: [['glob', 'colour'], ['glob', 'palette']], KeyZ: [['glob', 'effects −']], KeyX: [['glob', 'effects +']],
-  Semicolon: [['img', 'auto image']], KeyM: [['glob', 'level']], Comma: [['glob', 'transition −']], Period: [['glob', 'transition +']],
-  KeyJ: [['mood', 'grid (hold)']], KeyN: [['mood', 'hardcore']],
-  KeyB: [['tool', 'bookmark']], KeyL: [['tool', 'live code']], KeyH: [['tool', 'help']], KeyF: [['tool', 'fullscreen']],
+  Escape: [0, 'tr', 'stop'], Space: [0, 'tr', 'pause'], Enter: [1, 'mood', 'surge (hold)'],
+  ArrowLeft: [0, 'fx', 'rotate ◂ (held)'], ArrowRight: [0, 'fx', 'rotate ▸ (held)'], ArrowUp: [0, 'fx', 'zoom in (held)'], ArrowDown: [0, 'fx', 'zoom out (held)'],
+  BracketLeft: [0, 'img', 'prev image'], BracketRight: [0, 'img', 'next image'], KeyV: [0, 'img', 'next image'],
+  KeyT: [0, 'fx', 'tile mode cycle'],
+  KeyQ: [1, 'fx', 'warp'], KeyW: [1, 'fx', 'kaleido'], KeyE: [1, 'fx', 'trails'], KeyR: [1, 'fx', 'melt'], KeyY: [1, 'fx', 'tiles'], KeyU: [1, 'fx', 'Kali'], KeyI: [1, 'fx', 'Julia'], KeyO: [1, 'fx', 'tunnel'], KeyP: [1, 'fx', 'stretch'],
+  KeyA: [1, 'mood', 'dark'], KeyS: [1, 'mood', 'b&w'], KeyD: [1, 'mood', 'blaze'], KeyG: [1, 'mood', 'strobe (hold)'], KeyJ: [0, 'mood', 'grid (hold)'], KeyN: [0, 'mood', 'extreme'],
+  KeyZ: [0, 'glob', 'amount −'], KeyX: [0, 'glob', 'amount +'], KeyC: [0, 'glob', 'palette'], Semicolon: [0, 'img', 'auto image'], KeyM: [0, 'glob', 'level'], Comma: [0, 'glob', 'transition −'], Period: [0, 'glob', 'transition +'],
+  KeyB: [0, 'tool', 'bookmark'], KeyL: [0, 'tool', 'live code'], KeyH: [0, 'tool', 'help'], KeyF: [0, 'tool', 'fullscreen'],
 };
+for (let _d = 1; _d <= 8; _d++) KB_ACT['Digit' + _d] = [0, 'glob', 'preset ' + _d];
+const AMT = new Set(['KeyW', 'KeyE', 'KeyY', 'KeyT']);   // keys with Shift (less) / Alt (more) amounts (Z X are the amount keys themselves)
 function ctrlHelp() {
-  const ct = c => CL ? CT_KEYS.find(x => x.code === (c === 'KeyT' ? 'KeyY' : c)) : null;
+  const ct = c => CL ? CT_KEYS.find(x => x.code === c) : null;
   const meaning = c => {
     const e = ct(c);
-    if (e) return { cat: e.mood || e.rin === 0 || c === 'Space' ? 'mood' : 'fx', label: e.label.replace(' (hold)', ' hold').replace('kaleidoscope', 'kaleido').replace('black and white', 'b&w'), on: e.on || e.r > .05 };
-    const a = KB_ACT[c]; let m = a ? (CL && a.length > 1 ? a[1] : a[0]) : null; if (!m) return null;
-    let label = m[1], on = false;
-    if (c === 'KeyZ' || c === 'KeyX') label = (CL === 2 ? 'intens. ' : 'effects ') + (c === 'KeyZ' ? '−' : '+');
-    if (c === 'Semicolon') { label = 'auto img: ' + aiTxt(USER.auto); on = USER.auto !== 0; } if (c === 'KeyC') on = !!CT.pal; if (c === 'KeyN') on = hcOn(); if (c === 'KeyL') on = !!CODE.mode; if (c === 'KeyM') { label = LVL[CL]; on = CL > 0; }
-    if (c === 'KeyH') on = true; if (c === 'KeyC' && CL === 0) label = 'colour: ' + COLS[USER.col];
-    return { cat: m[0], label, on };
+    if (e) { if (CL < 1) return null; return { cat: e.mood || e.rin === 0 ? 'mood' : 'fx', label: e.label.replace(' (hold)', ' hold').replace('kaleidoscope', 'kaleido').replace('black and white', 'b&w'), on: e.on || e.r > .05 }; }
+    const row = KB_ACT[c]; if (!row) return null; const [minLevel, cat, base] = row; if (CL < minLevel) return null;
+    let label = base, on = false;
+    if (c === 'Semicolon') { label = 'auto img: ' + aiTxt(USER.auto); on = USER.auto !== 0; }
+    if (c === 'KeyC') on = !!CT.pal;
+    if (c === 'KeyN') on = hcOn();
+    if (c === 'KeyL') on = !!CODE.mode;
+    if (c === 'KeyM') { label = LVL[CL]; on = CL > 0; }
+    if (c === 'KeyH') on = true;
+    if (c === 'KeyT') on = USER.force >= 0;
+    if (/^Digit[1-8]$/.test(c)) { const o = lsGet('slot' + c.slice(5)); on = !!o; }
+    return { cat, label, on };
   };
-  const cap = (c, txt, w = 1) => { const m = meaning(c), col = m ? KB_CAT[m.cat][0] : '#888'; return `<div class="kc${m ? '' : ' dim'}${m && m.on ? ' on' : ''}" style="--c:${col};--w:${w}"><b>${txt}</b><span>${m ? m.label : ''}</span></div>`; };
+  const cap = (c, txt, w = 1) => { const m = meaning(c), col = m ? KB_CAT[m.cat][0] : '#888'; return `<div class="kc${m ? '' : ' dim'}${m && m.on ? ' on' : ''}" style="--c:${col};--w:${w}"><b>${txt}</b><span>${m ? m.label : ''}${m && AMT.has(c) ? '<br>⇧− Alt+' : ''}</span></div>`; };
   const kb = KB.map(r => `<div class="kr">${r.map(k => typeof k === 'number' ? `<div style="width:${k * 76}px"></div>` : cap(k[0], k[1], k[2])).join('')}</div>`).join('');
   const lg = Object.values(KB_CAT).map(([c, n]) => `<span style="--c:${c}"><i></i>${n}</span>`).join('');
-  const note = ['Auto: the engine alone; Q W / E R / Y U / I O / P / C / Z X are the Settings sliders.', 'Assisted: engine + effect keys; an effect fades out by itself after ' + ASSIST_T + ' s (held keys stay while held). Lit = on.', 'Manual: a quiet base + only what you toggle (stays on until switched off). Lit = on.'][CL];
+  const note = ['Auto: engine only; Z X effects, W/E/Y/T (Shift/Alt) amounts, T cycles tile mode, 1-8 presets.', 'Assisted: engine + effect keys (Q W E R Y U I O P, A S D, G (hold), J (hold), Enter surge) that fade out by themselves. Lit = on.', 'Manual: quiet base + only what you toggle (stays on until switched off). Lit = on.'][CL];
   $('help').innerHTML = `<div class="box"><h3>Keys · control level ${LVL[CL]} (M) · transition ${USER.trans ? USER.trans + ' s' : 'instant'} (, .)</h3><div class="kb">${kb}</div><div class="lg">${lg}</div>
-    <div class="n">${note} Dim = unused. Keys work at any time while playing. ${liveOn ? 'Live / mic: no seek, pause or tiles keys.' : ''}</div>
+    <div class="n">${note} Shift+key = less, Alt+key = more (W E Y T); Shift+← → = seek ±10 s. Dim = unused. Keys work at any time while playing. ${liveOn ? 'Live / mic: no seek, pause or tiles keys.' : ''}</div>
     <div class="n tl"><kbd>mouse</kbd> move = kaleidoscope centre · click = ripple · drag = rotate · wheel = zoom</div>
     <div class="n tl"><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery (N / P next / previous, hover the right edge for the list) · <kbd>?arc=hardcore</kbd> <kbd>?hc=1</kbd> · <kbd>?t=&lt;sec&gt;&amp;seed=&lt;n&gt;</kbd> one still (the <kbd>B</kbd> .json has the exact link, the .png the frame) · click anywhere or Esc to close</div></div>`;
 }
 const ctrlHelpToggle = on => {   // (name kept from controlled mode; now general)
   CT.helpOn = on ?? !CT.helpOn; $('help').classList.toggle('on', CT.helpOn); if (CT.helpOn) ctrlHelp(); };
 function ctrlKey(e) {   // levels assisted / manual: returns true when the key belongs to the effect keys
-  const el = CT_KEYS.find(x => x.code === e.code || (e.code === 'KeyT' && x.code === 'KeyY'));
+  const el = CT_KEYS.find(x => x.code === e.code);
   if (el) {
     e.preventDefault(); if (e.repeat) return true;
     if (el.mode === 't') { el.on = !el.on; el.age = 0; toast(el.label + (el.on ? (CL === 1 ? ' on (fades in ' + ASSIST_T + ' s)' : ' on') : ' off'), 1200); } else el.on = true;
@@ -837,7 +1102,6 @@ function ctrlKey(e) {   // levels assisted / manual: returns true when the key b
   if (e.code === 'KeyZ' || e.code === 'KeyX') { CT.I = clamp(Math.round((CT.I + (e.code === 'KeyX' ? .1 : -.1)) * 10) / 10); toast('Intensity ' + Math.round(CT.I * 100) + '%', 1200); }
   else if (e.code === 'KeyC') { if (CL === 1 && !CT.pal && CT.palK < .02 && lastP) { CT.c = lastP.palC.slice(); CT.d = lastP.palD.slice(); CT.ha = lastP.ha; } CT.palAge = 0; CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); }
   else if (e.code === 'KeyH') ctrlHelpToggle();
-  else if (e.code === 'KeyK' || e.code === 'Enter') togglePause();
   else if (/^Arrow(Up|Down|Left|Right)$/.test(e.code)) CT.held.add(e.code);
   else return false;
   e.preventDefault(); if (CT.helpOn) ctrlHelp(); return true;
@@ -857,7 +1121,7 @@ function setLevel(l, save = true, quiet = false) {
   if (save) lsSet('level', l);
   document.querySelectorAll('#lvl button,#lvls button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
   markHC();
-  if (!quiet) toast('Control: ' + LVL[l] + ['  ·  engine only, Z X Q W E R Y U I O P C are the sliders', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500);
+  if (!quiet) toast('Control: ' + LVL[l] + ['  ·  engine only; Z X effects, W/E/Y/T amounts (Shift/Alt), T tile mode, 1-8 presets', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500);
 }
 // live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
 // overlay = DOM box bottom-left; crazy = the same text drawn on a 2D canvas that FS_SCENE mixes into the SOURCE sampling (uCode), so warp, kaleidoscope, tiles, trails, palette all deform it.
@@ -911,7 +1175,9 @@ let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cu
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp(u0 + UE.inten * .25), u = lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   easeUser(dt); const HC = hcOn(), hk = ramp(HCr, HC ? 1 : 0, dt, USER.trans), Hd = hk > .5, hl = (a, b) => lerp(a, b, hk);   // hk = hardcore blend 0..1 (a toggle ramps over the transition time); Hd = its discrete half (scene period, timelines, palette flips)
-  const g15 = (LIVE && !LOC) || CTRL || SHOW || Hd ? 1 : smooth(.13, .18, t / TOTAL);   // generated + local: no deformation, tiles, tilt or scene punches during the first ~15 % (live / controlled / showcase excluded)
+  // deformation gate (tiles, tilt, scene punches, tunnel, kaleidoscope, warp, pulse...): generated = calm start over the first ~15 % of the piece;
+  // local file = 5 s ramp-up (fixed, not track-proportional); live = calmer for 10 s (x0.3 → 1), then the full music-driven look; controlled / showcase / extreme = always 1
+  const g15 = CTRL || SHOW || Hd ? 1 : LOC ? smooth(0, 5, t) : LIVE ? lerp(.3, 1, smooth(0, 10, t)) : smooth(.13, .18, t / TOTAL);
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
   const SP = Hd ? 8 : 45, MP = Hd ? 2 : 15, ph = t / SP + PH * .37, wi = Math.floor(ph), wf = ph - wi, scene = LIVE ? LIVE.scenes : wi;
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
@@ -971,6 +1237,16 @@ function render(t, dt, bass, mid = 0, hi = 0) {
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch, tun: clamp(tun), mono: Math.max(UE.monoK, md.bw), tile, tileN, tileMode,
     kali: Math.min(1, LOOK.sk * (.3 + sg) * cz), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: hk * smooth(.5, .7, sg) };
   if (UE.fx !== 1) { const f = UE.fx; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
+  // arrow rotate / zoom holds (all levels, independent of control params)
+  CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
+  USER.zoom = clamp(USER.zoom, .5, 2.5);
+  // in auto level the engine still honours the palette key (CT.pal), eased gently
+  if (!SHOW && !CL) {
+    const ez = 1 - Math.exp(-dt / Math.max(.5, (USER.trans || 1) / 3));
+    const targetK = CT.pal ? .8 : 0; CT.palK += (targetK - CT.palK) * ez;
+    if (CT.pal) { const pi = CT.pal - 1, ez2 = 1 - Math.exp(-dt / Math.max(.5, USER.trans / 3) * 2); for (let i = 0; i < 3; i++) { CT.c[i] += (PALS[pi].c[i] - CT.c[i]) * ez2; CT.d[i] += (PALS[pi].d[i] - CT.d[i]) * ez2; } CT.ha += (PALS[pi].ha - CT.ha) * ez2; }
+    const w = clamp(CT.palK * 2); if (CT.pal && w > 0) { P.palC = P.palC.map((v, i) => lerp(v, CT.c[i], w)); P.palD = P.palD.map((v, i) => lerp(v, CT.d[i], w)); P.ha = lerp(P.ha, CT.ha, w); P.pal = clamp(P.pal + CT.palK); }
+  }
   if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
   if (GRID.held) P.cells = 1;   // J held (level auto)
   lastP = P;   // for the B snapshot
@@ -1139,6 +1415,9 @@ const $ = id => document.getElementById(id);
   });
   $(id).addEventListener('change', ev => { const f = ev.target; if (f.files) { addImages(f.files); f.value = ''; } });
 });
+['ggal', 'tgal'].forEach(id => $(id).addEventListener('click', ev => {
+  ev.stopPropagation(); const b = ev.target.closest('[data-gid]'); if (b) galPick(b.dataset.gid);
+}));
 const fmt = s => Math.floor(s / 60) + ':' + String(Math.floor(s % 60)).padStart(2, '0');
 function newSeed() {   // one seed drives all the randomness of a play (notes, drift phases, spin direction, start hue)
   const q = Q.get('seed'); seedUsed = q !== null ? (parseFloat(q) || 0) : Math.floor(Math.random() * 1e6);
@@ -1164,9 +1443,9 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
 function start() {
   if (playing || !ready || liveOn) return;
   if (CTRL && !LOC && !ARCSWAP) enterCtrl();   // manual + generated music
-  begin(0, true); playing = true; gate.classList.add('off'); document.body.classList.add('playing');
+  begin(0, true); playing = true; homeGate(false); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
-  if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Space = surge  ·  K = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  ← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
+  if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Enter = surge  ·  Space = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  Shift+← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
   requestAnimationFrame(loop);
 }
 function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); } }
@@ -1184,7 +1463,12 @@ function loop() {
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = (tc / TOTAL * 100) + '%'; }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; gate.classList.remove('off'); return; }
+  if (LOC && NEXT && (NEXTGO || t >= TOTAL + .3)) {   // a queued next track: play it when this one ends (or on "Play next now")
+    if (NEXTDATA) { goNext(); requestAnimationFrame(loop); return; }
+    if (NEXTFAIL) { toast('Next track could not be read'); clearNext(); }
+    else { if (!NEXTGO) toast('Loading next track…', 60000); NEXTGO = true; if (t >= TOTAL + .3) { requestAnimationFrame(loop); return; } }   // still decoding: hold the last picture, silent
+  }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
   requestAnimationFrame(loop);
 }
 // Transport follows pointer activity; settings only open by explicit click.
@@ -1222,7 +1506,7 @@ const toggleFullscreen = async () => {
 $('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
   if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); gate.classList.remove('off'); hint.textContent = 'Stopped · seed ' + seedUsed;
+  HCX = null; markHC(); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui'); homeGate(true); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), frac = e => clamp((e.clientX - bar.getBoundingClientRect().left) / bar.clientWidth);
@@ -1244,8 +1528,7 @@ $('pp').addEventListener('click', togglePause);
 $('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
 $('stopb').addEventListener('click', stopPlay);
 $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopPlay(); });   // same as Esc
-const TKEYS = { KeyZ: ['fx', -1, 'Effects'], KeyX: ['fx', 1, 'Effects'], KeyQ: ['kal', -1, 'Kaleidoscope'], KeyW: ['kal', 1, 'Kaleidoscope'], KeyE: ['tile', -1, 'Tiles'], KeyR: ['tile', 1, 'Tiles'],
-  KeyY: ['fb', -1, 'Trails'], KeyU: ['fb', 1, 'Trails'], KeyI: ['inten', -1, 'Intensity'], KeyO: ['inten', 1, 'Intensity'] };   // left key = less, right key = more
+const TKEYS = { KeyZ: ['fx', -1, 'Effects'], KeyX: ['fx', 1, 'Effects'] };   // left key = less, right key = more | (amounts for W/E/Y/T moved to Shift/Alt modifiers; Q..P removed)
 const trTxt = () => USER.trans ? ' → ' + USER.trans + ' s' : '';
 const AIS = [0, 30, 60, -1], aiTxt = v => v === 0 ? 'off' : v < 0 ? 'each scene' : v + ' s';
 const markAI = () => document.querySelectorAll('#ais button').forEach(b => b.classList.toggle('on', +b.dataset.ai === USER.auto));
@@ -1256,13 +1539,10 @@ function setTrans(v, quiet) { USER.trans = v; markTR(); autosave(); if (CT.helpO
 function tweakKey(e) {   // keyboard twins of the #tune sliders (non-controlled modes); returns true when the key was used
   const d = TKEYS[e.code];
   if (d) { const el = $(SLID[d[0]]), v = Math.round(clamp(USER[d[0]] + d[1] * .1, +el.min, +el.max) * 100) / 100; USER[d[0]] = v; el.value = v; autosave(); toast(d[2] + ' ' + Math.round(v * 100) + ' %' + trTxt(), 1200); return true; }
-  if (e.code === 'Semicolon') { setAuto(AIS[(Math.max(0, AIS.indexOf(USER.auto)) + 1) % AIS.length]); return true; }   // ; cycles the auto-image setting
-  if (e.code === 'Comma' || e.code === 'Period') { const i = TRS.indexOf(USER.trans), j = clamp((i < 0 ? 2 : i) + (e.code === 'Period' ? 1 : -1), 0, TRS.length - 1); setTrans(TRS[j]); return true; }   // , shorter / . longer transition
-  if (e.code === 'KeyP') { USER.style = (USER.style + 1) % 4; markSM(); autosave(); toast('Style: ' + ['none', 'Kali', 'Julia', 'auto'][USER.style] + trTxt(), 1200); return true; }
-  if (e.code === 'KeyC') { $('u-col').click(); toast('Colour: ' + COLS[USER.col] + trTxt(), 1200); return true; }
   return false;
 }
 addEventListener('keydown', e => {
+  if (e.code === 'Escape' && CT.helpOn) { ctrlHelpToggle(false); return; }
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
   if (e.code === 'KeyH' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { ctrlHelpToggle(); return; }
@@ -1273,17 +1553,52 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyN' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setHC(); return; }   // hardcore look on / off, any source and level
   if (e.code === 'KeyM' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setLevel((CL + 1) % 3); return; }   // control level: auto / assisted / manual
   if (CL && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
-  if (e.code === 'KeyT') { const v = USER.tile ? 0 : 1; USER.tile = v; $('u-tile').value = v; toast('Tiles ' + (v ? 'on' : 'off'), 1500); return; }
-  if (e.shiftKey && /^Digit[1-5]$/.test(e.code)) { const n = +e.code[5] - 1; if (n < IM.length) showImg(n); else toast('No image ' + (n + 1), 1500); return; }
+  const isMod = e.shiftKey || e.altKey || e.ctrlKey || e.metaKey;
+  // tile mode cycle on plain T
+  if (e.code === 'KeyT' && !e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    const seq = [-1, 0, 1, 2, -1]; // off -> checker -> wave -> shatter -> off
+    const cur = USER.force;
+    const idx = seq.indexOf(cur); const next = seq[idx >= 0 ? idx + 1 : 0];
+    setTileMode(next); autosave(); toast(next < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][next], 1500); return;
+  }
+  // amount keys: Shift (down) / Alt (up)
+  if (!e.ctrlKey && !e.metaKey && (e.shiftKey || e.altKey) && ['KeyW', 'KeyE', 'KeyY', 'KeyT'].includes(e.code)) {
+    const field = e.code === 'KeyW' ? 'kal' : (e.code === 'KeyE' ? 'fb' : 'tile');
+    const el = $(SLID[field]); const delta = e.shiftKey ? -0.1 : +0.1; const v = Math.round(clamp(USER[field] + delta, +el.min, +el.max) * 100) / 100;
+    USER[field] = v; el.value = v; autosave(); e.preventDefault(); toast((field === 'kal' ? 'Kaleidoscope' : field === 'fb' ? 'Trails' : 'Tiles') + ' ' + Math.round(v * 100) + ' %' + trTxt(), 1200);
+    if (CT.helpOn) ctrlHelp(); return;
+  }
   if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: add more in Settings', 2000); return; }   // next image, every mode and level
   if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
-  if (/^Digit[123]$/.test(e.code)) { const m = +e.code[5] - 1; setTileMode(USER.force === m ? -1 : m); autosave(); toast(USER.force < 0 ? 'Tiles: auto' : 'Tiles: ' + ['checkerboard', 'wave', 'shatter'][m], 1500); return; }
   if (e.code === 'KeyJ' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }   // strobe grid while held
-  if (CL < 2 && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;   // Z X effects, Q W / E R / Y U / I O sliders, P style, C colour
+  // Comma / Period transition time in all levels
+  if (!isMod && (e.code === 'Comma' || e.code === 'Period')) { const i = TRS.indexOf(USER.trans), j = clamp((i < 0 ? 2 : i) + (e.code === 'Period' ? 1 : -1), 0, TRS.length - 1); setTrans(TRS[j]); if (CT.helpOn) ctrlHelp(); return; }
+  // Semicolon auto image in all levels
+  if (!isMod && e.code === 'Semicolon') { setAuto(AIS[(Math.max(0, AIS.indexOf(USER.auto)) + 1) % AIS.length]); if (CT.helpOn) ctrlHelp(); return; }
+  // C palette cycle all levels
+  if (!isMod && e.code === 'KeyC') { CT.palAge = 0; CT.pal = (CT.pal + 1) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); if (CT.helpOn) ctrlHelp(); return; }
+  if (e.shiftKey && !e.altKey && !e.ctrlKey && !e.metaKey && e.code === 'KeyC') { CT.palAge = 0; CT.pal = (CT.pal + 6) % 7; toast(CT.pal ? 'Palette ' + CT.pal + '/6' : 'Original colours', 1200); if (CT.helpOn) ctrlHelp(); return; }
+  // Presets on digit row
+  if (/^Digit[1-8]$/.test(e.code) && !e.altKey && !e.ctrlKey && !e.metaKey) {
+    const n = +e.code.slice(5);
+    if (e.shiftKey) { lsSet('slot' + n, snapTweaks()); toast('Preset ' + n + ' saved', 1500); }
+    else { const o = lsGet('slot' + n); if (o) { applyTweaks(o); autosave(); toast('Preset ' + n + ' loaded', 1500); } else toast('Preset ' + n + ' is empty', 2000); }
+    if (CT.helpOn) ctrlHelp(); return;
+  }
+  // Z/X amount per level (tweakKey: levels 0-1 global effects)
+  if (!isMod && (e.code === 'KeyZ' || e.code === 'KeyX') && CL < 2 && tweakKey(e)) return;
+  // ctrlKey for levels 1-2 already handled effect toggles earlier; if Z/X in manual, ctrlKey handled above
+  if (CL === 2 && !isMod && (e.code === 'KeyZ' || e.code === 'KeyX')) return;
+  if (e.code === 'KeyJ' && !CL && !e.ctrlKey && !e.metaKey && !e.altKey) { GRID.held = true; return; }
+  if (CL < 2 && !e.ctrlKey && !e.metaKey && !e.altKey && tweakKey(e)) return;
   if (liveOn) return;
   if (SHOW && (e.code === 'KeyN' || e.code === 'KeyP')) { seekTo(fxStart(fxIndex(lastT) + (e.code === 'KeyN' ? 1 : -1))); return; }
-  if (e.code === 'Space') { e.preventDefault(); togglePause(); }
-  else if (e.code === 'ArrowRight') seekTo(lastT + 10); else if (e.code === 'ArrowLeft') seekTo(lastT - 10);
+  // Space pause/resume all levels
+  if (!isMod && e.code === 'Space') { e.preventDefault(); togglePause(); return; }
+  // arrows held rotate/zoom (all levels)
+  if (!isMod && /^Arrow(Up|Down|Left|Right)$/.test(e.code)) { CT.held.add(e.code); e.preventDefault(); return; }
+  // shift+arrows seek
+  if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && !liveOn) { seekTo(lastT + (e.code === 'ArrowRight' ? 10 : -10)); return; }
 });
 [['u-fx', 'fx'], ['u-inten', 'inten'], ['u-kal', 'kal'], ['u-tile', 'tile'], ['u-fb', 'fb']].forEach(([id, k]) => {
   $(id).addEventListener('input', e => { USER[k] = +e.target.value; snapUser(k); });   // (a dragged slider snaps, only keys ease)
@@ -1369,7 +1684,7 @@ function drawProfile() {   // the arc's intensity curve, drawn behind the seek b
   if (SHOW) { x.strokeStyle = 'rgba(244,241,234,.7)'; x.fillStyle = '#fff'; x.font = '14px sans-serif'; x.lineWidth = 2;   // showcase: one tick + number per effect
     FX.forEach((_, i) => { const X = i / FX.length * w; x.beginPath(); x.moveTo(X, 0); x.lineTo(X, h); x.stroke(); x.fillText(i + 1, X + 3, 14); }); }
 }
-const updateHint = () => { if (ready) hint.textContent = `Choose a mode · generative: ${MIN} min, sound on`; };
+const updateHint = () => { if (ready) hint.textContent = ''; };
 const chips = [...document.querySelectorAll('#opts button')];
 chips.forEach(b => b.classList.toggle('on', b.dataset.arc === arcName));
 document.getElementById('opts').addEventListener('click', e => {
@@ -1432,7 +1747,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
   LIVE = newLive();
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99; AI.scene = null; AI.acc = 0;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
-  gate.classList.add('off'); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
+  homeGate(false); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
   requestAnimationFrame(liveLoop);
 }
 function liveStep(dt) {   // causal features from the current spectrum → intensity, tension, drop, state
@@ -1507,7 +1822,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  HCX = null; markHC(); resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; gate.classList.remove('off'); applyArc(); updateHint();
+  HCX = null; markHC(); resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui'); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); startLive(true); });
@@ -1519,7 +1834,7 @@ $('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
 /* ════════════════════════ LOCAL MODE: play an audio file; the whole file is analysed first (offline, so it can look ahead) ════════════════════════
    Same features and section/drop detector as liveStep(), but zero-phase smoothing and back-dated scene starts. The result is a timeline sampled at the audio clock
    time t (localView), written into the LIVE-shaped object so render() runs its live look path unchanged: the picture stays a pure function of t. */
-let LOC = null, localData = null, FFT = null;
+let LOC = null, localData = null, FFT = null, NEXT = null, NEXTDATA = null, NEXTGO = false, NEXTFAIL = false;   // NEXT = chosen File; NEXTDATA = its analysed timeline (kept apart from LOC until it plays)
 const LST = ['', 'drop', 'build', 'groove', 'breakdown', 'calm'];
 const zp = (a, tau, fps) => { const k = 1 - Math.exp(-1 / (tau * fps)), o = new Float32Array(a.length); let y = a[0]; for (let i = 0; i < a.length; i++) { y += (a[i] - y) * k; o[i] = y; } for (let i = a.length - 1; i >= 0; i--) { y += (o[i] - y) * k; o[i] = y; } return o; };   // forward + backward EMA = no lag
 function fft(re, im) {   // in-place radix-2
@@ -1579,7 +1894,7 @@ async function analyseLocal(buf, progress) {
     }
     else if (age > D.warm + 5 && ag[f] > .3 && pT > D.minDur && sinceMinor > D.minDwell && sinceScene > 6) { P.minorT.push(Math.max(P.minorT.at(-1) ?? 0, t - Math.min(3, pT))); sinceMinor = 0; pT = 0; }
     boost *= Math.exp(-dt / 6);
-    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost) * Math.min(1, ag[f] * 1.5), tgt = lerp(.04, .88, I) * smooth(0, 6, t);  u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);   // I scaled by absolute loudness; fades in over the first 6 s
+    const I = clamp(.12 + .62 * lv[f] + .3 * tension + .45 * boost) * Math.min(1, ag[f] * 1.5), tgt = lerp(.04, .88, I) * smooth(0, 5, t);  u = u < 0 ? tgt : u + (tgt - u) * ease(tgt > u ? .45 : 2.5);   // I scaled by absolute loudness; fades in over the first 5 s
     P.u[f] = u; const gq = Math.min(1, ag[f] * 1.5); P.tens[f] = tension * gq; P.boo[f] = boost * gq;   // no tile bursts / tension look in a quiet stretch
     const rawSt = boost > .5 ? 1 : tension > .25 ? 2 : bLong[f] > .3 ? 3 : lv[f] < .27 ? 4 : 5;   // state label with the same hold rules as live
     if (age < 4) st = 0; else { stT += dt;
@@ -1601,7 +1916,7 @@ function localView(t) {   // timeline at time t → the LIVE-shaped object rende
 function integrateLocal(off) {   // like integrateTo(), but along the timeline (mirrors the LIVE branch of render())
   hue = hueBase; rotA = 0;
   for (let s = 0; s < off; s += .5) {
-    localView(s); const u = clamp(LIVE.u), e = score(u), tr = Math.exp(-(s - trT0) / 1.4), tm = Math.exp(-(s - tmT0) / 1.2);
+    localView(s); const u = clamp(LIVE.u), e = score(u), g = smooth(0, 5, s), tr = g * Math.exp(-(s - trT0) / 1.4), tm = g * Math.exp(-(s - tmT0) / 1.2);   // g = render()'s local ramp-up gate
     hue += e[4] * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)) + (hcOn() ? HCspin(s) : 0));
   }
   localView(off);
@@ -1610,26 +1925,48 @@ function playLocal(a, t0, off) {   // the decoded file through the speakers; ret
   const src = a.createBufferSource(), outG = a.createGain(); src.buffer = LOC.buf; outG.gain.value = +$('vol').value; volNode = outG; src.connect(outG); outG.connect(a.destination); src.start(t0 + off, off);
   return () => {};
 }
-function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; TOTAL = MIN * 60; applyArc(); drawProfile(); }
+function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; TOTAL = MIN * 60; applyArc(); drawProfile(); syncNext(); }
+async function decodeLocal(src, progress = () => {}) {   // File or URL → decoded + analysed timeline. No UI side effects, so it can run in the background
+  const ab = await (src instanceof Blob ? src : await (await fetch(src)).blob()).arrayBuffer();
+  const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(ab);
+  if (!buf.length) throw new Error('empty file');
+  return analyseLocal(buf, progress);
+}
 async function loadLocal(src) {   // File or URL → decode → analyse; enables Play
   const note = $('localnote'), go = $('playlocal'); go.disabled = true; localData = null; note.style.color = '';
   try {
     note.textContent = 'Decoding…';
-    const ab = await (src instanceof Blob ? src : await (await fetch(src)).blob()).arrayBuffer();
-    const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(ab);
-    if (!buf.length) throw new Error('empty file');
-    localData = await analyseLocal(buf, p => { note.textContent = 'Analysing… ' + Math.round(p * 100) + '%'; });
-    note.textContent = `Ready · ${fmt(buf.duration)} · ${localData.sceneT.length + 1} scenes`; go.disabled = false;
+    localData = await decodeLocal(src, p => { note.textContent = 'Analysing… ' + Math.round(p * 100) + '%'; });
+    note.textContent = `Ready · ${fmt(localData.dur)} · ${localData.sceneT.length + 1} scenes`; go.disabled = false;
   } catch (e) { note.textContent = 'Cannot read this file as audio (' + (e.message || e.name) + ')'; note.style.color = '#ff6b6b'; console.log('local:', e); }
 }
 function startLocal() {
   if (!localData || playing || !ready || liveOn) return;
-  LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); start();
+  LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); syncNext(); start();
 }
+const nfile = document.querySelector('#nextpick input');
+$('nextpick').addEventListener('click', e => e.stopPropagation());
+function syncNext() { $('nextnow').style.display = LOC && NEXT ? '' : 'none'; $('tnext').style.display = LOC ? '' : 'none'; $('tnext').textContent = NEXT ? 'Next: ' + NEXT.name : 'Next track…'; }   // "Play next now": Local mode with a next track chosen
+function clearNext() { NEXT = null; NEXTDATA = null; NEXTGO = false; NEXTFAIL = false; nfile.value = ''; $('nextname').textContent = ''; $('nextclear').style.display = 'none'; syncNext(); }
+function prepNext(f) {   // decode + analyse the chosen next file in the background (the result waits in NEXTDATA)
+  NEXTDATA = null; NEXTFAIL = false;
+  decodeLocal(f).then(d => { if (NEXT === f) NEXTDATA = d; }, e => { if (NEXT === f) NEXTFAIL = true; console.log('local next:', e); });
+}
+function goNext() {   // swap the queued track in as LOC and restart at t = 0; begin() closes the old AudioContext (and its source) and re-derives the state
+  const d = NEXTDATA, name = NEXT.name; clearNext();
+  LOC = d; LIVE = newLive(); TOTAL = LOC.dur; drawProfile(); begin(0, true); toast('Now: ' + name, 3000);
+}
+function playNextNow() { if (!playing || !LOC || !NEXT) return; NEXTGO = true; if (!NEXTDATA && !NEXTFAIL) toast('Loading next track…', 60000); }   // the loop picks it up on the next frame (waits there if still decoding)
+$('nextnow').addEventListener('click', e => { e.stopPropagation(); playNextNow(); });
+const setNext = f => { if (f) { NEXT = f; $('nextname').textContent = f.name; $('nextclear').style.display = ''; prepNext(f); syncNext(); } };
+nfile.addEventListener('change', () => setNext(nfile.files && nfile.files[0]));
+$('tnext').addEventListener('click', e => { e.stopPropagation(); $('tnextfile').click(); });   // Settings: pick the next file while playing
+$('tnextfile').addEventListener('change', e => { setNext(e.target.files && e.target.files[0]); e.target.value = ''; });
+$('nextclear').addEventListener('click', e => { e.stopPropagation(); clearNext(); });
 const lfile = document.querySelector('#lpick input');
 $('lpick').addEventListener('click', e => e.stopPropagation());
-function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Hardcore: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
-function setHC(on) { HCX = on ?? !(HCX ?? hcOn()); markHC(); if (CT.helpOn) ctrlHelp(); if (playing || liveOn) toast(CTRL ? 'Hardcore does not apply in manual control' : 'Hardcore ' + (HCX ? 'on' : 'off') + '  ·  N', 1400); }
+function markHC() { const on = hcOn() || HCX === true; document.querySelectorAll('.hcb').forEach(b => { b.textContent = 'Extreme: ' + (on ? 'on' : 'off'); b.classList.toggle('on', on); }); }
+function setHC(on) { HCX = on ?? !(HCX ?? hcOn()); markHC(); if (CT.helpOn) ctrlHelp(); if (playing || liveOn) toast(CTRL ? 'Extreme does not apply in manual control' : 'Extreme ' + (HCX ? 'on' : 'off') + '  ·  N', 1400); }
 document.querySelectorAll('.hcb').forEach(b => b.addEventListener('click', e => { e.stopPropagation(); setHC(); }));
 lfile.addEventListener('change', () => { if (lfile.files[0]) loadLocal(lfile.files[0]); });
 $('playlocal').addEventListener('click', e => { e.stopPropagation(); startLocal(); });
@@ -1637,25 +1974,64 @@ addEventListener('resize', resize);
 $('playgen').addEventListener('click', e => { e.stopPropagation(); start(); });
 $('lvl').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 $('lvls').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
-setLevel(Q.has('level') ? Math.max(0, ['auto', 'assisted', 'manual'].indexOf(Q.get('level'))) : CTRL_URL ? 2 : [0, 1, 2].includes(lsGet('level')) ? lsGet('level') : 0, false, true);   // (a URL level is not saved)
+setLevel(Q.has('level') ? (() => { const v = Q.get('level'); if (v === '0' || v === 'auto') return 0; if (v === '1' || v === 'assisted') return 1; if (v === '2' || v === 'manual') return 2; const i = ['auto', 'assisted', 'manual'].indexOf(v); return i < 0 ? 0 : i; })() : CTRL_URL ? 2 : [0, 1, 2].includes(lsGet('level')) ? lsGet('level') : 0, false, true);   // (a URL level is not saved)   // accepts both numeric and word levels for tests
+// Home uses only a CSS logo animation: no audio clock, render history or user image state.
+function homePanel(name, focus = false) {
+  const drawer = $('home-drawer'); drawer.hidden = !name;
+  ['play', 'images', 'settings'].forEach(n => {
+    $('home-' + n).hidden = n !== name;
+    document.querySelector('[data-home="' + n + '"]').setAttribute('aria-expanded', String(n === name));
+  });
+  $('home-start').setAttribute('aria-expanded', String(name === 'play'));
+  if (focus && name) $('home-close').focus();
+}
+function homeGate(open) {
+  gate.classList.toggle('off', !open); gate.inert = !open;
+  if (!open) homePanel(null);
+  if (open) startHomeLoop(); else stopHomeLoop();
+}
+document.querySelectorAll('[data-home]').forEach(b => b.addEventListener('click', () => {
+  homePanel(b.getAttribute('aria-expanded') === 'true' ? null : b.dataset.home);
+}));
+$('home-start').addEventListener('click', () => homePanel('play', true));
+$('home-close').addEventListener('click', () => {
+  const active = document.querySelector('[data-home][aria-expanded="true"]'); homePanel(null); active && active.focus();
+});
+$('home-brand').addEventListener('click', () => homePanel(null));
+$('source').addEventListener('click', e => {
+  const b = e.target.closest('[data-source]'); if (!b) return;
+  document.querySelectorAll('[data-source]').forEach(c => {
+    const selected = c === b; c.setAttribute('aria-pressed', String(selected)); $('c-' + c.dataset.source).hidden = !selected;
+  });
+});
+gate.addEventListener('click', e => { if (e.target === gate || e.target === $('home-intro')) homePanel(null); });
+gate.addEventListener('keydown', e => {
+  if (e.code === 'Escape' && CT.helpOn) { e.stopPropagation(); ctrlHelpToggle(false); }
+  else if (e.code === 'Escape' && !$('home-drawer').hidden) { e.stopPropagation(); $('home-close').click(); }
+  // Keep native button activation/navigation while choosing a source or setup.
+  else if (e.target.closest('button,summary,input,label')) e.stopPropagation();
+});
 addEventListener('load', () => {
   if (!gl) { hint.textContent = 'WebGL2 is not available in this browser'; return; }
   { const sw = softwareGL(), saved = lsGet('quality'); quality = QUAL[Q.get('quality')] ? Q.get('quality') : QUAL[saved] ? saved : sw ? 'low' : 'high'; markQ(); if (sw && !saved) $('qnote').textContent = 'No graphics card detected: Low quality selected for you'; }
   try { initGL(); } catch (e) { hint.textContent = 'Shader error: ' + e.message; console.log(e.message); return; }
   resize();
+  homeReduced = !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches);
+  initHomeGL($('home-c'));
+  loadHomeLogo(document.querySelector('#home-art img').src, () => { if (!playing && !liveOn && !document.body.classList.contains('still')) startHomeLoop(); });
   loadPoster(IMG, async () => {
-    ready = true; updateHint(); drawProfile(); renderImgs();
+    ready = true; $('playgen').disabled = false; updateHint(); drawProfile(); renderImgs();
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
     if (dbg !== null) {   // silent still: step the feedback loop up to the requested time
-      gate.classList.add('off'); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
+      homeGate(false); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
       const fr = x => { if (LOC) localView(x); render(x, step, LOC ? LIVE.bn : 0, LOC ? LIVE.mn : 0, LOC ? LIVE.hn : 0); };
       for (; t < T; t += step) fr(t); fr(T);
     }
   });
 });
 </script>
-<script>const IMG="__POSTER__";</script>
+<script>const IMG=document.querySelector("#home-art img").src;</script>   <!-- default picture = the logo (same inlined data URI as the home screen) -->
 </body>
 </html>

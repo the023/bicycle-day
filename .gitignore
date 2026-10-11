@@ -1,3 +1,9 @@
 node_modules/
 *.log
 .DS_Store
+
+# agent working files (never tracked)
+.claude/
+.playwright-mcp/
+TICKETS.md
+assets/local/

@@ -1,0 +1,54 @@
+# Keyboard Map — Bicycle Day (T4 final)
+
+Single meaning per key. A level may only ENABLE or DISABLE a key (disabled = greyed in the help overlay). Extreme mode (HCX/hcOn) only adds things, never remaps. Modifier convention for adjustable keys: key = toggle/primary, Shift+key = amount DOWN, Alt+key = amount UP (Ctrl unused).
+
+CL: 0 auto, 1 assisted, 2 manual. Lmin = minimum control level that enables the key.
+
+| key | meaning (single) | min level | notes |
+|---|---|---|---|
+| Escape | stop play/live; close help/drawer | 0 | |
+| F1–F12 | unused | 0 | |
+| Digit0 | unused | 0 | |
+| Digit1–Digit8 | recall preset n | 0 | Shift+Digit n saves preset n |
+| Shift+Digit1..8 | save preset n | 0 | |
+| ArrowLeft/Right/Up/Down | rotate / zoom (held) | 0 | Shift+Left/Right = seek ±10 s |
+| Shift+ArrowLeft/Right | seek −/+10 s | 0 | |
+| Space | pause / resume | 0 | |
+| Enter | surge swell (hold) | 1 | |
+| KeyA | mood: dark | 1 | |
+| KeyS | mood: black & white | 1 | |
+| KeyD | mood: blaze | 1 | |
+| KeyG | strobe (hold) | 1 | |
+| KeyJ | strobe grid (hold) | 0 | |
+| KeyQ | effect: warp | 1 | |
+| KeyW | effect: kaleidoscope | 1 | Shift/Alt+W = USER.kal amount |
+| KeyE | effect: trails | 1 | Shift/Alt+E = USER.fb amount |
+| KeyR | effect: melt | 1 | |
+| KeyY | effect: tiles (checker) | 1 | Shift/Alt+Y = USER.tile amount |
+| KeyU | effect: Kali style | 1 | |
+| KeyI | effect: Julia style | 1 | |
+| KeyO | effect: tunnel | 1 | |
+| KeyP | effect: source stretch | 1 | style cycle via Settings only |
+| KeyT | tile mode cycle (off/checker/wave/shatter) | 0 | Shift/Alt+T = USER.tile amount |
+| KeyZ | global amount − | 0 | levels 0–1: USER.fx; level 2: engine intensity |
+| KeyX | global amount + | 0 | levels 0–1: USER.fx; level 2: engine intensity |
+| KeyC | palette cycle (6 palettes) | 0 | Shift+C = previous palette; #u-col = colour mode |
+| KeyM | cycle control level (auto/assisted/manual) | 0 | |
+| KeyN | extreme look toggle (also showcase next) | 0 | |
+| KeyF | fullscreen | 0 | |
+| KeyH | help overlay | 0 | |
+| KeyL | live-coding overlay cycle | 0 | |
+| KeyB | bookmark (save) | 0 | |
+| KeyV | next image | 0 | |
+| BracketLeft | previous image | 0 | |
+| BracketRight | next image | 0 | |
+| Comma | transition time shorter | 0 | |
+| Period | transition time longer | 0 | |
+| Semicolon | auto-image cadence cycle | 0 | |
+
+Notes:
+- Old pause keys K / Enter (pause) removed; Enter is now surge (levels 1–2).
+- Digit row now presets; Shift+Digit1..5 image switching removed (use V / [ / ]).
+- Digits 1–3 no longer select tile modes (use T).
+- Extreme mode (HCX) may add visuals but never remaps keys.
+- Live/mic: no seek; arrows still rotate/zoom via holds.
