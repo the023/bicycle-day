@@ -59,8 +59,8 @@
     font:500 14px/1.5 "Helvetica Neue",Arial,sans-serif;transition:opacity .65s,visibility .65s}
   #gate.off{opacity:0;visibility:hidden;pointer-events:none}
   #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
-  #home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;animation:home-breathe 18s ease-in-out infinite;will-change:transform}
-  @keyframes home-breathe{0%,100%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}50%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}}
+  #home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;animation:home-breathe 36s ease-in-out infinite;animation-delay:5s;will-change:transform}
+  @keyframes home-breathe{0%,50%,100%{transform:translate(0,0) scale(1);filter:hue-rotate(0deg)}25%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}75%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}}
   #gate.off #home-art img{animation-play-state:paused}
   #home-nav{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(24px + env(safe-area-inset-top)) max(32px,env(safe-area-inset-right)) 20px max(32px,env(safe-area-inset-left));z-index:2}
   #home-nav button,#home-close{font:600 13px/1.2 "Helvetica Neue",Arial,sans-serif;color:inherit;background:none;border:0;cursor:pointer}
