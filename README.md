@@ -2,12 +2,12 @@
 
 A generative, psychedelic animation built from your images: a WebGL2 shader (warp, kaleidoscope, feedback trails, colour cycling, fractal styles) driven by sound. The sound is either music the app composes itself (Web Audio synth) or music you bring (a file, another browser tab, the microphone). Single HTML file, no dependencies, nothing is uploaded.
 
-The default picture is the Bicycle Day logo; you can use up to 5 of your own images instead.
+The default picture is the Bicycle Day logo. A built-in **gallery** (the 1943 Bicycle Day poster and four public-domain paintings) and your own images can be added, up to 5 at once.
 
 ## Run
 
 ```bash
-npm run build                    # src/ + assets/bicycle-day-logo-home.webp  →  dist/bicycle-day.html
+npm run build                    # src/ + assets/ (logo, gallery)  →  dist/bicycle-day.html
 xdg-open dist/bicycle-day.html   # or double-click it
 ```
 
@@ -25,7 +25,7 @@ Chrome / Edge / Firefox / Safari with WebGL2, sound on. Tab-audio capture (Strea
 | **Tab audio** | Follows music playing in another tab (pick the tab, tick *Share tab audio*; keep both windows visible) |
 | **Microphone** | Follows the music in the room (`?live=mic` also opens it) |
 
-**Images**: up to 5 (add with +, ✕ removes, or drop images on the page). **Settings**: graphics quality (High / Medium / Low; software GL starts on Low), control level, extreme look. **Help**: keyboard overlay.
+**Images**: up to 5 (add with +, ✕ removes, or drop images on the page), plus the built-in **Gallery** (poster and paintings, one click to add). **Settings**: graphics quality (High / Medium / Low; software GL starts on Low), control level, extreme look. **Help**: keyboard overlay.
 
 ## Control levels (key M)
 
@@ -94,7 +94,8 @@ The full table is in [`KEYMAP.md`](KEYMAP.md). A preset stores the Settings valu
 ```
 src/index.html                      the whole app (HTML + CSS + JS + shaders); the logo is a __HOME_LOGO__ placeholder
 assets/bicycle-day-logo-home.webp   home screen logo and default picture
-build.mjs                           inlines the logo, syntax-checks the inline scripts, writes dist/
+assets/gallery/                     built-in gallery images (poster + public-domain paintings, ≤ 1280 px)
+build.mjs                           inlines the logo and the gallery, syntax-checks the inline scripts, writes dist/
 dist/                               the deliverable single file (committed so it can be opened without building)
 tools/                              analysis helpers for the live / local audio features
 AGENTS.md, KEYMAP.md                architecture and key map
@@ -108,4 +109,14 @@ The **strobe / extreme** effects can trigger seizures in people with photosensit
 
 ## License
 
-MIT, see [`LICENSE`](LICENSE). The logo is part of this project. Images you load are yours; the project does not bundle third-party artwork.
+MIT, see [`LICENSE`](LICENSE). The logo is part of this project. Images you load stay yours.
+
+**Gallery credits** (all public domain; resized copies of the files on Wikimedia Commons):
+
+| Image | Work |
+|---|---|
+| `poster.jpg` | Bicycle Day poster, 1943 |
+| `manet-dejeuner-sur-lherbe.jpg` | Édouard Manet, *Le Déjeuner sur l'herbe* (1863) |
+| `bosch-garden-of-earthly-delights.jpg` | Hieronymus Bosch, *The Garden of Earthly Delights* (detail of the right panel) |
+| `huys-temptation-of-saint-anthony.jpg` | Pieter Huys, *The Temptation of Saint Anthony* (Louvre) |
+| `bruegel-fall-of-the-rebel-angels.jpg` | Pieter Bruegel the Elder, *The Fall of the Rebel Angels* (1562) |
