@@ -247,7 +247,7 @@ const FS_SCENE = `#version 300 es
 precision highp float;
 uniform sampler2D uTex,uPrev;
 uniform vec2 uRes;
-uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot;
+uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot,uStretch,uTunnel;
 uniform float uWarpN,uFx,uKali,uJulia;
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 out vec4 o;
@@ -293,6 +293,14 @@ vec3 tx(vec2 p){
   float d=uAber*.012; vec2 dir=normalize(p+1e-4);
   return vec3(texture(uTex,uv+dir*d).r,texture(uTex,uv).g,texture(uTex,uv-dir*d).b);
 }
+// EFFECT tunnel: log-polar infinite zoom, the picture rings itself inward forever (with a slow twist); mixed in by uTunnel
+vec2 tunnelLogPolar(vec2 p){
+  float r=length(p)+1e-4, lr=log(r), a=atan(p.y,p.x);
+  float ph=fract((lr-uT*.22)/.7+a*0.0);
+  float r2=.07*exp(ph*1.95);
+  float a2=a+lr*.35+uT*.05;
+  return mix(p,r2*vec2(cos(a2),sin(a2)),uTunnel);
+}
 void main(){
   vec2 fc=gl_FragCoord.xy/uRes;
   vec2 p0=(gl_FragCoord.xy-.5*uRes)/uRes.y;
@@ -303,6 +311,7 @@ void main(){
   p*=1.+uBreath*.05*sin(length(p)*9.-uT*1.6);
   p*=1.-uPulse*.04;
   float n0=floor(uKalN),f=fract(uKalN);
+  if(uTunnel>.001) p=tunnelLogPolar(p);
   if(uTile>.001) p=tile(p);
   if(uKali>.001) p=mix(p,kaliFold(p),uKali);
   if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
@@ -313,7 +322,14 @@ void main(){
   c=mix(c,pal*(.55+.6*lum),uPal*.85);
   c=hueRot(c,(uHue+length(p)*1.5*uPal)*uHueAmt);
   // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
-  vec2 ps=rot(p0/uSrcZ,uSrcRot); ps+=.04*vec2(sin(ps.y*5.+uT*.23),cos(ps.x*5.+uT*.19));   // the ghost of the source drifts too: slow zoom, turn and wobble
+  // EFFECT source-stretch: the ghost is elongated along a slowly turning axis, sheared, swayed and swirled (uStretch = strength)
+  vec2 ps=rot(p0/uSrcZ,uSrcRot);
+  if(uStretch>.001){ float ax=uT*.05+uStretch; vec2 e=vec2(cos(ax),sin(ax)); float al=dot(ps,e), be=dot(ps,vec2(-e.y,e.x));
+    float k=1.+.9*uStretch*sin(uT*.11+1.); al/=k; be*=1.+.35*uStretch*(k-1.);   // elongate along the axis, thin across
+    be+=uStretch*.25*al*sin(uT*.07);                                            // shear
+    ps=al*e+be*vec2(-e.y,e.x); ps+=uStretch*.08*vec2(sin(uT*.17),cos(uT*.13));   // sway
+    ps=rot(ps,uStretch*.6*sin(uT*.09)*(1.-smoothstep(0.,.7,length(ps)))); }     // swirl (strongest in the centre)
+  ps+=.04*vec2(sin(ps.y*5.+uT*.23),cos(ps.x*5.+uT*.19));   // the ghost of the source drifts too: slow zoom, turn and wobble
   vec3 src=texture(uTex,vec2(ps.x/uAspect,ps.y)+.5).rgb;
   float inside=(1.-smoothstep(.42*uAspect,.5*uAspect,abs(ps.x)))*(1.-smoothstep(.42,.5,abs(ps.y)));
   c=mix(c,src,uAnchor*inside);
@@ -358,7 +374,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
+  uS = locs(progS, ['uTex', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate']);
   makeTargets();
 }
@@ -419,16 +435,21 @@ const LOOK = { sk: 0, sj: 0, hj: 0, k: 1, w: 1, f: 1, p: 1, c: [1.3, 1.3, 1.3], 
 let TL = null, TLph = null;
 function timelines() {
   if (TL && TLph === PH) return TL;
-  const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [];
+  const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [], tun = [];
   let t = rr(5, 20);
   while (t < 7200) { const rise = rr(15, 30), fall = rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: rr(.5, 1) }); t += rise + fall + rr(4, 25); }
   t = rr(15, 40);
   while (t < 7200) { const k = ['dark', 'bw', 'strobe', 'blaze'][Math.floor(r() * 4)], d = k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(6, 14) : rr(10, 25); moods.push({ k, a: t, b: t + d, rate: rr(5, 11) }); t += d + rr(20, 50); }
-  TLph = PH; return TL = { sur, moods };
+  t = rr(70, 110);   // tunnel stretches: first one after the calm start, then one every ~1.5-3 min, 9-16 s each
+  while (t < 7200) { const d = rr(9, 16); tun.push({ a: t, b: t + d }); t += d + rr(70, 160); }
+  TLph = PH; return TL = { sur, moods, tun };
 }
 function surgeAt(t) {
   const s = timelines().sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
   return t < s.b ? s.h * smooth(s.a, s.b, t) : s.h * (1 - smooth(s.b, s.c, t));
+}
+function tunnelAt(t) {   // EFFECT tunnel timeline (generated mode): 0..1, pure function of t
+  const s = timelines().tun.find(x => t >= x.a && t < x.b); return s ? smooth(s.a, s.a + 2.5, t) * (1 - smooth(s.b - 3, s.b, t)) : 0;
 }
 function moodAt(t) {
   const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { sur, moods } = timelines(), f = Q.get('mood');
@@ -438,7 +459,7 @@ function moodAt(t) {
   if (p) m.blaze = Math.max(m.blaze, .8 * smooth(p.b - 1.5, p.b, t) * (1 - smooth(p.b, p.b + 2.5, t)));
   return m;
 }
-let hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
+let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
   const u0 = LIVE ? LIVE.u : clamp(t / TOTAL), u = clamp(u0 + USER.inten * .25), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
@@ -470,6 +491,9 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   BAND.hi += (hi - BAND.hi) * (1 - Math.exp(-dt * 3)); BAND.mid += (mid - BAND.mid) * (1 - Math.exp(-dt * 3)); BAND.zt += ((LIVE ? .45 * LIVE.tension : 0) - BAND.zt) * (1 - Math.exp(-dt * 2)); BAND.tt = LIVE ? BAND.tt + dt * (1 + 2.5 * bass) : t;
   USER.cx += (USER.tx - USER.cx) * (1 - Math.exp(-dt * 4)); USER.cy += (USER.ty - USER.cy) * (1 - Math.exp(-dt * 4));
   const KMAX = ARC.kalMax ?? .6, dip = 1 - .65 * smooth(.55, .95, .5 + .5 * Math.sin(t * .11 + PH));   // kaleidoscope capped, and it regularly lets the source breathe back
+  // tunnel: seeded stretches (generated), or on drops / strong builds (live, eased); stretch of the source ghost grows with intensity + surges
+  if (LIVE) tunLive += ((st === 'drop' ? .85 : st === 'build' ? .5 * smooth(.25, .6, LIVE.tension) : 0) - tunLive) * (1 - Math.exp(-dt / 1.5));
+  const tun = Q.has('tunnel') ? +Q.get('tunnel') : LIVE ? tunLive : tunnelAt(t);
   const sg = Q.has('surge') ? +Q.get('surge') : surgeAt(t), md = moodAt(t);
   const kal = clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * USER.kal * LOOK.k * (.35 + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * USER.src * (1 + (1 - sg));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
@@ -486,6 +510,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   bassE += (bass - bassE) * .2; pulse = Math.min(1.3, pulse * (1 + (ARC.drive || 0) * .6) + bassE * .5 * (LIVE ? 1 : hbW(u0)));
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
   const zoom = (1 + zoomAmp * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * (scene % 2 ? .55 : -.4)) * (1 + tm * .12 * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
+  const stretch = Q.has('stretch') ? +Q.get('stretch') : clamp((.15 + .6 * u + .5 * sg) * smooth(10, 50, t) * (LIVE ? 1 : 1) * .9);
   const wr = warp * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg), ab = (aber + BAND.hi * .6) * (1 + .5 * sg);
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
@@ -498,7 +523,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.uniform1f(uS.uSide, side); gl.uniform1f(uS.uBreath, breath); gl.uniform1f(uS.uMelt, melt * (.5 + sg)); gl.uniform1f(uS.uZoom, zoom);
   gl.uniform1f(uS.uRot, rotA + USER.rot); gl.uniform1f(uS.uAber, ab); gl.uniform1f(uS.uPulse, pulse); gl.uniform1f(uS.uBright, bright); gl.uniform1f(uS.uAspect, ASPECT); gl.uniform1f(uS.uAnchor, anchor);
   const rAge = (performance.now() - USER.rip.t0) / 1000; gl.uniform4f(uS.uRip, USER.rip.x, USER.rip.y, rAge, rAge < 2.2 ? 1 : 0);
-  gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform1f(uS.uSrcZ, 1 + .3 * Math.sin(t * .045 + PH)); gl.uniform1f(uS.uSrcRot, .5 * Math.sin(t * .031 + PH * 2)); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha);
+  gl.uniform2f(uS.uTilt, tilt[0], tilt[1]); gl.uniform1f(uS.uTT, BAND.tt); gl.uniform1f(uS.uSrcZ, 1 + .3 * Math.sin(t * .045 + PH)); gl.uniform1f(uS.uSrcRot, .5 * Math.sin(t * .031 + PH * 2)); gl.uniform3f(uS.uPalC, ...LOOK.c); gl.uniform3f(uS.uPalD, ...LOOK.d); gl.uniform1f(uS.uHueAmt, LOOK.ha); gl.uniform1f(uS.uStretch, stretch); gl.uniform1f(uS.uTunnel, clamp(tun));
   gl.uniform2f(uS.uCenter, USER.cx, USER.cy); gl.uniform1f(uS.uMono, Math.max(USER.col === 2 ? 1 : 0, md.bw));
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
