@@ -11,12 +11,11 @@
   #toast.on{opacity:1}
   #fxlabel{position:fixed;left:0;right:0;top:5vh;text-align:center;color:#fff;font:800 clamp(22px,4.2vw,56px)/1.1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.04em;text-shadow:0 2px 14px #000,0 0 3px #000;pointer-events:none;z-index:6;display:none}
   body.playing #fxlabel,body.still #fxlabel{display:block}
-  #code{position:fixed;right:1.2vw;bottom:1.2vw;width:35vw;height:35vh;display:none;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:8px 12px;box-sizing:border-box;background:#000a;border:1px solid #3dff7a44;border-radius:6px;font:600 clamp(10px,.95vw,14px)/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#3dff7a;text-shadow:0 0 6px #3dff7a88;pointer-events:none;z-index:8;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}
+  #code{position:fixed;left:1.2vw;bottom:92px;width:32vw;height:30vh;display:none;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:8px 12px;box-sizing:border-box;background:#000a;border:1px solid #3dff7a44;border-radius:6px;font:600 clamp(10px,.95vw,14px)/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#3dff7a;text-shadow:0 0 6px #3dff7a88;pointer-events:none;z-index:8;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}
   body.code.playing #code,body.code.still #code{display:flex}
-  #code div{white-space:pre;overflow:hidden;animation:ctype .16s steps(14) both}
+  #code div{white-space:pre;overflow:hidden;min-height:1.45em}
   #code div.a{color:#ffb000;text-shadow:0 0 6px #ffb00088}#code div.d{opacity:.55}
   #code div.cur::after{content:"\2588";animation:cblink 1s steps(1) infinite}
-  @keyframes ctype{from{clip-path:inset(0 100% 0 0)}to{clip-path:inset(0 0 0 0)}}
   @keyframes cblink{50%{opacity:0}}
   #fxpanel{position:fixed;top:64px;right:0;bottom:84px;width:min(300px,70vw);display:none;overflow-y:auto;padding:14px 8px 14px 26px;box-sizing:border-box;background:#000c;border-left:1px solid #f4f1ea33;color:#f4f1ea;font:600 15px/1.35 "Helvetica Neue",Arial,sans-serif;z-index:9;transform:translateX(calc(100% - 14px));transition:transform .25s}
   #fxpanel::before{content:"";position:fixed;right:4px;top:50%;width:4px;height:60px;margin-top:-30px;border-radius:2px;background:#f4f1ea88}
@@ -359,7 +358,7 @@ void main(){ vec2 p=vec2((gl_VertexID<<1)&2, gl_VertexID&2); gl_Position=vec4(p*
 
 const FS_SCENE = `#version 300 es
 precision highp float;
-uniform sampler2D uTex,uPrev,uTex2; uniform float uImgMix;
+uniform sampler2D uTex,uPrev,uTex2,uCode; uniform float uImgMix,uCodeAmt;
 vec4 texI(sampler2D t,vec2 uv){ return uImgMix<=0.?texture(t,uv):mix(texture(t,uv),texture(uTex2,uv),uImgMix); }   // crossfade between two source images (display pass of the source only, not the feedback)
 uniform vec2 uRes;
 uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot,uStretch,uTunnel;
@@ -395,6 +394,7 @@ vec2 juliaWarp(vec2 p){   // a few Julia iterations: the picture is smeared alon
   for(int i=0;i<6;i++) z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;
   return z*.35/(1.+.1*dot(z,z));
 }
+vec4 codeS(vec2 p){ return texture(uCode,vec2(p.x/1.7778,p.y)+.5); }   // crazy live-coding text (2D canvas, whole frame, transparent background)
 vec2 warp(vec2 p){
   float w=uWarp*.12, t=uT;
   for(int i=0;i<4;i++){float fi=float(i); if(fi>=uWarpN) break;
@@ -432,6 +432,8 @@ void main(){
   if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
   vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
   vec3 c=mix(tx(pa),tx(pb),f);
+  vec4 cd=vec4(0.);
+  if(uCodeAmt>.001){ cd=mix(codeS(pa),codeS(pb),f); float ca=cd.a*uCodeAmt; c=mix(c*(1.-.4*ca),cd.rgb,ca); }   // the code text is part of the SOURCE: everything below (palette, hue, trails, mono) acts on it; never above 1, so the feedback stays stable
   float lum=dot(c,vec3(.299,.587,.114));
   vec3 pal=.5+.5*cos(TAU*(lum*uPalC+uHue*.2*uHueAmt+uPalD));
   c=mix(c,pal*(.55+.6*lum),uPal*.85);
@@ -456,6 +458,7 @@ void main(){
   vec3 pv=hueRot(texture(uPrev,q).rgb,uFbHue);
   pv=clamp(mix(vec3(dot(pv,vec3(.299,.587,.114))),pv,1.04),0.,1.);   // trails get slightly more saturated, not greyer
   c=mix(c,pv,uFb);
+  c=mix(c,cd.rgb,cd.a*uCodeAmt*.6);   // crazy code: a second, lighter pass after the trails keeps the text readable (same warped coordinates, convex mix: no blow-out)
   c=mix(c,vec3(dot(c,vec3(.299,.587,.114))),uMono);
   c*=uBright;   // (the pulse flash is added in the display pass, outside the feedback loop, so it can't accumulate)
   o=vec4(c,1.);
@@ -497,8 +500,10 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia']);
+  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia', 'uCode', 'uCodeAmt']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate', 'uCells']);
+  CODE.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   makeTargets();
 }
 // graphics quality: internal resolution, warp layers, colour fringing / grain. Default depends on the renderer (software GL = low).
@@ -720,7 +725,7 @@ function ctrlHelp() {   // help overlay (H, any mode): controlled-mode keys when
   const ctrl = CTRL ? `<h3>Controlled mode (highlighted = on)</h3>
     <div class="g">${CT_KEYS.map(row).join('')}${k('Z / X', 'intensity ' + Math.round(CT.I * 100) + '%')}${k('C', 'palette: ' + (CT.pal ? CT.pal + '/6' : 'original'), CT.pal)}${k('← → ↑ ↓', 'rotate / zoom')}${k('Enter', 'pause')}</div>` : '';
   $('help').innerHTML = `<div class="box">${ctrl}<h3>Keys (work at any time while playing: no need to click first)</h3>
-    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding overlay on / off')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
+    <div class="g">${k('Space', 'pause / resume')}${k('← →', 'seek −10 s / +10 s')}${k('Esc', 'stop (in fullscreen: twice)')}${k('F', 'fullscreen')}${k('J', 'strobe grid while held: 3-5 cells of a 4x4 grid flash')}${k('H', 'this help')}${k('L', 'live-coding: off / overlay / crazy (text inside the picture)')}${k('B', 'bookmark this moment (bad frame): saves bicycle-&lt;id&gt;.json in Downloads')}
     ${k('T', 'tiles on / off')}${k('1 2 3', 'tile mode: checker / wave / shatter (again = auto)')}${k('Z / X', 'effects down / up (0 = original image)')}${k('Q W', 'kaleidoscope − / +')}${k('E R', 'tiles amount − / +')}${k('Y U', 'trails − / +')}${k('I O', 'intensity − / +')}${k('P', 'style: none / Kali / Julia / auto')}${k('C', 'colour: auto / frozen / b&amp;w')}${k('[ ]', 'previous / next image')}${k('V', 'next image')}${k('Shift+1..5', 'image number')}</div>
     <h3>Mouse</h3><div class="g">${k('move', 'kaleidoscope centre')}${k('click', 'ripple')}${k('drag', 'rotate')}${k('wheel', 'zoom')}</div>
     <h3>Tools</h3><div class="g"><div><a href="?showcase=1&quality=high" target="_blank">?showcase=1</a> effects gallery, one at a time (N / P = next / previous effect)</div><div>?arc=hardcore / ?hc=1 extreme look for hardcore audiences (Local card: Hardcore toggle)</div><div>Showcase: hover the right edge for the effect list, click one to jump to it</div><div>?t=&lt;sec&gt;&amp;seed=&lt;n&gt; one still frame; the <kbd>B</kbd> file has the exact link</div></div>
@@ -753,20 +758,39 @@ function enterCtrl() {   // sound = a long 'waves' piece underneath (it does not
   CTRL = true; document.body.classList.add('ctrl'); TOTAL = 20 * 60; setArc('waves');
   CT.I = CT.Ie = .5; CT.pal = 0; CT.palK = 0; CT_KEYS.forEach(x => { x.on = false; x.r = 0; });
 }
-// live-coding overlay (L): purely cosmetic terminal that "types" the real values of the frame's final params P. It only reads P, never feeds anything back.
-const CODE = { on: false, q: [], last: {}, lastAt: {}, ev: {}, nextAt: 0, fillAt: 0, el: null };
+// live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
+// overlay = DOM box bottom-left; crazy = the same text drawn on a 2D canvas that FS_SCENE mixes into the SOURCE sampling (uCode), so warp, kaleidoscope, tiles, trails, palette all deform it.
+const STILL = Q.get('t') !== null;   // ?t= silent still (test): the overlay then runs on simulated time
+const CODE = { mode: 0, k: 0, q: [], L: [], last: {}, lastAt: {}, ev: {}, nextAt: 0, fillAt: 0, el: null, cv: null, tex: null, drawAt: 0, sig: '' };
 const CODE_FILL = ['uv = rot2(uv, a) * zoom;', 'col = mix(col, prev, uFb);', 'p = abs(p) / dot(p, p) - k;', 'float h = fract(sin(dot(p, K)) * 43758.5);', 'for (int i = 0; i < N; i++) uv += sin(uv.yx * f + t);', 'fbo.swap(); gl.drawArrays(TRIANGLES, 0, 3);', 'c = pow(c, vec3(.9)) * bright;', 'hue += spd * dt;', 'z = z * z + c;   // julia', 'beat = exp(-d * 7.) + .6 * exp(-d2 * 7.);', 'uv = abs(fract(uv * n) - .5);', 'if (len > R) discard;', 'aber = .002 + ab * .004;', 'next = lerp(a, b, smooth(t));', 'seed = hash(scene * 12.9898);', 'await pump(); // schedule audio', 'const dt = now - last;', 'tex = sampler2D(prev, uv + d);'];
 function codeAdd(txt, cls = '') {
-  CODE.q.push([txt, cls]); if (CODE.q.length > 40) CODE.q.splice(0, CODE.q.length - 40);
+  CODE.q.push([txt, cls]);
+  while (CODE.q.length > 8) { const i = CODE.q.findIndex(x => x[1] === 'd'); CODE.q.splice(i < 0 ? 0 : i, 1); }   // a burst never queues more than ~8 lines, fillers go first
 }
-function codeFlush(now) {   // at most one new line per ~150 ms (about 6 lines/s), 24 lines kept
-  if (now < CODE.nextAt || !CODE.q.length) return; CODE.nextAt = now + 150;
-  const [txt, cls] = CODE.q.shift(), el = CODE.el || (CODE.el = $('code')), d = document.createElement('div'); d.textContent = txt; d.className = cls;
-  const cur = el.querySelector('.cur'); if (cur) cur.classList.remove('cur'); el.appendChild(d); d.classList.add('cur');
-  while (el.childNodes.length > 24) el.removeChild(el.firstChild);
+const codeShown = (l, now) => l.txt.slice(0, Math.floor(l.txt.length * clamp((now - l.t0) / 1000 / clamp(l.txt.length * .03, .4, .9))));   // typed-character animation: a line types in ~0.4-0.9 s
+function codeFlush(now) {   // one line starts every ~0.85 s (about 1.2 lines/s), every 0.42 s while a burst is queued (scene change, mood); 24 lines kept
+  if (now < CODE.nextAt || !CODE.q.length) return; CODE.nextAt = now + (CODE.q.length > 3 ? 420 : 850);
+  const [txt, cls] = CODE.q.shift(), l = { txt, cls, t0: now, el: null }; CODE.L.push(l);
+  if (CODE.mode === 1) { const el = CODE.el || (CODE.el = $('code')), d = document.createElement('div'); d.className = cls; l.el = d; el.appendChild(d); }
+  while (CODE.L.length > 24) { const o = CODE.L.shift(); if (o.el) o.el.remove(); }
 }
-function codeFeed(P, ex) {   // called once per frame from render(); ex = { scene, palI, tileMode }
-  if (!CODE.on) return; const now = performance.now(), f2 = v => (+v).toFixed(2), L = CODE.last, A = CODE.lastAt;
+function codeUpdate(now, dt) {   // type the newest lines (DOM), or redraw the text canvas and upload it (crazy, at most ~15 fps and only when something changed)
+  const n = CODE.L.length;
+  if (CODE.mode === 1) { const el = CODE.el || (CODE.el = $('code')); for (let i = Math.max(0, n - 2); i < n; i++) { const l = CODE.L[i]; if (l.el) l.el.textContent = codeShown(l, now); } for (const c of el.querySelectorAll('.cur')) c.classList.remove('cur'); if (n && CODE.L[n - 1].el) CODE.L[n - 1].el.classList.add('cur'); }
+  CODE.k += ((CODE.mode === 2 ? 1 : 0) - CODE.k) * (1 - Math.exp(-dt / .5));
+  if (CODE.mode !== 2 || now < CODE.drawAt) return;
+  const sig = n + ':' + (n ? codeShown(CODE.L[n - 1], now).length : 0) + ':' + (Math.floor(now / 500) & 1); if (sig === CODE.sig) return; CODE.sig = sig; CODE.drawAt = now + 66;
+  const c = CODE.cv || (CODE.cv = Object.assign(document.createElement('canvas'), { width: 1024, height: 576 })), x = c.getContext('2d'), maxW = c.width * .55 - 24, rows = 19, lh = 29;
+  x.clearRect(0, 0, c.width, c.height); x.font = '700 22px ui-monospace,Menlo,Consolas,monospace'; x.textBaseline = 'alphabetic';
+  for (let i = 0; i < Math.min(n, rows); i++) {
+    const l = CODE.L[n - 1 - i], txt = (i ? l.txt : codeShown(l, now) + (sig.endsWith('1') ? '\u2588' : '')), w = x.measureText(txt).width;
+    x.save(); x.translate(24, c.height - 34 - i * lh); if (w > maxW) x.scale(maxW / w, 1);   // longer lines are squeezed to the left 55 %
+    x.globalAlpha = (l.cls === 'd' ? .6 : 1) * (1 - .75 * i / rows); x.lineWidth = 6; x.lineJoin = 'round'; x.strokeStyle = '#000c'; x.strokeText(txt, 0, 0); x.fillStyle = l.cls === 'a' ? '#ffd070' : '#c8ffd8'; x.fillText(txt, 0, 0); x.restore();   // dark outline: readable on any picture
+  }
+  gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, c);
+}
+function codeFeed(P, ex, dt) {   // called once per frame from render(); ex = { scene, palI, lead }; dt = the frame step (still renders step in simulated time)
+  if (!CODE.mode) { CODE.k *= .9; return; } const now = STILL ? ex.t * 1000 : performance.now(), f2 = v => (+v).toFixed(2), L = CODE.last, A = CODE.lastAt;
   const num = (k, name, th, txt) => { const v = P[k]; if (L[k] === undefined) { L[k] = v; return; } if (Math.abs(v - L[k]) > th && now - (A[k] || 0) > 700) { codeAdd(txt ? txt(v) : name + ' = ' + f2(v), 'a'); L[k] = v; A[k] = now; } };
   num('warp', 'warp', .25); num('kal', 'kal', .15, v => 'kal = ' + f2(v) + '; fold = ' + Math.round(P.fold)); num('fb', 'feedback', .12); num('melt', 'melt', .2); num('ab', 'aberration', .35); num('zoom', 'zoom', .12, v => 'zoom *= ' + f2(v / (L.zoom || 1)));
   num('tile', 'tile', .25, v => v > .05 ? 'tile(mode=' + ['checker', 'wave', 'shatter'][P.tileMode] + ', n=' + P.tileN + ')' : 'tile(off)'); num('kali', 'kali', .15); num('julia', 'julia', .15); num('tun', 'tunnel', .3);
@@ -776,9 +800,11 @@ function codeFeed(P, ex) {   // called once per frame from render(); ex = { scen
   ev('cells', P.cells > .5 ? 1 : 0, 'cells = ' + (P.cells > .5 ? 'on  // strobe grid' : 'off'));
   const sb = Math.round((P.warp + P.kal + P.melt) * 2); if (L.sb !== undefined && sb > L.sb + 2 && now - (A.sb || 0) > 1500) { codeAdd('surge += ' + f2((sb - L.sb) / 8), 'a'); A.sb = now; } L.sb = sb;
   if (now > CODE.fillAt && CODE.q.length < 2) { CODE.fillAt = now + 350 + Math.random() * 500; codeAdd(CODE_FILL[Math.floor(Math.random() * CODE_FILL.length)], 'd'); }
-  codeFlush(now);
+  codeFlush(now); codeUpdate(now, dt);
 }
-function codeToggle(on) { CODE.on = on ?? !CODE.on; lsSet('code', CODE.on); document.body.classList.toggle('code', CODE.on); toast('Live coding ' + (CODE.on ? 'on' : 'off'), 1200); }
+function codeSet(m) { CODE.mode = m; lsSet('code', m); document.body.classList.toggle('code', m === 1); document.body.classList.toggle('codec', m === 2); const el = CODE.el || (CODE.el = $('code')); el.replaceChildren(); CODE.L.forEach(l => { l.el = null; if (m === 1) { l.el = document.createElement('div'); l.el.className = l.cls; l.el.textContent = l.txt; el.appendChild(l.el); } });
+  toast('Live coding: ' + ['off', 'overlay', 'crazy (part of the picture)'][m], 1400); }
+const codeToggle = () => codeSet((CODE.mode + 1) % 3);
 const GRID = { held: false };   // J held = strobe grid (generated / local / live modes; in controlled mode it is a CT_KEYS row)
 let tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function render(t, dt, bass, mid = 0, hi = 0) {
@@ -845,7 +871,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (SHOW) showcaseParams(P, t); else if (CTRL && !LIVE) ctrlParams(P, t, dt);
   if (GRID.held) P.cells = 1;   // J held (non-controlled modes)
   lastP = P;   // for the B snapshot
-  codeFeed(P, { scene, palI: Q.has('pal') ? +Q.get('pal') : palIdx(scene), lead: leadTile });
+  codeFeed(P, { scene, palI: Q.has('pal') ? +Q.get('pal') : palIdx(scene), lead: leadTile, t }, dt);
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
@@ -867,6 +893,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   else { gl.uniform1f(uS.uTile, P.tile); gl.uniform1f(uS.uTileN, P.tileN); gl.uniform1f(uS.uTileMode, P.tileMode); }
   gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
   gl.uniform1f(uS.uKali, P.kali); gl.uniform1f(uS.uJulia, P.julia);
+  gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.uniform1i(uS.uCode, 3); gl.uniform1f(uS.uCodeAmt, .8 * CODE.k);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   // pass 2 → screen (aberration, vignette, grain)
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
@@ -1162,7 +1189,7 @@ markTM();
 const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['fx', 'inten', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { fx: 'u-fx', inten: 'u-inten', kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
-CODE.on = !!lsGet('code'); document.body.classList.toggle('code', CODE.on);
+{ const m = Q.has('code') ? +Q.get('code') : +lsGet('code'); CODE.mode = m >= 1 && m <= 2 ? Math.round(m) : 0; document.body.classList.toggle('code', CODE.mode === 1); document.body.classList.toggle('codec', CODE.mode === 2); }   // (an old saved 'true' = overlay)
 { const v = lsGet('micdb'); if (typeof v === 'number') MICDB = clamp(v, -12, 24); $('u-mg').value = MICDB; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; }
 $('u-mg').addEventListener('input', e => {
   MICDB = +e.target.value; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; lsSet('micdb', MICDB);
