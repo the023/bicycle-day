@@ -7,3 +7,4 @@ node_modules/
 .playwright-mcp/
 TICKETS.md
 assets/local/
+.tickets/

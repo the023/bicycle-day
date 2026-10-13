@@ -230,8 +230,7 @@
   #phx{position:fixed;top:14px;right:14px;width:34px;height:34px;border:1px solid #f4f1ea88;border-radius:50%;background:#000b;color:#f4f1ea;font:600 16px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer}
 /* T48: two small Energy buttons on the right edge, touch devices only */
 .enedge{position:fixed;right:max(8px,env(safe-area-inset-right));top:50%;transform:translateY(-50%);display:none;flex-direction:column;gap:8px;z-index:18;pointer-events:none}
-body.touchdev .enedge,.enedge.show{display:flex;pointer-events:auto}
-@media (hover:none),(pointer:coarse){ .enedge{display:flex;pointer-events:auto} }
+.enedge.show,body.enshow .enedge{display:flex;pointer-events:auto}
 .enedge-btn{width:38px;height:38px;border-radius:50%;border:1px solid #f4f1ea88;background:#000a;color:#f4f1ea;font:600 20px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer;touch-action:manipulation;padding:0;display:inline-flex;align-items:center;justify-content:center}
 .enedge-btn:active{background:#fff3;color:#fff}
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
@@ -312,6 +311,7 @@ body.touchdev .enedge,.enedge.show{display:flex;pointer-events:auto}
     <button class="brand" id="home-brand" aria-label="Close menu">BICYCLE<span>DAY</span></button>
     <div id="home-menu">
       <button data-home="settings" aria-controls="home-settings" aria-expanded="false">Settings</button>
+      <button id="sharehome" type="button" aria-label="Copy a link that reproduces this trip">Share</button>
       <button id="helpbtn">Help</button>
     </div>
   </nav>
@@ -384,7 +384,7 @@ body.touchdev .enedge,.enedge.show{display:flex;pointer-events:auto}
 </main>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
-<div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
+<div id="actions"><button id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button id="shareplay" type="button" aria-label="Copy a link that reproduces this trip">Share</button><button id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
 <div id="tune" hidden>
   <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
     <div class="tmodes tr3" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
@@ -448,6 +448,8 @@ const gl = cv.getContext('webgl2', { antialias: false, alpha: false });
 const clamp = (x, a = 0, b = 1) => Math.min(b, Math.max(a, x));
 const lerp = (a, b, t) => a + (b - a) * t;
 const smooth = (a, b, x) => { const k = clamp((x - a) / (b - a)); return k * k * (3 - 2 * k); };
+function b64urlEncode(s) { return btoa(unescape(encodeURIComponent(s))).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, ''); }
+function b64urlDecode(s) { s = String(s).replace(/-/g, '+').replace(/_/g, '/'); while (s.length % 4) s += '='; return decodeURIComponent(escape(atob(s))); }
 /* ════════════════════════ home-screen logo animation (T6) ════════════════════════
    Rendered through the same FS_SCENE/FS_SHOW shaders onto a small canvas inside #home-art.
    Timeline (pure function of the home clock t, seeded per page load; ?homeseed=<n> fixes it, ?hometime=<s> fixes the clock):
@@ -621,7 +623,7 @@ uniform sampler2D uTex,uPrev,uTex2,uCode; uniform float uImgMix,uCodeAmt;
 uniform vec2 uRes;
 uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot,uStretch,uTunnel;
 uniform float uWarpN,uFx,uKali,uJulia;
-uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
+uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uTileSize,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 vec2 gX=vec2(0.),gY=vec2(0.); bool gOn=false;   // tunnel only: analytic screen gradients of the sampling coordinate, so the mip level never sees the ring wrap
 vec4 texI(sampler2D t,vec2 uv){
   if(gOn){ vec2 ax=gX*vec2(1./uAspect,1.), ay=gY*vec2(1./uAspect,1.); return uImgMix<=0.?textureGrad(t,uv,ax,ay):mix(textureGrad(t,uv,ax,ay),textureGrad(uTex2,uv,ax,ay),uImgMix); }
@@ -638,7 +640,7 @@ vec2 kal(vec2 p,float n){
 // tiles: cut the picture into an N×N grid; each cell turns / zooms / shifts its own piece (smooth, never a flash)
 float h21(vec2 i){return fract(sin(dot(i+uTileSeed,vec2(12.9898,78.233)))*43758.5453);}
 vec2 tile(vec2 p){
-  float N=uTileN; vec2 g=p*N, id=floor(g), f=fract(g)-.5, c=(id+.5)/N;
+  float N=uTileN/max(.001,uTileSize); vec2 g=p*N, id=floor(g), f=fract(g)-.5, c=(id+.5)/N;
   float h=h21(id), a, z=1.;
   if(uTileMode<.5){ a=mod(id.x+id.y,2.)*2.-1.; a*=1.57*sin(uTT*.5+h*.8); }                       // checkerboard: neighbours turn opposite ways
   else if(uTileMode<1.5){ a=1.3*sin(id.x*.55+id.y*.4+uTT*1.2); z=1.+.25*sin(id.y*.7-uTT*.9); }      // wave rolling across the grid
@@ -788,7 +790,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia', 'uCode', 'uCodeAmt']);
+  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uTileSize', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia', 'uCode', 'uCodeAmt']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate', 'uCells', 'uGlitch', 'uGSeed']);
   CODE.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -852,6 +854,45 @@ function showImg(n, quiet, auto) {
 function markThumbs() { document.querySelectorAll('#thumbs button,.imgs .im').forEach(b => b.classList.toggle('on', +b.dataset.k === imTo)); }
 // "Copy link" is only offered for the image currently shown when it came from an https link (IM[imTo].remote); gallery / file / poster images have none
 function markCopy() { const e = IM[imTo]; $('imgcopy').hidden = !(e && e.remote); }
+// Load a list of remote image URLs into IM[] (share link / multi-image restore). 'poster' or null entries resolve to the default poster.
+function loadSharedImages(urls, target, done) {
+  const entries = new Array(urls.length);
+  let loaded = 0;
+  const finish = () => {
+    IM.length = 0;
+    entries.forEach(e => { if (e) IM.push(e); });
+    if (!IM.length) { IMGFAIL = true; loadPoster(GALLERY[0].src, done); return; }
+    imFrom = imTo = 0; imMix = 1;
+    const t = (typeof target === 'number' && !isNaN(target)) ? Math.max(0, Math.min(IM.length - 1, Math.round(target))) : 0;
+    imFrom = imTo = t; imMix = 1; ASPECT = IM[imTo].aspect;
+    renderImgs(); markThumbs(); markCopy();
+    try { done(); } catch (e) {}
+  };
+  if (!urls || !urls.length) { done(); return; }
+  urls.forEach((raw, i) => {
+    let spec;   // {src, remote, gid}
+    if (raw && typeof raw === 'object') {
+      const gi = (typeof raw.g === 'number') ? raw.g : (typeof raw.gallery === 'number' ? raw.gallery : (typeof raw.index === 'number' ? raw.index : null));
+      if (gi != null && GALLERY && GALLERY.length) { const g = GALLERY[Math.max(0, Math.min(GALLERY.length - 1, gi))] || GALLERY[0]; spec = { src: g.src, remote: null, gid: g.id }; }
+      else if (raw.remote || raw.url) { const u = raw.remote || raw.url; spec = { src: String(u), remote: String(u), gid: null }; }
+      else { spec = { src: GALLERY[0].src, remote: null, gid: GALLERY[0].id }; }
+    } else if (typeof raw === 'number') {
+      const g = (GALLERY && GALLERY.length) ? (GALLERY[Math.max(0, Math.min(GALLERY.length - 1, raw))] || GALLERY[0]) : GALLERY[0]; spec = { src: g.src, remote: null, gid: g.id };
+    } else if (raw === 'poster' || raw === null || raw === undefined) {
+      const g = GALLERY[0]; spec = { src: g.src, remote: null, gid: g.id };
+    } else {
+      const s = String(raw);
+      if (s === 'poster') { const g = GALLERY[0]; spec = { src: g.src, remote: null, gid: g.id }; }
+      else spec = { src: s, remote: s, gid: null };
+    }
+    loadImg(spec.src, e => {
+      if (spec.gid) e.gid = spec.gid;
+      if (spec.remote) e.remote = spec.remote;
+      entries[i] = e;
+      if (++loaded === urls.length) finish();
+    }, () => { entries[i] = null; if (++loaded === urls.length) finish(); });
+  });
+}
 // auto image (USER.auto: 0 off, N = every N s of song time, -1 = on some scene changes, seeded, ~2 in 5; key ; and chips in Settings): advances through IM[] with the usual crossfade.
 // Song time = the sum of the frame steps, so it never runs while paused; begin() / startLive() reset the scene memory so a seek can't trigger a change.
 const AI = { acc: 0, scene: null };
@@ -966,7 +1007,7 @@ function initHomeGL(canvas) {
   const g = homeGL;
   try {
     homeProgS = khprog(g, FS_SCENE); homeProgD = khprog(g, FS_SHOW);
-    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uCode','uCodeAmt']);
+    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uTileSize','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uCode','uCodeAmt']);
     homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells','uGlitch','uGSeed']);
     // blank code texture
     const ct = g.createTexture(); g.bindTexture(g.TEXTURE_2D, ct); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
@@ -1056,7 +1097,7 @@ function homeFrame(t) {
   g.uniform2f(homeUS.uTilt, 0, 0); g.uniform1f(homeUS.uTT, 0); g.uniform1f(homeUS.uSrcZ, P.srcZ); g.uniform1f(homeUS.uSrcRot, P.srcRot); g.uniform3f(homeUS.uPalC, ...P.palC); g.uniform3f(homeUS.uPalD, ...P.palD); g.uniform1f(homeUS.uHueAmt, P.ha);
   g.uniform1f(homeUS.uStretch, P.stretch); g.uniform1f(homeUS.uTunnel, P.tun);
   g.uniform2f(homeUS.uCenter, 0, 0); g.uniform1f(homeUS.uMono, 0);
-  g.uniform1f(homeUS.uTile, P.tile); g.uniform1f(homeUS.uTileN, P.tileN); g.uniform1f(homeUS.uTileMode, P.tileMode); g.uniform1f(homeUS.uTileSeed, homeSeedVal || 1);
+  g.uniform1f(homeUS.uTile, P.tile); g.uniform1f(homeUS.uTileN, P.tileN); g.uniform1f(homeUS.uTileMode, P.tileMode); g.uniform1f(homeUS.uTileSeed, homeSeedVal || 1); g.uniform1f(homeUS.uTileSize, 1);
   const qfx = QUAL[quality].fx; g.uniform1f(homeUS.uWarpN, QUAL[quality].warpN); g.uniform1f(homeUS.uFx, qfx);
   g.uniform1f(homeUS.uKali, P.kali); g.uniform1f(homeUS.uJulia, P.julia);
   g.activeTexture(g.TEXTURE3); g.bindTexture(g.TEXTURE_2D, homeCodeTex); g.uniform1i(homeUS.uCode, 3); g.uniform1f(homeUS.uCodeAmt, 0);
@@ -1418,7 +1459,7 @@ function codeSet(m, quiet, auto) { const was = CODE.mode; CODE.mode = m; if (!au
 const codeToggle = () => codeSet((CODE.mode + 1) % 4);
 let snapLook = false, tunLive = 0, hue = 0, rotA = 0, rotDir = 1, bi = 0, lastT = 0, bassE = 0, cur = 0;
 function uAt(t, off) {   // arc position of the picture at song time t (pure; `off` = the eased Energy offset): shared by render, integrateTo and integrateLocal
-  const pE = LIVE || CTRL || SHOW || hcOn() ? null : planE(t), u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp((pE != null ? uForE(pE) : u0) + off);
+  const pE = LIVE || CTRL || SHOW || hcOn() ? null : planE(t), u0 = LIVE ? LIVE.u : CTRL ? .3 : clamp(t / TOTAL), us = clamp((pE != null ? uForE(pE) : u0) + off, .05, 1);   // .05: the arc's first keys are black (Energy offset < 0 used to push u to 0)
   return { u: lerp(Math.min(us, .88), u0, smooth(.85, 1, u0)), u0 };
 }
 // scene / minor-change timing (pure functions of t; the generated section plan `VP` overrides the scene part inside render())
@@ -1472,6 +1513,14 @@ function minorAt(t, hd) {   // mf = seconds since the minor edge / MP (the envel
   if (hd) { const p = extAt(t), e = k => beatNear(p.start + k * p.MP), k = Math.max(0, edgeIdx(t, Math.floor((t - p.start) / p.MP), e)), s0 = e(k); return { mi: p.firstMinor + k, mf: Math.max(0, t - s0) / p.MP, MP: p.MP }; }
   const MP = 15, e = k => beatNear((k - PH * .2) * MP), k = edgeIdx(t, Math.floor(t / MP + PH * .2), e), s0 = e(k);
   return { mi: k, mf: Math.max(0, t - s0) / MP, MP };
+}
+function tileSizeAt(t) {   // T55 tile effect: cell-size factor, seeded pure function of t, easing smoothly between 1.0 and 2.5; each target held for a seeded random 2-20 s
+  if (!isFinite(t) || t <= 0) return 1;
+  const sr = mulberry32((((PH * 1e6) | 0) * 48271 + 101) | 0);
+  let time = 0, prev = 1, dur = 2 + sr() * 18, val = 1 + sr() * 1.5;
+  while (time + dur <= t) { time += dur; prev = val; dur = 2 + sr() * 18; val = 1 + sr() * 1.5; }
+  const f = Math.min(1, Math.max(0, (t - time) / dur)), k = f * f * (3 - 2 * f);
+  return prev + (val - prev) * k;
 }
 function render(t, dt, bass, mid = 0, hi = 0) {
   const { u, u0 } = uAt(t, UE.off), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
@@ -1574,7 +1623,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const fT = Q.get('tile');   // test override: ?tile=<mode 0-2>,<grid N> forces the tile effect
   if (fT) { const [m, n] = fT.split(','); gl.uniform1f(uS.uTile, 1); gl.uniform1f(uS.uTileN, +n || 12); gl.uniform1f(uS.uTileMode, +m || 0); }
   else { gl.uniform1f(uS.uTile, P.tile); gl.uniform1f(uS.uTileN, P.tileN); gl.uniform1f(uS.uTileMode, P.tileMode); }
-  gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
+  gl.uniform1f(uS.uTileSeed, PH % 7); gl.uniform1f(uS.uTileSize, tileSizeAt(t)); gl.uniform1f(uS.uWarpN, QUAL[quality].warpN); gl.uniform1f(uS.uFx, QUAL[quality].fx);
   gl.uniform1f(uS.uKali, P.kali); gl.uniform1f(uS.uJulia, P.julia);
   gl.activeTexture(gl.TEXTURE3); gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.uniform1i(uS.uCode, 3); gl.uniform1f(uS.uCodeAmt, .8 * CODE.k);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
@@ -2601,6 +2650,23 @@ if (Q.has('energy')) { USER.energy = clamp(Math.round(+Q.get('energy') || 0), 0,
 if (USER.energy < 4) EN.last = USER.energy; markEN();
 if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();
 if (Q.has('autoimg')) USER.auto = +Q.get('autoimg') || 0; markAI();   // ?autoimg=<s> (tests; -1 = some scenes, ~2 in 5)   // ?trans=<s> (tests)
+// share link restore (?u=<base64url JSON>): apply the compact tweaks it carries (all tweaks except quality, plus level/images when present)
+{ const UQ = Q.get('u'); if (UQ) {
+  try {
+    const o = JSON.parse(b64urlDecode(UQ));
+    if (o && typeof o === 'object') {
+      applyTweaks(o);
+      if (typeof o.level === 'number') window.__sharedLevel = o.level;
+      if (Array.isArray(o.images)) window.__sharedImgs = o.images;
+      if (typeof o.imTo === 'number') window.__sharedImTo = o.imTo;
+      if (o.seed != null) try { Q.set('seed', String(o.seed)); } catch (e) {}
+      if (o.music && MUSICS.includes(o.music)) MUSIC = o.music;
+      if (o.arc && ARCS[o.arc]) { arcName = o.arc; applyArc(); }
+      if (o.min) { MIN = parseFloat(o.min) || MIN; TOTAL = MIN * 60; }
+      if (o.hue != null) try { Q.set('hue', String(o.hue)); } catch (e) {}
+    }
+  } catch (e) { console.warn('share u decode failed', e); }
+} }
 // image link: https only, decoded like a dropped file (cap 3 Mpx); the Images drawer and the thumb row update through renderImgs()
 function addImageUrl(raw) {
   const msg = t => { $('imgurlmsg').textContent = t; };
@@ -2622,6 +2688,39 @@ $('imgcopy').addEventListener('click', () => {
   const ok = () => toast('Link copied', 2000), bad = () => toast('Could not copy: ' + link, 6000);
   try { navigator.clipboard.writeText(link).then(ok, bad); } catch (err) { bad(); }
 });
+function shareBase() { return location.origin === 'null' || location.protocol === 'file:' ? location.href.split(/[?#]/)[0] : location.origin + location.pathname; }
+function shareEncode() {   // returns a URL string, or null if a local (non-shareable) image is present
+  const imgEntries = [];
+  for (const e of IM) {
+    if (e && e.remote) imgEntries.push(e.remote);
+    else {
+      const gi = (GALLERY || []).findIndex(g => g && e && e.gid === g.id);
+      if (gi >= 0) imgEntries.push({ g: gi });
+      else { toast('Cannot share: a local image cannot be shared', 3000); return null; }
+    }
+  }
+  if (!imgEntries.length) imgEntries.push(null);
+  const uObj = { ...snapTweaks(), images: imgEntries, imTo, level: CL };
+  const params = new URLSearchParams();
+  params.set('seed', String(seedUsed));
+  params.set('music', MUSIC);
+  params.set('arc', arcName);
+  params.set('min', String(MIN));
+  params.set('hue', String(hueBase));
+  params.set('u', b64urlEncode(JSON.stringify(uObj)));
+  const cur = IM[imTo];
+  if (cur && cur.remote) params.set('img', cur.remote);
+  return shareBase() + '?' + params.toString();
+}
+function shareNow() {
+  const url = shareEncode(); if (!url) return;
+  const copy = () => { try { navigator.clipboard.writeText(url).then(() => toast('Link copied', 2000), () => toast('Could not copy: ' + url, 6000)); } catch (e) { toast('Could not copy: ' + url, 6000); } };
+  if (typeof navigator.share === 'function') {
+    navigator.share({ title: 'Bicycle Day', url }).then(() => toast('Shared', 1500)).catch(err => { if (err && err.name !== 'AbortError') copy(); });
+  } else copy();
+}
+$('sharehome').addEventListener('click', shareNow);
+$('shareplay').addEventListener('click', shareNow);
 $('imgurl').addEventListener('keydown', e => { e.stopPropagation(); if (e.key === 'Enter') { e.preventDefault(); addImageUrl(e.target.value); } });   // stopPropagation: typing here must not fire the global shortcuts
 // Reset buttons (Settings and home card): settings = back to the defaults in TWEAK0; memory = wipe every bicycleday.* key and reload
 document.querySelectorAll('[data-reset="settings"]').forEach(b => b.addEventListener('click', () => {
@@ -2980,6 +3079,28 @@ addEventListener('touchstart', () => { document.body.classList.add('touchdev'); 
 const enUp = $('en-up'), enDown = $('en-down');
 if (enUp) enUp.addEventListener('click', e => { e.stopPropagation(); setEnergy(USER.energy + 1); });
 if (enDown) enDown.addEventListener('click', e => { e.stopPropagation(); setEnergy(USER.energy - 1); });
+/* T53: Energy buttons hidden by default; reveal for 3s on a tap in the right 15% */
+let enShowTimer = null;
+function showEnedge() {
+  if (!document.body.classList.contains('touchdev')) return;
+  const el = $('enedge'); if (!el) return;
+  el.classList.add('show');
+  document.body.classList.add('enshow');
+  if (enShowTimer) clearTimeout(enShowTimer);
+  enShowTimer = setTimeout(() => { try { el.classList.remove('show'); document.body.classList.remove('enshow'); } catch (e) {} enShowTimer = null; }, 3000);
+}
+function maybeRevealEnedge(e, markTouch) {
+  if (markTouch) {
+    document.body.classList.add('touchdev');
+    try { applyTouchEnergyLabels(); } catch (err) {}
+  }
+  if (!document.body.classList.contains('touchdev')) return;
+  const x = (e && (e.clientX != null ? e.clientX : (e.touches && e.touches[0] ? e.touches[0].clientX : null)));
+  if (x == null) return;
+  if (x >= window.innerWidth * 0.85) { showEnedge(); }
+}
+addEventListener('pointerdown', e => { maybeRevealEnedge(e, e.pointerType === 'touch'); }, true);
+addEventListener('touchstart', e => { if (e.touches && e.touches[0]) { maybeRevealEnedge(e, true); } }, true);
 setLevel(Q.has('level') ? (() => { const v = Q.get('level'); if (v === '0' || v === 'auto') return 0; if (v === '1' || v === 'assisted') return 1; if (v === '2' || v === 'manual') return 2; const i = ['auto', 'assisted', 'manual'].indexOf(v); return i < 0 ? 0 : i; })() : CTRL_URL ? 2 : 0, false, true);   // always starts in Auto (the level is not remembered between visits); a URL level is not saved either   // accepts both numeric and word levels for tests
 // Home uses only a CSS logo animation: no audio clock, render history or user image state.
 function homePanel(name, focus = false) {
@@ -3030,6 +3151,8 @@ addEventListener('load', () => {
   loadHomeLogo(document.querySelector('#home-art img').src, () => { if (!playing && !liveOn && !document.body.classList.contains('still')) startHomeLoop(); });
   let IMGFAIL = false; const IMGQ = Q.get('img'), onReady = async () => {
     ready = true; $('playgen').disabled = false; $('surprise').disabled = false; $('playlast').disabled = false; updateHint(); drawProfile(); renderImgs();
+    // shared level from ?u= (applied before start so manual entry is honored)
+    if (window.__sharedLevel != null) { try { setLevel(window.__sharedLevel, false, true); } catch (e) {} window.__sharedLevel = null; }
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
@@ -3038,10 +3161,14 @@ addEventListener('load', () => {
       const fr = x => { if (LOC) localView(x); render(x, step, LOC ? LIVE.bn : 0, LOC ? LIVE.mn : 0, LOC ? LIVE.hn : 0); };
       for (; t < T; t += step) fr(t); fr(T);
     }
-    else if (IMGQ && !lq) autoStart();
+    else if ((IMGQ || Q.has('u')) && !lq) autoStart();
     if (IMGFAIL) toast('Image could not be loaded or the host does not allow CORS', 8000);
   };
-  if (IMGQ) loadPoster(IMGQ, onReady, () => { IMGFAIL = true; loadPoster(GALLERY[0].src, onReady); });
+  const sharedImgs = window.__sharedImgs;
+  if (sharedImgs && sharedImgs.length) {
+    loadSharedImages(sharedImgs, window.__sharedImTo || 0, onReady);
+    window.__sharedImgs = null;
+  } else if (IMGQ) loadPoster(IMGQ, onReady, () => { IMGFAIL = true; loadPoster(GALLERY[0].src, onReady); });
   else loadPoster(GALLERY[0].src, onReady);   // default picture = the 1943 poster (the logo is only the home screen)
 });
 // ?img=<url>: no start screen; random generative curve (unless ?arc=), play at once; if the browser keeps audio suspended, show a tap pill
