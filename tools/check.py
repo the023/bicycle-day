@@ -111,38 +111,52 @@ def main(only=None):
         browser = p.chromium.launch(args=CHROME_ARGS)
 
         # ---------- 2. pupitre geometry ----------
+        # The full pupitre (#pult) is hidden in auto, so it is measured in assisted (same layout as before T78).
+        # The minimal auto pupitre (#mpult) is measured in auto: no overflow, and it must be on screen.
         if want(2):
-            label = "pupitre geometry at 1280x720 (height 100-120, no horizontal overflow)"
+            label = "pupitre geometry at 1280x720 (full: height 100-120; minimal auto: on screen; no horizontal overflow)"
             try:
-                ctx, page, errs = make_page(browser, qs="quality=low")
-                try:
-                    page.evaluate("start()")
-                except Exception as e:
-                    errs.append("start(): " + str(e))
-                page.wait_for_timeout(2500)
-                geom = page.evaluate(
-                    """() => {
-                        const q = s => document.querySelector(s);
-                        const r = q('#pult').getBoundingClientRect();
-                        return {
-                            h: r.height,
-                            pult: [q('#pult').scrollWidth, q('#pult').clientWidth],
-                            pmain: [q('#pmain').scrollWidth, q('#pmain').clientWidth],
-                            pmeta: [q('#pmeta').scrollWidth, q('#pmeta').clientWidth],
-                        };
-                    }"""
-                )
+                geoms = {}
+                for qs, sel in [("quality=low&level=assisted", "pult"), ("quality=low", "mpult")]:
+                    ctx, page, errs = make_page(browser, qs=qs)
+                    try:
+                        page.evaluate("start()")
+                    except Exception as e:
+                        errs.append("start(): " + str(e))
+                    page.wait_for_timeout(2500)
+                    geoms[sel] = page.evaluate(
+                        """(sel) => {
+                            const q = s => document.querySelector(s);
+                            const v = q('#' + sel);
+                            const r = v.getBoundingClientRect();
+                            const full = sel === 'pult';
+                            return {
+                                h: r.height, w: r.width, top: r.top,
+                                box: [v.scrollWidth, v.clientWidth],
+                                pmain: full ? [q('#pmain').scrollWidth, q('#pmain').clientWidth] : [0, 0],
+                                pmeta: full ? [q('#pmeta').scrollWidth, q('#pmeta').clientWidth] : [0, 0],
+                            };
+                        }""",
+                        sel,
+                    )
+                    ctx.close()
+                f, m = geoms["pult"], geoms["mpult"]
                 ok_geom = (
-                    100 <= geom["h"] <= 120
-                    and geom["pult"][0] <= geom["pult"][1] + 1
-                    and geom["pmain"][0] <= geom["pmain"][1] + 1
-                    and geom["pmeta"][0] <= geom["pmeta"][1] + 1
+                    100 <= f["h"] <= 120
+                    and f["box"][0] <= f["box"][1] + 1
+                    and f["pmain"][0] <= f["pmain"][1] + 1
+                    and f["pmeta"][0] <= f["pmeta"][1] + 1
+                    and m["h"] > 0
+                    and m["w"] > 0
+                    and m["top"] >= 0
+                    and m["box"][0] <= m["box"][1] + 1
                 )
                 record(
                     2,
                     label,
                     ok_geom,
-                    "h=%.1f, pult=%s, pmain=%s, pmeta=%s" % (geom["h"], geom["pult"], geom["pmain"], geom["pmeta"]),
+                    "full h=%.1f, box=%s, pmain=%s, pmeta=%s | minimal h=%.1f, w=%.0f, box=%s"
+                    % (f["h"], f["box"], f["pmain"], f["pmeta"], m["h"], m["w"], m["box"]),
                 )
             except Exception as e:
                 record(2, label, False, str(e))

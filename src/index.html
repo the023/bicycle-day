@@ -202,9 +202,10 @@
   .pchips{display:flex;align-items:center;gap:0 9px;font-size:11px;white-space:nowrap}.pchips span{display:inline-flex;align-items:center;gap:3px}.pchips .pk{cursor:pointer}
   .pult .trw{display:inline-flex;align-items:center;gap:6px}.pult .trw .pvv{min-width:32px}
   #pexp{margin-left:auto;flex:none;cursor:pointer;pointer-events:auto;font-size:10px;padding:0 6px}
-  #pxt{display:none;position:absolute;left:0;right:0;bottom:100%;margin-bottom:6px;max-height:60vh;overflow-y:auto;box-sizing:border-box;padding:9px 14px;border:1px solid #5d5d74;border-radius:10px;background:#0b0b12e8;color:#d8d6cf;font:400 12px/1.45 "Helvetica Neue",Arial,sans-serif;letter-spacing:0;text-transform:none;pointer-events:auto}
-  body.pexpo #pxt{display:block}
-  #pxt b{color:#f4f1ea;font-weight:600}#pxt p{margin:0 0 5px}
+  /* T84: class-based so the Help demo clone (ids stripped) gets the same panel; open by default (#phelp shows it, the pupitre follows bicycleday.pexp) */
+  .pxt{display:none;position:absolute;left:0;right:0;bottom:100%;margin-bottom:6px;max-height:60vh;overflow-y:auto;box-sizing:border-box;padding:9px 14px;border:1px solid #5d5d74;border-radius:10px;background:#0b0b12e8;color:#d8d6cf;font:400 12px/1.45 "Helvetica Neue",Arial,sans-serif;letter-spacing:0;text-transform:none;pointer-events:auto}
+  body.pexpo .pxt,#phelp .pxt{display:block}
+  .pxt b{color:#f4f1ea;font-weight:600}.pxt p{margin:0 0 5px}
   .prow4{display:flex;align-items:center;gap:12px;height:24px}
   .pult #ctl{position:static;display:none;width:440px;flex:none;gap:7px;padding:0;background:none;opacity:1;pointer-events:auto;font-size:11px;letter-spacing:0}
   body.playing .pult #ctl{display:flex}
@@ -223,7 +224,7 @@
   body.phone #pc1>.pcell:first-child,body.phone #pc1 .pchips .trw,body.phone #pc1 kbd[data-code="KeyZ"],body.phone #pc1 kbd[data-code="KeyX"]{display:none}
   body.touchdev kbd[data-code="KeyZ"],body.touchdev kbd[data-code="KeyX"]{display:none}  body.phone #prow4{height:auto;flex-wrap:wrap;gap:0}
   body.phone .pult #ctl{width:100%}
-  body.phone #lvl,body.phone #lvls,body.phone #lvls+.help{display:none}
+  body.phone #lvl{display:none}
   #phelp{position:fixed;inset:0;display:none;z-index:30;background:#0b0b12f7}
   #phelp.on{display:block}
   body.help-open #home-intro{visibility:hidden}
@@ -241,6 +242,7 @@
   #mbar canvas{position:absolute;inset:0;width:100%;height:100%}
   #mhead{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
   #mtm{font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.06em;min-width:84px}
+  #mpult .mhint{display:none}   /* T80: the ±10 s text is hidden; Shift+Left/Right still seek */
   #phelp .pult input{pointer-events:none}
   #phx{position:fixed;top:14px;right:14px;width:34px;height:34px;border:1px solid #f4f1ea88;border-radius:50%;background:#000b;color:#f4f1ea;font:600 16px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer}
 /* T48: two small Energy buttons on the right edge, touch devices only */
@@ -404,8 +406,6 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
 <div id="actions"><button class="action" id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button class="action" id="shareplay" type="button" aria-label="Copy a link that reproduces this trip">Share</button><button class="action" id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button class="action" id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
 <div id="tune" hidden>
   <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
-    <div class="tmodes tr3" id="lvls" title="Control level (key M): Auto = engine only; Assisted = engine + effect keys that fade out by themselves; Manual = quiet base + only what you toggle"><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
-  <div class="help">Control level (key M): engine only / engine + effect keys / quiet base + only your keys</div>
   <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · T cycles tile mode · 1-8 presets (Shift 1-8 save) · [ ] images · Shift+Arrows seek</div>
   <div>Images<div class="imgs" id="timgs"></div><button class="chip" id="twebcam" type="button" style="margin-top:6px">Webcam</button></div>
   <div>Gallery<div class="imgs gal-row" id="tgal"></div></div>
@@ -431,12 +431,12 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   <div class="mrow">
     <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more, N = extreme). Look only."><kbd class="pk u0" data-code="KeyZ">Z</kbd><div class="enb"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk u0" data-code="KeyX">X</kbd></div>
     <span class="trw" title="Calm: master effect strength (0 = plain image)"><kbd class="pk gG u0" data-code="KeyV">V</kbd><span>calm</span><input type="range" class="pr" id="m-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="mcv">100%</span><kbd class="pk gG u0" data-code="KeyB">B</kbd></span>
-    <div id="mplvl" class="plvl" title="Control level"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div>
+    <kbd class="pk u0" data-code="KeyM" title="Control level (key M)">M</kbd><div id="mplvl" class="plvl" title="Control level"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div>
   </div>
   <div class="mrow">
     <button id="mpp" title="Space">❚❚</button><kbd class="pk gT">Space</kbd>
     <div id="mbar"><canvas id="mprof" width="1200" height="40"></canvas><div id="mhead"></div></div><span id="mtm">0:00</span>
-    <span><kbd class="pk gT">⇧←→</kbd>±10 s</span>
+    <span><kbd class="pk gT">⇧←→</kbd><span class="mhint">±10 s</span></span>
   </div>
 </div>
 <div id="pult" class="pult">
@@ -1439,7 +1439,7 @@ function setLevel(l, save = true, quiet = false) {
   if (SHOW || PHONE) l = 0;
   if (l === 2 && lastP) { MAN_BASE = cloneP(lastP); captureManual(lastP); }
   else if (l !== 2) { MAN_BASE = null; }
-  CL = l; CTRL = l === 2; resetFx();   document.querySelectorAll('#lvl button,#lvls button,#plvl button,#mplvl button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
+  CL = l; CTRL = l === 2; resetFx();   document.querySelectorAll('#lvl button,#plvl button,#mplvl button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
   for (let i = 0; i < 3; i++) document.body.classList.toggle('lv' + i, i === l);
   markEN();
   if (!quiet) { const enHint = document.body.classList.contains('touchdev') ? 'right edge ▲ ▼' : 'Z X'; toast('Control: ' + LVL[l] + ['  ·  engine only; you set Energy (' + enHint + ') and the images', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500); }}
@@ -1666,7 +1666,10 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const cz = calm(t) * g15, sg = Q.has('surge') ? +Q.get('surge') : (hk <= 0 || hk >= 1 ? surgeAt(t, hk >= 1) : lerp(surgeAt(t, false), surgeAt(t, true), hk)) * cz * (VP.length ? .6 + .8 * secE : 1),
     mdR = hk <= 0 || hk >= 1 ? moodAt(t, hk >= 1) : (m0 => { const m1 = moodAt(t, true), o = {}; for (const k in m1) o[k] = lerp(m0[k], m1[k], hk); return o; })(moodAt(t, false)),   // a hardcore toggle blends both seeded schedules
     md = Hd && extKind(t) === 'pingpong' ? { ...mdR, strobe: 0 } : mdR;   // T41: no strobe during a ping-pong (a copy: mdR may be a cached timeline object)
-  const kal = g15 * clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * UE.kal * LOOK.k * (hl(.35, .8) + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * (CL ? USER.src : 1) * (1 + (1 - sg));
+  // T85: when the background ghost is morphing between two images (T77), raise its
+  // blend so the (slow) change is actually visible - only in that case, so the
+  // one-image look stays unchanged. Blend stays a smooth fraction of the frame.
+  const kal = g15 * clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * UE.kal * LOOK.k * (hl(.35, .8) + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * (CL ? USER.src : 1) * (1 + (1 - sg)) * (morphOn ? 2.5 : 1);
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * UE.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
   hue += hueSpd * UE.hueK * UE.calm * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; if (hk > 0) rotA += dt * rotDir * HCspin(t) * hk; rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
@@ -2551,7 +2554,7 @@ function togglePin() {   // H (while playing): pins the pupitre (no auto-hide) u
 function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + CSS), fixed demo gauge values, no engine
   const box = $('phelp'); box.innerHTML = '';
   const cl = $('pult').cloneNode(true);
-  cl.removeAttribute('id'); cl.querySelectorAll('.pctl,.pexpb,.pxt').forEach(el => el.remove()); cl.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
+  cl.removeAttribute('id'); cl.querySelectorAll('.pctl,.pexpb').forEach(el => el.remove());   // (the explanation panel stays: open in the demo, see #phelp .pxt) cl.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
   let k = 0; cl.querySelectorAll('.pg i').forEach(i => { i.style.width = (30 + (k++ * 17) % 41) + '%'; });
   cl.querySelectorAll('input[type=range]').forEach(i => { i.disabled = true; i.value = Math.round(i.max * .4); });
   box.append(Object.assign(document.createElement('div'), { className: 'phtext', textContent: 'This is the control panel you get while playing (move the mouse, or H to pin it). Hover a key for its meaning.' }), cl, Object.assign(document.createElement('button'), { id: 'phx', textContent: '✕', title: 'Close (Esc)' }));
@@ -2749,7 +2752,7 @@ function setPexp(on, save = true) {   // T37: ▾ / ▴ unfolds the explanation 
   document.body.classList.toggle('pexpo', on); $('pexp').textContent = on ? '▴' : '▾'; $('pexp').setAttribute('aria-expanded', String(on)); if (save) lsSet('pexp', on);
 }
 $('pexp').addEventListener('click', e => { e.stopPropagation(); setPexp(!document.body.classList.contains('pexpo')); });
-setPexp(!!lsGet('pexp'), false);
+setPexp(lsGet('pexp') !== false, false);   // T84: open by default; a closed state the user chose (saved false) is kept
 { let m = Q.has('code') ? +Q.get('code') : +lsGet('code');   // (an old saved 'true' = overlay)
   if (!Q.has('code') && lsGet('codev') !== 2) { m = m === 1 ? 2 : m === 2 ? 3 : m; lsSet('codev', 2); lsSet('code', m); }   // T38: saved 1 (overlay) -> 2, 2 (crazy) -> 3; once only
   CODE.mode = CODE.user = m >= 1 && m <= 3 ? Math.round(m) : 0; codeLook(); }   // (an old saved 'true' = overlay)
@@ -3216,7 +3219,6 @@ document.querySelectorAll('#gate label[role=button]').forEach(l => l.addEventLis
 $('lvl').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 $('plvl').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 $('mplvl').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
-$('lvls').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setLevel(+b.dataset.cl, true, true); });
 document.body.classList.toggle('phone', PHONE);
 const TOUCHDEV = (typeof MOBILE !== 'undefined' && MOBILE) || (typeof PHONE !== 'undefined' && PHONE) || navigator.maxTouchPoints > 0 || matchMedia('(pointer: coarse)').matches || matchMedia('(hover: none)').matches;
 document.body.classList.toggle('touchdev', !!TOUCHDEV);
