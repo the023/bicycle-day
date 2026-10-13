@@ -2,8 +2,12 @@ node_modules/
 *.log
 .DS_Store
 
+# GPT file
+dump.py
+
 # agent working files (never tracked)
 .claude/
 .playwright-mcp/
 TICKETS.md
 assets/local/
+.tickets/
