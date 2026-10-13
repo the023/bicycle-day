@@ -1,6 +1,6 @@
 # Keyboard Map — Bicycle Day (T4 final)
 
-Single meaning per key. **Auto (level 0): only Energy (Z X N), images (V [ ] ;), camera (arrows, mouse), presets and the tools work; every other key shows a hint (the engine decides the rest).** A level may only ENABLE or DISABLE a key (disabled = greyed in the help overlay). Extreme mode (HCX/hcOn) only adds things, never remaps. Modifier convention for adjustable keys: key = toggle/primary, Shift+key = amount DOWN, Alt+key = amount UP (Ctrl unused).
+Single meaning per key. **Auto (level 0): only Energy (Z X N), Calm (V B), images ([ ] ;), camera (arrows, mouse), presets and the tools work; every other key shows a hint (the engine decides the rest).** A level may only ENABLE or DISABLE a key (disabled = greyed in the help overlay). Extreme mode (HCX/hcOn) only adds things, never remaps. Modifier convention for adjustable keys: key = toggle/primary, Shift+key = amount DOWN, Alt+key = amount UP (Ctrl unused).
 
 CL: 0 auto, 1 assisted, 2 manual. Lmin = minimum control level that enables the key.
 
@@ -38,8 +38,9 @@ CL: 0 auto, 1 assisted, 2 manual. Lmin = minimum control level that enables the 
 | KeyF | fullscreen | 0 | |
 | KeyH | help overlay | 0 | |
 | KeyL | live-coding overlay cycle (auto: engine picks per scene, L = hint) | 1 | |
-| KeyB | bookmark (save) | 0 | |
-| KeyV | next image | 0 | |
+| KeyB | Calm +10 % (more calm) | 0 | held repeats; Shift+B = mark moment |
+| KeyV | Calm −10 % (less calm, more wild) | 0 | held repeats |
+| KeyB (Shift) | bookmark (save) moment | 0 | dev snapshot tool |
 | BracketLeft | previous image | 0 | |
 | BracketRight | next image | 0 | |
 | Comma | transition time shorter | 1 | auto: the engine picks the transition per scene |

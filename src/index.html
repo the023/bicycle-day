@@ -14,6 +14,7 @@
   #tap[hidden]{display:none}
   @keyframes tapp{50%{opacity:.55}}
   #fxlabel{position:fixed;left:0;right:0;top:5vh;text-align:center;color:#fff;font:800 clamp(22px,4.2vw,56px)/1.1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.04em;text-shadow:0 2px 14px #000,0 0 3px #000;pointer-events:none;z-index:6;display:none}
+  #fxlabel.gE{color:#5cf08a}#fxlabel.gM{color:#ff6fae}#fxlabel.gX{color:#ffc94d}#fxlabel.gI{color:#4fe0ff}#fxlabel.gT{color:#7db4ff}#fxlabel.gG{color:#c9c9d6}
   body.playing #fxlabel,body.still #fxlabel{display:block}
   #code{position:fixed;left:1.2vw;bottom:calc(var(--pult-h) + 32px);width:32vw;height:30vh;display:none;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:8px 12px;box-sizing:border-box;background:#000a;border:1px solid #3dff7a44;border-radius:6px;font:600 clamp(10px,.95vw,14px)/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#3dff7a;text-shadow:0 0 6px #3dff7a88;pointer-events:none;z-index:8;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}
   body.code.playing #code,body.code.still #code{display:flex}
@@ -28,6 +29,7 @@
   #fxpanel:hover{transform:none}#fxpanel:hover::before{display:none}
   body.showc.playing #fxpanel,body.showc.still #fxpanel{display:block}
   #fxpanel div{padding:4px 10px;border-radius:6px;cursor:pointer;opacity:.75;white-space:nowrap}#fxpanel div:hover{opacity:1;background:#f4f1ea22}#fxpanel div.on{opacity:1;color:#ffd60a;background:#ffd60a22}
+  #fxpanel div.gE{color:#5cf08a}#fxpanel div.gM{color:#ff6fae}#fxpanel div.gX{color:#ffc94d}#fxpanel div.gI{color:#4fe0ff}#fxpanel div.gT{color:#7db4ff}#fxpanel div.gG{color:#c9c9d6}
   body.ctrl #bar,body.ctrl #tm{display:none}   /* (manual level with the generated 20 min piece: nothing to seek) */
   #thumbs{position:fixed;left:50%;bottom:calc(var(--pult-h) + 28px);transform:translateX(-50%);display:none;gap:6px;z-index:6;opacity:0;transition:opacity .4s;pointer-events:none}
   body.ui #thumbs{opacity:1;pointer-events:auto}
@@ -394,7 +396,8 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   <div>Images<div class="imgs" id="timgs"></div><button class="chip" id="twebcam" type="button" style="margin-top:6px">Webcam</button></div>
   <div>Gallery<div class="imgs gal-row" id="tgal"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on some scene changes (about 2 in 5, seeded). Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Some scenes</button></div>
-  <button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button>
+  <label title="Master effect strength: 0 = plain image">Calm <b id="cgv">100 %</b><small>reduces every effect at once (0 = the poster as a still)</small><input type="range" id="u-calms" min="0" max="100" step="1" value="100"></label>
+   <button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button><button data-save="4">4</button><button data-save="5">5</button><button data-save="6">6</button><button data-save="7">7</button><button data-save="8">8</button></div>
   <div class="rsets"><button class="chip" data-reset="settings" title="Put every tweak (sliders, tiles, colour, transition…) back to its default. Keeps presets and images.">Reset settings</button><button class="chip" data-reset="memory" title="Forget everything saved in this browser (tweaks, presets 1-8, quality, music choice, bookmarks) and reload">Reset memory</button></div>
@@ -416,7 +419,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
     <div class="pucol pc1" id="pc1">
       <div class="pcell" style="cursor:default;gap:6px"><div id="plvl" class="plvl" title="Control level (key M)"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div><kbd class="pk u0" data-code="KeyM">M</kbd><span class="trw" title="Transition time (keys , and .). Assisted / manual: drag to set it. Auto: chosen by the engine in auto (read only)"><span>trans</span><input type="range" class="pr" id="u-trans" min="0" max="10" step=".5" value="3"><span class="pvv" id="ptrv"></span></span></div>
       <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more, N = extreme). Look only."><kbd class="pk gX" data-code="KeyZ">Z</kbd><div class="enb" id="enp"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk gX" data-code="KeyX">X</kbd></div>
-      <div class="pchips"><span><kbd class="pk gI" data-code="KeyV">V</kbd><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span><span><kbd class="pk gI" data-code="Semicolon">;</kbd>auto</span><span class="trw" title="Assisted only: how long a toggled effect stays on (rand = random 4.5-15 s, 31 = until switched off)"><span>hold</span><input type="range" class="pr" id="u-hold" min="0" max="31" step="1" value="0"><span class="pvv" id="uhv"></span></span></div>
+      <div class="pchips"><span><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span><span><kbd class="pk gI" data-code="Semicolon">;</kbd>auto</span><span class="trw" title="Assisted only: how long a toggled effect stays on (rand = random 4.5-15 s, 31 = until switched off)"><span>hold</span><input type="range" class="pr" id="u-hold" min="0" max="31" step="1" value="0"><span class="pvv" id="uhv"></span></span><span class="trw" title="Calm: master effect strength (0 = plain image)"><kbd class="pk gG" data-code="KeyV">V</kbd><kbd class="pk gG" data-code="KeyB">B</kbd><span>calm</span><input type="range" class="pr" id="u-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="ucv">100%</span></span></div>
     </div>
     <div class="pucol pgrid pfx" id="pfx"></div>
     <div class="pucol pgrid pmd" id="pmd"></div>
@@ -428,7 +431,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   </div>
   <div id="prow4" class="prow4">
     <div id="ctl" class="pctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
-    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">,</kbd><kbd class="pk gX">.</kbd>trans.</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gX">⇧1-8</kbd>save</span><span><kbd class="pk gG">B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span></div>
+    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">,</kbd><kbd class="pk gX">.</kbd>trans.</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gX">⇧1-8</kbd>save</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span></div>
     <button id="pexp" class="pk gG pexpb" title="Explain" aria-controls="pxt" aria-expanded="false">▾</button>
   </div>
 </div>
@@ -1165,17 +1168,16 @@ let micGain = null, TD = null, MICDB = 0, clipT = 0;
 // Energy (0 calm .. 4 extreme): the ONE user setting of the picture in auto. [arc offset (old Intensity x .25), global amount (old Effects), extreme blend (old Extreme / hk)]
 const EN = { off: [-.25, -.12, 0, .12, .25], amp: [.55, .8, 1, 1.15, 1.25], hc: [0, 0, 0, 0, 1], names: ['calm', 'soft', 'normal', 'strong', 'extreme'], last: 2 };
 // col / src / style only apply in assisted and manual (no UI now); kept so old presets still load.
-const USER = { auto: -1, trans: 3, hold: 0, style: null, energy: 2, lv: { warp: 1, melt: 1, kali: 1, julia: 1, tun: 1, stretch: 1 },   // auto -1 = change on some scene changes (seeded, ~2 in 5), only with 2+ images; style null = default: auto (Kali/Julia) for generated pieces, off for live/local
+const USER = { auto: -1, trans: 3, hold: 0, calm: 100, style: null, energy: 2, lv: { warp: 1, melt: 1, kali: 1, julia: 1, tun: 1, stretch: 1 },   // auto -1 = change on some scene changes (seeded, ~2 in 5), only with 2+ images; style null = default: auto (Kali/Julia) for generated pieces, off for live/local
    kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
 // transition time (USER.trans seconds, 0 = instant): key presses / buttons set the TARGET (USER.*, what the sliders show); render() reads these eased copies (UE) that follow it along a smoothstep of that length.
 // Slider drags snap (a dragged slider already moves smoothly). Persistent state like USER: seek never touches it.
-const UE = { off4: .5, off: 0, amp: 1, kal: 1, tile: 1, fb: 1, wp: 1, mt: 1, ka: 1, ju: 1, tn: 1, st: 1, monoK: 0, hueK: 1 }, UR = {}, HCr = {};
-let TRN = 3;   // auto: the transition time (s) the ENGINE picked for the current scene (render() sets it, trPick); assisted / manual / showcase use USER.trans
+const UE = { off4: .5, off: 0, amp: 1, kal: 1, tile: 1, fb: 1, wp: 1, mt: 1, ka: 1, ju: 1, tn: 1, st: 1, monoK: 0, hueK: 1, calm: 1 }, UR = {}, HCr = {};let TRN = 3;   // auto: the transition time (s) the ENGINE picked for the current scene (render() sets it, trPick); assisted / manual / showcase use USER.trans
 const transT = () => CL || SHOW ? USER.trans : TRN;
 // auto: only Energy counts; the sliders (kal, tile, fb + the per-effect lv) and Colour apply in assisted / manual (USER values stay intact, switching level gets them back)
 const UT = { off4: () => USER.energy / 4, off: () => EN.off[USER.energy], amp: () => EN.amp[USER.energy], kal: () => CL ? USER.kal : 1, tile: () => CL ? USER.tile : 1, fb: () => CL ? USER.fb : 1,
   wp: () => CL === 1 ? USER.lv.warp : 1, mt: () => CL === 1 ? USER.lv.melt : 1, ka: () => CL === 1 ? USER.lv.kali : 1, ju: () => CL === 1 ? USER.lv.julia : 1, tn: () => CL === 1 ? USER.lv.tun : 1, st: () => CL === 1 ? USER.lv.stretch : 1,
-  monoK: () => CL && USER.col === 2 ? 1 : 0, hueK: () => CL && USER.col === 1 ? 0 : 1 };   // colour: frozen hue / b&w fade too
+  monoK: () => CL && USER.col === 2 ? 1 : 0, hueK: () => CL && USER.col === 1 ? 0 : 1, calm: () => USER.calm / 100 };   // colour: frozen hue / b&w fade too
 function ramp(r, to, dt, T) {   // r = {v, from, to, age, on}: a new target restarts a smoothstep from the current value (frame-rate independent: age advances by dt)
   if (r.to === undefined) { r.v = r.to = to; r.on = false; }
   else if (to !== r.to) { r.from = r.v; r.to = to; r.age = 0; r.on = !r.snap && T > 0; }
@@ -1183,8 +1185,7 @@ function ramp(r, to, dt, T) {   // r = {v, from, to, age, on}: a new target rest
   if (r.on) { r.age += dt; const x = clamp(r.age / T); r.v = lerp(r.from, r.to, smooth(0, 1, x)); if (x >= 1) r.on = false; } else r.v = r.to;
   return r.v;
 }
-const easeUser = dt => { for (const k in UT) UE[k] = ramp(UR[k] || (UR[k] = {}), UT[k](), dt, transT()); };
-const snapUser = k => { if (UR[k]) UR[k].snap = true; };
+const easeUser = dt => { for (const k in UT) { if (k === 'calm') continue; UE[k] = ramp(UR[k] || (UR[k] = {}), UT[k](), dt, transT()); } UE.calm = ramp(UR.calm || (UR.calm = {}), UT.calm(), dt, Math.max(.6, transT())); };const snapUser = k => { if (UR[k]) UR[k].snap = true; };
 // palettes: cosine palettes (frequency, phase) + how much the global hue drift may rotate them; a new one on every drop / window
 const PALS = [{ c: [1.3, 1.3, 1.3], d: [0, .33, .67], ha: 1 }, { c: [1, .7, .4], d: [0, .15, .2], ha: .3 }, { c: [2, 1, 0], d: [.5, .2, .25], ha: .3 }, { c: [1, 1, .5], d: [.8, .9, .3], ha: .3 }, { c: [1.5, 1.5, 1.5], d: [0, .5, .5], ha: .3 }, { c: [1, 1, 1], d: [.5, .2, .8], ha: .3 }];
 // per musical state: emphasis [kaleidoscope, warp, trails, palette strength] (live mode)
@@ -1232,7 +1233,7 @@ function uForE(e) {
 // intro glitch amount 0..1 (display pass only): generated mode, from gs = min(10 s, 8 % of the piece) to 15 %, rising slowly; the last third of that window fades it out. Pure function of t.
 const glitchAmt = t => {
   if (Q.has('glitch')) return clamp(+Q.get('glitch') || 0);   // test override ?glitch=0..1
-  if (LIVE || LOC || SHOW || CTRL) return 0;
+  if (LIVE || LOC || CTRL) return 0;
   const gs = Math.min(10, .08 * TOTAL), ge = .22 * TOTAL;
   if (t <= gs || t >= ge) return 0;
   return .8 * Math.pow(smooth(gs, ge, t), .7) * (1 - smooth(ge - (ge - gs) / 3, ge, t));   // peak .8, earlier rise (^.7): visible from ~20 s, never a strobe
@@ -1267,14 +1268,14 @@ function moodAt(t, hc = hcOn()) {
   if (p) m.blaze = Math.max(m.blaze, .8 * smooth(p.b - 1.5, p.b, t) * (1 - smooth(p.b, p.b + 2.5, t)));
   return m;
 }
- // seeded zoom pulses (pure function of t): every ~60-120 s, 2-6 s each, in (x1.6-2.2) or out (x0.6-0.8), ease in/out. Generated mode only.
+ // seeded zoom pulses (pure function of t): every ~60-120 s, 2-6 s each, in (x1.6-2.0) or out (x0.25-0.6), ease in/out. Generated mode only. (T71: zoom in capped at ×2)
  const ZLc = {};
  function zoomPulseList() {
    const c = ZLc; if (c && c.ph === PH && c.tot === TOTAL) return c.list;
    const r = mulberry32(Math.floor(PH * 1e5) + 12345), rr = (a, b) => a + (b - a) * r();
    const list = [];
    let t = rr(45, 90);
-   while (t < TOTAL) { const dur = rr(2, 6); list.push({ a: t, b: t + dur, f: r() < .5 ? rr(1.6, 2.2) : rr(.6, .8) }); t += dur + rr(60, 120); }
+   while (t < TOTAL) { const dur = rr(1, 10); list.push({ a: t, b: t + dur, f: r() < .5 ? rr(1.6, 2.0) : rr(.25, .6) }); t += dur + rr(60, 120); }
    ZLc.ph = PH; ZLc.tot = TOTAL; ZLc.list = list; return list;
  }
  const zoomPulseAt = t => {
@@ -1290,35 +1291,36 @@ function moodAt(t, hc = hcOn()) {
    (ease in, hold, ease out). p fields: warp kal fold fb fbHue hue pal side breath melt zoom rot ab pulse bright anchor tilt[2] srcZ srcRot palC palD ha
    stretch tun mono tile tileN tileMode kali julia dark blaze strobe rate, and p.t (time). Reusable by a later "controlled mode". */
 const FX = [
-  { name: 'warp', set: (p, k) => { p.warp = 1.4 * k; } },
-  { name: 'kaleidoscope: 6 folds', set: (p, k) => { p.kal = .95 * k; p.fold = 6; } },
-  { name: 'kaleidoscope: 12 folds', set: (p, k) => { p.kal = .95 * k; p.fold = 12; } },
-  { name: 'feedback trails', set: (p, k) => { p.fb = .85 * k; p.warp = .6 * k; p.rot = .6 * k; } },
-  { name: 'hue cycling', set: (p, k) => { p.hue = p.t * .9 * k; } },
-  { name: 'palette: rainbow', set: (p, k) => { p.pal = k; } },
-  { name: 'palette: ember', set: (p, k) => { p.pal = k; p.palC = PALS[2].c; p.palD = PALS[2].d; p.ha = .3; } },
-  { name: 'palette: violet', set: (p, k) => { p.pal = k; p.palC = PALS[5].c; p.palD = PALS[5].d; p.ha = .3; } },
-  { name: 'melt', set: (p, k) => { p.melt = 1.3 * k; } },
-  { name: 'zoom in', set: (p, k) => { p.zoom = Math.exp(.8 * k); } },
-  { name: 'zoom out (tiled)', set: (p, k) => { p.zoom = Math.exp(-.9 * k); } },
-  { name: 'rotate', set: (p, k) => { p.rot = 2.2 * k; } },
-  { name: 'aberration', set: (p, k) => { p.ab = 2.4 * k; } },
-  { name: 'breath', set: (p, k) => { p.breath = 7 * k; } },
-  { name: 'heartbeat pulse', set: (p, k) => { p.pulse = k * Math.pow(Math.max(0, Math.sin(p.t * 5)), 4); } },
-  { name: 'camera tilt', set: (p, k) => { p.tilt = [.5 * k * Math.sin(p.t * .7), .5 * k * Math.cos(p.t * .55)]; } },
-  { name: 'tiles: checker', set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 0; } },
-  { name: 'tiles: wave', set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 1; } },
-  { name: 'tiles: shatter', set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 2; } },
-  { name: 'style: Kali', set: (p, k) => { p.kali = .8 * k; } },
-  { name: 'style: Julia', set: (p, k) => { p.julia = .8 * k; } },
-  { name: 'tunnel', set: (p, k) => { p.tun = k; } },
-  { name: 'source stretch', set: (p, k) => { p.stretch = k; p.anchor = .8; p.side = 0; } },
-  { name: 'surge (swell)', set: (p, k) => { p.warp = 1.2 * k; p.kal = .5 * k; p.melt = .9 * k; p.ab = 1.2 * k; p.pal = .4 * k; } },
-  { name: 'mood: dark', set: (p, k) => { p.dark = k; } },
-  { name: 'mood: black and white', set: (p, k) => { p.mono = k; } },
-  { name: 'mood: blaze', set: (p, k) => { p.blaze = k; } },
-  { name: 'mood: strobe', set: (p, k) => { p.strobe = k; p.rate = 7; } },
-  { name: 'strobe grid', set: (p, k) => { p.cells = k; } },
+  { name: 'warp', cls: 'gE', set: (p, k) => { p.warp = 1.4 * k; } },
+  { name: 'kaleidoscope: 6 folds', cls: 'gE', set: (p, k) => { p.kal = .95 * k; p.fold = 6; } },
+  { name: 'kaleidoscope: 12 folds', cls: 'gE', set: (p, k) => { p.kal = .95 * k; p.fold = 12; } },
+  { name: 'feedback trails', cls: 'gE', set: (p, k) => { p.fb = .85 * k; p.warp = .6 * k; p.rot = .6 * k; } },
+  { name: 'hue cycling', cls: 'gX', set: (p, k) => { p.hue = p.t * .9 * k; } },
+  { name: 'palette: rainbow', cls: 'gX', set: (p, k) => { p.pal = k; } },
+  { name: 'palette: ember', cls: 'gX', set: (p, k) => { p.pal = k; p.palC = PALS[2].c; p.palD = PALS[2].d; p.ha = .3; } },
+  { name: 'palette: violet', cls: 'gX', set: (p, k) => { p.pal = k; p.palC = PALS[5].c; p.palD = PALS[5].d; p.ha = .3; } },
+  { name: 'melt', cls: 'gE', set: (p, k) => { p.melt = 1.3 * k; } },
+  { name: 'zoom in', cls: 'gE', set: (p, k) => { p.zoom = Math.exp(.693 * k); } },   // T71: capped at ×2 (ln2)
+  { name: 'zoom out (tiled)', cls: 'gE', set: (p, k) => { p.zoom = Math.exp(-1.4 * k); } },
+  { name: 'rotate', cls: 'gE', set: (p, k) => { p.rot = 2.2 * k; } },
+  { name: 'aberration', cls: 'gE', set: (p, k) => { p.ab = 2.4 * k; } },
+  { name: 'breath', cls: 'gE', set: (p, k) => { p.breath = 7 * k; } },
+  { name: 'heartbeat pulse', cls: 'gE', set: (p, k) => { p.pulse = k * Math.pow(Math.max(0, Math.sin(p.t * 5)), 4); } },
+  { name: 'camera tilt', cls: 'gE', set: (p, k) => { p.tilt = [.5 * k * Math.sin(p.t * .7), .5 * k * Math.cos(p.t * .55)]; } },
+  { name: 'tiles: checker', cls: 'gE', set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 0; } },
+  { name: 'tiles: wave', cls: 'gE', set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 1; } },
+  { name: 'tiles: shatter', cls: 'gE', set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 2; } },
+  { name: 'style: Kali', cls: 'gE', set: (p, k) => { p.kali = .8 * k; } },
+  { name: 'style: Julia', cls: 'gE', set: (p, k) => { p.julia = .8 * k; } },
+  { name: 'tunnel', cls: 'gE', set: (p, k) => { p.tun = k; } },
+  { name: 'source stretch', cls: 'gE', set: (p, k) => { p.stretch = k; p.anchor = .8; p.side = 0; } },
+  { name: 'surge (swell)', cls: 'gM', set: (p, k) => { p.warp = 1.2 * k; p.kal = .5 * k; p.melt = .9 * k; p.ab = 1.2 * k; p.pal = .4 * k; } },
+  { name: 'mood: dark', cls: 'gM', set: (p, k) => { p.dark = k; } },
+  { name: 'mood: black and white', cls: 'gM', set: (p, k) => { p.mono = k; } },
+  { name: 'mood: blaze', cls: 'gM', set: (p, k) => { p.blaze = k; } },
+  { name: 'mood: strobe', cls: 'gM', set: (p, k) => { p.strobe = k; p.rate = 7; } },
+  { name: 'strobe grid', cls: 'gM', set: (p, k) => { p.cells = k; } },
+  { name: 'glitch', cls: 'gE', set: (p, k) => { p.glitch = .8 * k; } },
 ];
 if (SHOW) { TOTAL = FX.length * SHOW.seg; applyArc(); }
 const fxIndex = t => clamp(Math.floor(t / SHOW.seg), 0, FX.length - 1);
@@ -1327,7 +1329,7 @@ function showcaseParams(p, t) {   // pure function of t: neutral baseline (plain
   const f = t / SHOW.seg - Math.floor(t / SHOW.seg), k = t >= TOTAL ? 0 : smooth(0, .2, f) * (1 - smooth(.8, 1, f)), i = fxIndex(t);
   Object.assign(p, { warp: 0, kal: 0, fold: 6, fb: 0, hue: 0, pal: 0, side: 0, breath: 0, melt: 0, zoom: 1, rot: 0, ab: 0, pulse: 0, bright: 1, anchor: 0, tilt: [0, 0], srcZ: 1, srcRot: 0, palC: PALS[0].c, palD: PALS[0].d, ha: 1, stretch: 0, tun: 0, mono: 0, tile: 0, kali: 0, julia: 0, dark: 0, blaze: 0, strobe: 0, rate: 8, cells: 0 });
   FX[i].set(p, k); p.fbHue = (.006 + .02 * p.pal) * p.ha; p.zoom *= USER.zoom;
-  if (i !== fxShown) { fxShown = i; $('fxlabel').textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; fxPanelMark(i); }
+  if (i !== fxShown) { fxShown = i; const lb = $('fxlabel'); lb.className = FX[i].cls || ''; lb.textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; fxPanelMark(i); }
 }
 /* ════════════════════════ CONTROL LEVELS (key M, chips on the home screen / in Settings, ?level=auto|assisted|manual, ?ctrl=1 = manual) ════════════════════════
    Any music source (generated, local, stream, mic). auto = engine only (slider-twin keys). assisted = the engine runs as usual and the effect keys (CT_KEYS) add their
@@ -1614,7 +1616,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const kal = g15 * clamp(kal0 * KMAX * dip * (1 + .2 * wob(t, 3)) * UE.kal * LOOK.k * (hl(.35, .8) + 1 * sg)), anchor = .13 * clamp(kal0 + melt * .5 + pal * .5) * (CL ? USER.src : 1) * (1 + (1 - sg));
   const fold = Math.max(3, n0 + 1.5 * wob(t, 4) * kal0);
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * UE.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
-  hue += hueSpd * UE.hueK * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; if (hk > 0) rotA += dt * rotDir * HCspin(t) * hk; rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
+  hue += hueSpd * UE.hueK * UE.calm * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; if (hk > 0) rotA += dt * rotDir * HCspin(t) * hk; rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
   let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * UE.tile) * g15, tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
   if (CL && USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * UE.tile)) * g15; tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
@@ -1640,12 +1642,28 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (UE.amp !== 1) { const f = UE.amp; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
   // arrow rotate / zoom holds (all levels, independent of control params)
   CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
-  USER.zoom = clamp(USER.zoom, .5, 2.5);
+  USER.zoom = clamp(USER.zoom, .25, 2.0);   // T71: zoom in capped at ×2
+  // Calm master slider (T64): one final multiplier toward the neutral poster. Applied to both auto and user paths, before showcase/ctrl so their deltas sit on top of the calmed base.
   if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
   // strobe-grid launch tracking: each rising edge (0 -> on) draws a new grid size
   if (P.cells > .5 && cellPrev <= .5) { cellLaunch++; const Ns = [3, 4, 5, 6, 7, 8]; cellGrid = Ns[Math.floor(hsh(cellLaunch, 80) * 6)]; }
   cellPrev = P.cells;
   P.grid = P.cells > .5 ? cellGrid : 4;
+  // Calm master slider (T64): one final multiplier toward the neutral poster, after every other term (incl. user keys).
+  const cf = UE.calm;
+  if (cf !== 1) {    for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) if (typeof P[k] === 'number') P[k] *= cf;
+    if (typeof P.fold === 'number') P.fold = n0 + (P.fold - n0) * cf;
+    if (Array.isArray(P.tilt)) P.tilt = P.tilt.map(v => v * cf);
+    if (typeof P.ha === 'number') P.ha *= cf;
+    if (typeof P.fb === 'number') P.fb *= cf;
+    if (typeof P.fbHue === 'number') P.fbHue *= cf;
+    if (typeof P.srcZ === 'number') P.srcZ = 1 + (P.srcZ - 1) * cf;
+    if (typeof P.srcRot === 'number') P.srcRot *= cf;
+    if (typeof P.zoom === 'number') P.zoom = USER.zoom * (1 + (P.zoom / (USER.zoom || 1) - 1) * cf);
+    if (typeof P.rot === 'number') P.rot = USER.rot + (P.rot - USER.rot) * cf;
+    if (typeof P.glitch === 'number') P.glitch *= cf;
+  }
+  P.zoom = clamp(P.zoom, .25, 2.0);   // T71: zoom in capped at ×2; zoom out stays ×4
   snapLook = false;
   lastP = P;   // for the B snapshot
   if (CL === 2 && !MAN_BASE) { MAN_BASE = cloneP(P); captureManual(P); }
@@ -2397,7 +2415,7 @@ function newSeed() {   // one seed drives all the randomness of a play (notes, d
 function integrateTo(off) {
   if (LOC) return integrateLocal(off);   // fast-forward the drifting state (hue, spin) to a given time; mirrors render()
   hue = hueBase; rotA = 0; const hk = HCr.v ?? 0;
-  for (let s = 0; s < off; s += .5) { const { u, u0 } = uAt(s, UE.off), e = score(u); hue += e[4] * UE.hueK * .5; rotA += .5 * rotDir * HCspin(s) * hk + .5 * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)); }
+  for (let s = 0; s < off; s += .5) { const { u, u0 } = uAt(s, UE.off), e = score(u); hue += e[4] * UE.hueK * UE.calm * .5; rotA += .5 * rotDir * HCspin(s) * hk + .5 * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)); }
 }
 const setPP = () => { $('pp').textContent = paused ? '▶' : '❚❚'; };
 function begin(off, fresh) {   // (re)start sound + state at song time `off`; the picture is a pure function of time so it just follows
@@ -2514,7 +2532,7 @@ bar.addEventListener('pointerdown', e => { dragging = true; bar.setPointerCaptur
 bar.addEventListener('pointermove', e => { if (dragging) { $('head').style.left = frac(e) * 100 + '%'; $('tm').textContent = fmt(frac(e) * TOTAL) + ' / ' + fmt(TOTAL); } });
 if (SHOW) {   // showcase side panel: every effect by name, the current one highlighted, click = jump (slides in on hover)
   document.body.classList.add('showc'); const fp = $('fxpanel');
-  fp.innerHTML = FX.map((f, i) => `<div data-i="${i}">${i + 1} · ${f.name}</div>`).join('');
+  fp.innerHTML = FX.map((f, i) => `<div class="${f.cls || 'gG'}" data-i="${i}">${i + 1} · ${f.name}</div>`).join('');
   fp.addEventListener('click', e => { e.stopPropagation(); const r = e.target.closest('div[data-i]'); if (r) seekTo(fxStart(+r.dataset.i)); });
   ['pointerdown', 'pointerup', 'pointermove', 'wheel'].forEach(n => fp.addEventListener(n, e => e.stopPropagation()));
 }
@@ -2536,6 +2554,8 @@ const TRS = [0, 1, 3, 5, 10];
 const markTR = () => { $('u-trans').value = USER.trans; };
 const holdTxt = h => h <= 0 ? 'rand' : h >= 31 ? '∞' : h + ' s';
 const markHold = () => { $('u-hold').value = USER.hold; $('uhv').textContent = holdTxt(USER.hold); };
+const markCalm = () => { const v = USER.calm; if ($('u-calm')) { $('u-calm').value = v; $('ucv').textContent = v + '%'; } if ($('u-calms')) { $('u-calms').value = v; if ($('cgv')) $('cgv').textContent = v + ' %'; } };
+const setCalm = (v, quiet) => { USER.calm = clamp(Math.round(v), 0, 100); markCalm(); autosave(); };
 function setTrans(v, quiet) { USER.trans = v; markTR(); autosave(); if (!quiet) toast('Transition: ' + (v ? v + ' s' : 'instant'), 1400); }
 const AUTO_OK = new Set(['KeyZ', 'KeyX', 'KeyN', 'KeyV', 'BracketLeft', 'BracketRight', 'Semicolon', 'Space', 'Escape', 'KeyF', 'KeyH', 'KeyB', 'KeyM', 'ShiftLeft', 'ShiftRight']);
 let hintAt = -1e9;
@@ -2551,7 +2571,7 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { togglePin(); return; }
   if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
-  if (e.code === 'KeyB' && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // mark this moment ("bad")
+  if (e.code === 'KeyB' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // Shift+B: mark this moment ("bad")
   if (e.code === 'KeyL' && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) codeToggle(); return; }   // live-coding overlay, every level
   if (e.code === 'KeyN' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setEnergy(USER.energy === 4 ? EN.last : 4); return; }   // Extreme = Energy 4, back to the previous level
   if (e.code === 'KeyM' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setLevel((CL + 1) % 3); return; }   // control level: auto / assisted / manual
@@ -2574,7 +2594,7 @@ addEventListener('keydown', e => {
     const nm = (PEFF.find(r => r[0] === e.code) || [0, 0, 'tiles'])[2]; codeKey((e.shiftKey ? 'Shift' : 'Alt') + '+' + nm + ' → ' + Math.round(v * 100) + ' %'); toast(nm + ' ' + Math.round(v * 100) + ' %' + trTxt(), 1200);
     return;
   }
-  if (e.code === 'KeyV') { if (IM.length > 1) showImg((imTo + 1) % IM.length); else toast('Only one image: add more in Settings', 2000); return; }   // next image, every mode and level
+  if (!e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey && (e.code === 'KeyV' || e.code === 'KeyB')) { setCalm(USER.calm + (e.code === 'KeyB' ? 10 : -10)); return; }   // Calm - / + (V less calm, B more), all levels, repeats while held
   if ((e.code === 'BracketLeft' || e.code === 'BracketRight') && IM.length > 1) { showImg((imTo + (e.code === 'BracketRight' ? 1 : IM.length - 1)) % IM.length); return; }
   // Comma / Period transition time in all levels
   if (!isMod && (e.code === 'Comma' || e.code === 'Period')) { const v = USER.trans, nx = e.code === 'Period' ? TRS.find(x => x > v) : [...TRS].reverse().find(x => x < v); setTrans(nx ?? (e.code === 'Period' ? TRS[TRS.length - 1] : 0)); return; }
@@ -2651,6 +2671,8 @@ $('u-trans').addEventListener('input', e => setTrans(+e.target.value, true));   
 $('u-trans').addEventListener('change', e => e.target.blur());   // keep the keyboard free
 $('u-hold').addEventListener('input', e => { USER.hold = +e.target.value; markHold(); autosave(); });
 $('u-hold').addEventListener('change', e => e.target.blur());
+if ($('u-calm')) { $('u-calm').addEventListener('input', e => { setCalm(+e.target.value); }); $('u-calm').addEventListener('change', e => e.target.blur()); }
+if ($('u-calms')) { $('u-calms').addEventListener('input', e => { setCalm(+e.target.value); }); $('u-calms').addEventListener('change', e => e.target.blur()); }
 { const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; }   // ?style= (tests): applies in assisted / manual; auto = the engine's choice
 const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
 function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
@@ -2659,7 +2681,7 @@ $('phelp').addEventListener('click', e => { if (!e.target.closest('.pult')) clos
 $('qual').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
 $('u-q').addEventListener('click', () => { const k = Object.keys(QUAL); setQuality(k[(k.indexOf(quality) + 1) % 3]); });
 const setTileMode = m => { USER.force = m; };
-const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['auto', 'trans', 'hold', 'energy', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
+const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['auto', 'trans', 'hold', 'calm', 'energy', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
 function setPexp(on, save = true) {   // T37: ▾ / ▴ unfolds the explanation panel #pxt above the pupitre (outside the flow: the height does not change)
@@ -2682,7 +2704,7 @@ function applyTweaks(o) {   // push saved values into USER and into the panel wi
   if (o.lv && typeof o.lv === 'object') for (const k in USER.lv) if (typeof o.lv[k] === 'number') USER.lv[k] = o.lv[k];
   markEN();
   for (const k in SLID) $(SLID[k]).value = USER[k];
-  markTR(); markHold(); markAI();
+  markTR(); markHold(); markCalm(); markAI();
 }
 const snapTweaks = () => ({ v: 2, ...Object.fromEntries(KEYS_U.map(k => [k, USER[k]])), lv: { ...USER.lv } });
 // B = bookmark this moment: state + final render params + tiny thumbnail → localStorage ('bicycleday.snaps'), clipboard and a downloaded bicycle-<ID>.json
@@ -2713,6 +2735,7 @@ const TWEAK0 = snapTweaks();   // the defaults, captured before the saved values
 if (Q.has('energy')) { USER.energy = clamp(Math.round(+Q.get('energy') || 0), 0, 4); } else if (Q.has('fx')) USER.energy = clamp(Math.round(2 + 2 * ((+Q.get('fx')) - 1)), 0, 4); else if (Q.get('hc') === '1') USER.energy = 4;   // ?energy=0..4 (tests); the old ?fx= and ?hc=1 map onto it
 if (USER.energy < 4) EN.last = USER.energy; markEN();
 if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();
+if (Q.has('calm')) USER.calm = clamp(Math.round(+Q.get('calm') || 0), 0, 100); markCalm();
 if (Q.has('autoimg')) USER.auto = +Q.get('autoimg') || 0; markAI();   // ?autoimg=<s> (tests; -1 = some scenes, ~2 in 5)   // ?trans=<s> (tests)
 // share link restore (?u=<base64url JSON>): apply the compact tweaks it carries (all tweaks except quality, plus level/images when present)
 { const UQ = Q.get('u'); if (UQ) {
@@ -2810,14 +2833,15 @@ wrapEl.addEventListener('pointermove', e => {
   } else if (e.pointerType === 'mouse') { const p = toP(e); USER.tx = p.x; USER.ty = p.y; }
 });
 addEventListener('pointerup', e => { if (ptr && !ptr.drag) { const p = toP(e); USER.rip = { x: p.x, y: p.y, t0: performance.now() }; } ptr = null; });
-wrapEl.addEventListener('wheel', e => { if (!(playing || liveOn)) return; e.preventDefault(); USER.zoom = clamp(USER.zoom * Math.exp(-e.deltaY * .0012), .5, 2.5); }, { passive: false });
+wrapEl.addEventListener('wheel', e => { if (!(playing || liveOn)) return; e.preventDefault(); USER.zoom = clamp(USER.zoom * Math.exp(-e.deltaY * .0012), .25, 2.0); }, { passive: false });
 function drawProfile() {   // the arc's intensity curve, drawn behind the seek bar
   let pl; const c = $('prof'), x = c.getContext('2d'), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
   x.fillStyle = 'rgba(244,241,234,.28)'; x.beginPath(); x.moveTo(0, h);
   for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - (LOC ? energy(LOC.u[Math.min(LOC.nf - 1, Math.floor(i / 200 * LOC.nf))]) : (pl = !SHOW && vplan().length ? planE(i / 200 * TOTAL) : null) != null ? pl : energy(i / 200)) * (h - 8));
   x.lineTo(w, h); x.fill();
-  if (SHOW) { x.strokeStyle = 'rgba(244,241,234,.7)'; x.fillStyle = '#fff'; x.font = '14px sans-serif'; x.lineWidth = 2;   // showcase: one tick + number per effect
-    FX.forEach((_, i) => { const X = i / FX.length * w; x.beginPath(); x.moveTo(X, 0); x.lineTo(X, h); x.stroke(); x.fillText(i + 1, X + 3, 14); }); }
+  if (SHOW) { x.font = '14px sans-serif'; x.lineWidth = 2;   // showcase: one tick + number per effect, coloured like the pupitre classes
+    const clsColor = c => c === 'gE' ? '#5cf08a' : c === 'gM' ? '#ff6fae' : c === 'gX' ? '#ffc94d' : c === 'gI' ? '#4fe0ff' : c === 'gT' ? '#7db4ff' : '#c9c9d6';
+    FX.forEach((f, i) => { const X = i / FX.length * w, col = clsColor(f.cls); x.strokeStyle = col; x.fillStyle = col; x.beginPath(); x.moveTo(X, 0); x.lineTo(X, h); x.stroke(); x.fillText(i + 1, X + 3, 14); }); }
 }
 const updateHint = () => { if (ready) hint.textContent = ''; };
 const chips = [...document.querySelectorAll('#opts button')];
@@ -3055,7 +3079,7 @@ function integrateLocal(off) {   // like integrateTo(), but along the timeline (
   hue = hueBase; rotA = 0;
   for (let s = 0; s < off; s += .5) {
     localView(s); const u = uAt(s, UE.off).u, e = score(u), g = smooth(0, 5, s), tr = g * Math.exp(-(s - trT0) / 1.4), tm = g * Math.exp(-(s - tmT0) / 1.2);   // g = render()'s local ramp-up gate
-    hue += e[4] * UE.hueK * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)) + HCspin(s) * (HCr.v ?? 0));
+    hue += e[4] * UE.hueK * UE.calm * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * e[1] + .03 * wob(s, 5)) + HCspin(s) * (HCr.v ?? 0));
   }
   localView(off);
 }
