@@ -740,7 +740,7 @@ void main(){
 
 const FS_SHOW = `#version 300 es
 precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate,uCells,uGlitch,uGSeed;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate,uCells,uGrid,uGlitch,uGSeed;
 out vec4 o;
 float h1(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 void main(){
@@ -766,9 +766,9 @@ void main(){
   float th=uDark*.45; c=max(c-th,0.)/(1.-th); c*=1.+.5*uDark;
   c=c*(1.+1.3*uBlaze)+uBlaze*.3;
   c=mix(c,fract(uT*uRate)<.5?vec3(1.):c*.12,uStrobe*.85);
-  if(uCells>.001){   // strobe grid: a 4x4 grid, 3-5 random cells (re-rolled ~every second, a pure function of uT) flash white / dark / inverted at 8-14 Hz, the rest is untouched
-    vec2 cl=floor(uv*4.); float id=cl.x+4.*cl.y, ep=floor(uT/1.05); int n=3+int(h1(vec2(ep,9.))*3.); float sel=0.;
-    for(int k=0;k<5;k++){ if(k<n && floor(h1(vec2(ep,float(k)))*16.)==id) sel=1.; }
+  if(uCells>.001){   // strobe grid: an N x N grid (N = uGrid, 3..8), 3-5 random cells (re-rolled ~every second, a pure function of uT) flash white / dark / inverted at 8-14 Hz, the rest is untouched
+    float N=max(3.,uGrid); vec2 cl=floor(uv*N); float id=cl.x+N*cl.y, ep=floor(uT/1.05); int n=3+int(h1(vec2(ep,9.))*3.); float total=N*N; float sel=0.;
+    for(int k=0;k<5;k++){ if(k<n && floor(h1(vec2(ep,float(k)))*total)==id) sel=1.; }
     float hh=h1(vec2(ep,id+20.)), on=step(fract(uT*(8.+6.*hh)+hh*3.),.5), md=floor(h1(vec2(ep,id+40.))*3.);
     vec3 fl=md<.5?vec3(1.):md<1.5?vec3(.02):1.-c;
     c=mix(c,fl,uCells*sel*on);
@@ -792,7 +792,7 @@ function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformL
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
   uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uTileSize', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia', 'uCode', 'uCodeAmt']);
-  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate', 'uCells', 'uGlitch', 'uGSeed']);
+  uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate', 'uCells', 'uGrid', 'uGlitch', 'uGSeed']);
   CODE.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
   makeTargets();
@@ -815,7 +815,7 @@ function makeTargets() {
   }
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
-let ASPECT = 1;
+let ASPECT = 1; let cellPrev = 0, cellLaunch = 0, cellGrid = 4;   // strobe grid per-launch size (N x N, N in 3..8)
 const GALLERY = __GALLERY__;   // [{id, title, src}] inlined by build.mjs; a picture is decoded only when its thumb is clicked (galPick)
 function loadImg(src, ok, fail, maxPx) {
   const bad = () => { if (fail) fail(); else hint.textContent = 'Could not load that image'; };
@@ -1031,7 +1031,7 @@ function initHomeGL(canvas) {
   try {
     homeProgS = khprog(g, FS_SCENE); homeProgD = khprog(g, FS_SHOW);
     homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uTileSize','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uCode','uCodeAmt']);
-    homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells','uGlitch','uGSeed']);
+    homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells','uGrid','uGlitch','uGSeed']);
     // blank code texture
     const ct = g.createTexture(); g.bindTexture(g.TEXTURE_2D, ct); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
     g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
@@ -1129,7 +1129,7 @@ function homeFrame(t) {
   g.bindFramebuffer(g.FRAMEBUFFER, null); g.viewport(0, 0, canvas.width, canvas.height); g.useProgram(homeProgD);
   g.activeTexture(g.TEXTURE0); g.bindTexture(g.TEXTURE_2D, homeTex[w]); g.uniform1i(homeUD.uTex, 0);
   g.uniform2f(homeUD.uRes, canvas.width, canvas.height); g.uniform1f(homeUD.uT, t); g.uniform1f(homeUD.uAber, P.ab); g.uniform1f(homeUD.uPulse, P.pulse); g.uniform1f(homeUD.uHi, 0); g.uniform1f(homeUD.uFx, qfx);
-  g.uniform1f(homeUD.uDark, 0); g.uniform1f(homeUD.uBlaze, 0); g.uniform1f(homeUD.uStrobe, 0); g.uniform1f(homeUD.uRate, 8); g.uniform1f(homeUD.uCells, 0); g.uniform1f(homeUD.uGlitch, P.glitch); g.uniform1f(homeUD.uGSeed, homeSeed % 997);
+  g.uniform1f(homeUD.uDark, 0); g.uniform1f(homeUD.uBlaze, 0); g.uniform1f(homeUD.uStrobe, 0); g.uniform1f(homeUD.uRate, 8); g.uniform1f(homeUD.uCells, 0); g.uniform1f(homeUD.uGrid, 4); g.uniform1f(homeUD.uGlitch, P.glitch); g.uniform1f(homeUD.uGSeed, homeSeed % 997);
   g.drawArrays(g.TRIANGLES, 0, 3);
   homeCur = w;
   // show fallback handling
@@ -1267,6 +1267,24 @@ function moodAt(t, hc = hcOn()) {
   if (p) m.blaze = Math.max(m.blaze, .8 * smooth(p.b - 1.5, p.b, t) * (1 - smooth(p.b, p.b + 2.5, t)));
   return m;
 }
+ // seeded zoom pulses (pure function of t): every ~60-120 s, 2-6 s each, in (x1.6-2.2) or out (x0.6-0.8), ease in/out. Generated mode only.
+ const ZLc = {};
+ function zoomPulseList() {
+   const c = ZLc; if (c && c.ph === PH && c.tot === TOTAL) return c.list;
+   const r = mulberry32(Math.floor(PH * 1e5) + 12345), rr = (a, b) => a + (b - a) * r();
+   const list = [];
+   let t = rr(45, 90);
+   while (t < TOTAL) { const dur = rr(2, 6); list.push({ a: t, b: t + dur, f: r() < .5 ? rr(1.6, 2.2) : rr(.6, .8) }); t += dur + rr(60, 120); }
+   ZLc.ph = PH; ZLc.tot = TOTAL; ZLc.list = list; return list;
+ }
+ const zoomPulseAt = t => {
+   const s = zoomPulseList().find(x => t >= x.a && t < x.b);
+   if (!s) return 1;
+   const mid = (s.a + s.b) / 2;
+   const envRaw = t < mid ? smooth(s.a, mid, t) : 1 - smooth(mid, s.b, t);
+   const env = envRaw * envRaw * (3 - 2 * envRaw);
+   return 1 + (s.f - 1) * env;
+ };
 /* ════════════════════════ FX: showcase registry (?showcase=1[&seg=10]) ════════════════════════
    One entry per effect: set(p, k) overrides the final render() params `p` (all neutral first = plain image). k = 0..1 envelope inside the segment
    (ease in, hold, ease out). p fields: warp kal fold fb fbHue hue pal side breath melt zoom rot ab pulse bright anchor tilt[2] srcZ srcRot palC palD ha
@@ -1546,7 +1564,7 @@ function tileSizeAt(t) {   // T55 tile effect: cell-size factor, seeded pure fun
 }
 function render(t, dt, bass, mid = 0, hi = 0) {
   const { u, u0 } = uAt(t, UE.off), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
-  easeUser(dt); const HC = hcOn(), hk = ramp(HCr, HC ? 1 : 0, dt, transT()), Hd = hk > .5, hl = (a, b) => lerp(a, b, hk);   // hk = hardcore blend 0..1 (a toggle ramps over the transition time); Hd = its discrete half (scene period, timelines, palette flips)
+  easeUser(dt); const HC = hcOn(), hk = ramp(HCr, HC ? 1 : 0, dt, transT()), Hd = hk > .5, hl = (a, b) => lerp(a, b, hk), isGen = !(LIVE || LOC || SHOW || CTRL || HC);   // hk = hardcore blend 0..1 (a toggle ramps over the transition time); Hd = its discrete half (scene period, timelines, palette flips)
   // deformation gate (tiles, tilt, scene punches, tunnel, kaleidoscope, warp, pulse...): generated = calm start over the first ~15 % of the piece;
   // local file = 5 s ramp-up (fixed, not track-proportional); live = calmer for 10 s (x0.3 → 1), then the full music-driven look; controlled / showcase / extreme = always 1
   const g15 = CTRL || SHOW || Hd ? 1 : LOC ? smooth(0, 5, t) : LIVE ? lerp(.3, 1, smooth(0, 10, t)) : smooth(.13, .18, t / TOTAL);
@@ -1609,19 +1627,25 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   if (ARC.piano) pulse = .12 * noteGlow(t);   // piano: no heartbeat, only a very soft breath after each melody note
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
   const op = opening(u0) * g15; pulse *= op;
-  const zoom = (1 + zoomAmp * op * .2 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.3 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * hl(1, 1.6) * (scene % 2 ? .55 : -.4)) * (1 + tm * hl(.12, .3) * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04);
+  const zp = isGen ? 1 + (zoomPulseAt(t) - 1) * calm(t) : 1;
+  const zoom = (1 + zoomAmp * op * .25 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.35 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * hl(1, 1.6) * (scene % 2 ? .55 : -.4)) * (1 + tm * hl(.12, .3) * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04) * zp;
   const stretch = Q.has('stretch') ? +Q.get('stretch') : clamp((.15 + .6 * u + .5 * sg) * (LIVE ? smooth(10, 50, t) : cz * op) * .9);
   const wr = warp * op * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg) * hl(1, 1.3) * UE.wp, ab = (aber * op + BAND.hi * .6) * (1 + .5 * sg) * hl(1, 1.8) + hl(0, .4);
   const gen0 = !(LIVE || LOC || SHOW || CTRL || hcOn()), fadeT = clamp(TOTAL * .06, 8, 15), gFade = gen0 ? smooth(0, fadeT, t) : 1, gZoom = gen0 ? 1 + .22 * (1 - smooth(0, fadeT * 1.5, t)) : 1;   // generated start: black, the picture comes up over 8-15 s with a slow zoom-out
   // final parameters of this frame: in showcase mode they are replaced by a neutral baseline + the active FX entry
+  const cellNow = hk * smooth(.8, .95, sg);
   const P = { t, warp: wr, kal, fold, fb: fb * (1 - .75 * (Q.get('tile') ? 1 : tile)), fbHue: UE.hueK * (.006 + .02 * pal) * LOOK.ha, hue: hue + LOOK.hj, pal: pal * LOOK.p, side, breath: breath * op, melt: melt * op * (.5 + sg) * UE.mt, zoom: zoom * gZoom, rot: rotA + USER.rot, ab, pulse, bright: bright * gFade * (Hd && !LOC ? smooth(0, 3, t) : 1), anchor, tilt,
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch: stretch * UE.st, tun: clamp(tun * UE.tn), mono: Math.max(UE.monoK, md.bw), tile, tileN, tileMode,
-    surge: sg, kali: Math.min(1, LOOK.sk * (.3 + sg) * cz * UE.ka), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz * UE.ju), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: hk * smooth(.8, .95, sg), glitch: glitchAmt(t) };
+    surge: sg, kali: Math.min(1, LOOK.sk * (.3 + sg) * cz * UE.ka), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz * UE.ju), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: cellNow, grid: cellGrid, glitch: glitchAmt(t) };
   if (UE.amp !== 1) { const f = UE.amp; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
   // arrow rotate / zoom holds (all levels, independent of control params)
   CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
   USER.zoom = clamp(USER.zoom, .5, 2.5);
   if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
+  // strobe-grid launch tracking: each rising edge (0 -> on) draws a new grid size
+  if (P.cells > .5 && cellPrev <= .5) { cellLaunch++; const Ns = [3, 4, 5, 6, 7, 8]; cellGrid = Ns[Math.floor(hsh(cellLaunch, 80) * 6)]; }
+  cellPrev = P.cells;
+  P.grid = P.cells > .5 ? cellGrid : 4;
   snapLook = false;
   lastP = P;   // for the B snapshot
   if (CL === 2 && !MAN_BASE) { MAN_BASE = cloneP(P); captureManual(P); }
@@ -1671,7 +1695,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, cv.width, cv.height); gl.useProgram(progD);
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, tex[w]); gl.uniform1i(uD.uTex, 0);
   gl.uniform2f(uD.uRes, cv.width, cv.height); gl.uniform1f(uD.uT, t); gl.uniform1f(uD.uAber, P.ab); gl.uniform1f(uD.uPulse, P.pulse); gl.uniform1f(uD.uHi, BAND.hi); gl.uniform1f(uD.uFx, QUAL[quality].fx);
-  gl.uniform1f(uD.uDark, P.dark); gl.uniform1f(uD.uBlaze, P.blaze); gl.uniform1f(uD.uStrobe, P.strobe); gl.uniform1f(uD.uRate, P.rate); gl.uniform1f(uD.uCells, P.cells);
+  gl.uniform1f(uD.uDark, P.dark); gl.uniform1f(uD.uBlaze, P.blaze); gl.uniform1f(uD.uStrobe, P.strobe); gl.uniform1f(uD.uRate, P.rate); gl.uniform1f(uD.uCells, P.cells); gl.uniform1f(uD.uGrid, P.grid || 4);
   gl.uniform1f(uD.uGlitch, P.glitch); gl.uniform1f(uD.uGSeed, PH + 1);
   gl.drawArrays(gl.TRIANGLES, 0, 3);
   cur = w;
@@ -2382,7 +2406,7 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   off = clamp(off, 0, Math.max(0, TOTAL - 3));
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
-  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; integrateTo(off); paused = false; setPP();
+  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; cellLaunch = 0; cellGrid = 4; integrateTo(off); paused = false; setPP();
   pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); if (STYLES[MUSIC]) drawProfile(); pump(); pumpId = setInterval(pump, 1000);
 }
 let SUSP = null;
