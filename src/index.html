@@ -230,6 +230,12 @@
   #phelp .phtext{position:fixed;left:50%;bottom:calc(var(--pult-h) + 24px);transform:translateX(-50%);width:min(1248px,calc(100vw - 32px));text-align:center;color:#f4f1ea;font:600 13px/1.4 "Helvetica Neue",Arial,sans-serif;letter-spacing:.02em}
   #phelp .pult{opacity:1;pointer-events:auto}
   #phelp .pk{opacity:1}
+  /* T76: auto = minimal pupitre: Energy, time slider, Space, Save, drag hint. CSS only (nothing removed); assisted / manual and the Help demo (#phelp, no ids) keep everything */
+  .pmeta .pdrag{display:none}
+  body.lv0 #pult #pc1>.pcell:first-child .trw,body.lv0 #pult .pchips,body.lv0 #pult #pfx,body.lv0 #pult #pmd,body.lv0 #pult #plk,body.lv0 #pult #pexp,body.lv0 #pult #pxt,body.lv0 #pult #stopb,body.lv0 #pult #vol{display:none}
+  body.lv0 #pult #pmeta>span:not(.pkeep):not(.pdrag){display:none}
+  body.lv0 #pult #pmeta>span.pdrag{display:inline-flex}
+  #phelp .pmeta .pdrag{display:inline-flex}
   #phelp .pult input{pointer-events:none}
   #phx{position:fixed;top:14px;right:14px;width:34px;height:34px;border:1px solid #f4f1ea88;border-radius:50%;background:#000b;color:#f4f1ea;font:600 16px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer}
 /* T48: two small Energy buttons on the right edge, touch devices only */
@@ -399,7 +405,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   <div>Images<div class="imgs" id="timgs"></div><button class="chip" id="twebcam" type="button" style="margin-top:6px">Webcam</button></div>
   <div>Gallery<div class="imgs gal-row" id="tgal"></div></div>
   <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on some scene changes (about 2 in 5, seeded). Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Some scenes</button></div>
-  <label title="Master effect strength: 0 = plain image">Calm <b id="cgv">100 %</b><small>reduces every effect at once (0 = the poster as a still)</small><input type="range" id="u-calms" min="0" max="100" step="1" value="100"></label>
+  
    <button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button>
   <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
   <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button><button data-save="4">4</button><button data-save="5">5</button><button data-save="6">6</button><button data-save="7">7</button><button data-save="8">8</button></div>
@@ -420,7 +426,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   <div id="pxt" class="pxt"><p><b>Control levels.</b> auto: the engine decides everything except Energy, images and camera. assisted: the engine + your effect keys (each one fades out by itself). manual: a quiet base, only what you switch on.</p><p><b>Energy</b> (calm … extreme): how wild the picture is. Picture only, the music does not change. Extreme = Energy 4.</p><p><b>Gauge:</b> green = what the engine sends now. Orange marker = your slider.</p><p><b>Yellow name</b> = the effect is on (assisted / manual: you switched it on; auto: the engine uses it strongly).</p><p><b>transition</b> = how long a change takes to fade in and out (0 = instant, up to 10 s).</p><p><b>hold</b> = how long an effect you switched on in assisted stays on before it fades out by itself (random 4.5–15 s by default; manual effects stay on until you switch them off; in auto the engine chooses its own transition per scene).</p><p><b>Palette, Tiles, Live code:</b> in auto the engine decides them.</p></div>
   <div id="pmain" class="pmain">
     <div class="pucol pc1" id="pc1">
-      <div class="pcell" style="cursor:default;gap:6px"><div id="plvl" class="plvl" title="Control level (key M)"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div><kbd class="pk u0" data-code="KeyM">M</kbd><span class="trw" title="Calm: master effect strength (0 = plain image)"><kbd class="pk gG" data-code="KeyV">V</kbd><kbd class="pk gG" data-code="KeyB">B</kbd><span>calm</span><input type="range" class="pr" id="u-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="ucv">100%</span></span></div>
+      <div class="pcell" style="cursor:default;gap:6px"><div id="plvl" class="plvl" title="Control level (key M)"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div><kbd class="pk u0" data-code="KeyM">M</kbd><span class="trw" title="Calm: master effect strength (0 = plain image)" style="margin-left:6px"><kbd class="pk gG u0" data-code="KeyV">V</kbd><span>calm</span><input type="range" class="pr" id="u-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="ucv">100%</span><kbd class="pk gG u0" data-code="KeyB">B</kbd></span></div>
       <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more, N = extreme). Look only."><kbd class="pk gX" data-code="KeyZ">Z</kbd><div class="enb" id="enp"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk gX" data-code="KeyX">X</kbd></div>
       <div class="pchips"><span><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span><span><kbd class="pk gI" data-code="Semicolon">;</kbd>auto</span><span class="trw" title="Assisted only: how long a toggled effect stays on (rand = random 4.5-15 s, 31 = until switched off)"><span>hold</span><input type="range" class="pr" id="u-hold" min="0" max="31" step="1" value="0"><span class="pvv" id="uhv"></span></span><span class="trw" title="Transition time (keys , and .). Assisted / manual: drag to set it. Auto: chosen by the engine in auto (read only)"><span>trans</span><input type="range" class="pr" id="u-trans" min="0" max="10" step=".5" value="3" style="width:32px"><span class="pvv" id="ptrv"></span></span></div>
     </div>
@@ -434,7 +440,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   </div>
   <div id="prow4" class="prow4">
     <div id="ctl" class="pctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
-    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">,</kbd><kbd class="pk gX">.</kbd>trans.</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gX">⇧1-8</kbd>save</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span></div>
+    <div id="pmeta" class="pmeta"><span class="pkeep"><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">,</kbd><kbd class="pk gX">.</kbd>trans.</span><span><kbd class="pk gX">1-8</kbd>preset</span><span class="pkeep"><kbd class="pk gX">⇧1-8</kbd>save</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span><span class="pdrag" title="Mouse: drag to rotate the picture">drag = rotate</span></div>
     <button id="pexp" class="pk gG pexpb" title="Explain" aria-controls="pxt" aria-expanded="false">▾</button>
   </div>
 </div>
@@ -2557,7 +2563,7 @@ const TRS = [0, 1, 3, 5, 10];
 const markTR = () => { $('u-trans').value = USER.trans; };
 const holdTxt = h => h <= 0 ? 'rand' : h >= 31 ? '∞' : h + ' s';
 const markHold = () => { $('u-hold').value = USER.hold; $('uhv').textContent = holdTxt(USER.hold); };
-const markCalm = () => { const v = USER.calm; if ($('u-calm')) { $('u-calm').value = v; $('ucv').textContent = v + '%'; } if ($('u-calms')) { $('u-calms').value = v; if ($('cgv')) $('cgv').textContent = v + ' %'; } };
+const markCalm = () => { const v = USER.calm; if ($('u-calm')) { $('u-calm').value = v; $('ucv').textContent = v + '%'; } };
 const setCalm = (v, quiet) => { USER.calm = clamp(Math.round(v), 0, 100); markCalm(); autosave(); };
 function setTrans(v, quiet) { USER.trans = v; markTR(); autosave(); if (!quiet) toast('Transition: ' + (v ? v + ' s' : 'instant'), 1400); }
 const AUTO_OK = new Set(['KeyZ', 'KeyX', 'KeyN', 'KeyV', 'BracketLeft', 'BracketRight', 'Semicolon', 'Space', 'Escape', 'KeyF', 'KeyH', 'KeyB', 'KeyM', 'ShiftLeft', 'ShiftRight']);
@@ -2675,7 +2681,7 @@ $('u-trans').addEventListener('change', e => e.target.blur());   // keep the key
 $('u-hold').addEventListener('input', e => { USER.hold = +e.target.value; markHold(); autosave(); });
 $('u-hold').addEventListener('change', e => e.target.blur());
 if ($('u-calm')) { $('u-calm').addEventListener('input', e => { setCalm(+e.target.value); }); $('u-calm').addEventListener('change', e => e.target.blur()); }
-if ($('u-calms')) { $('u-calms').addEventListener('input', e => { setCalm(+e.target.value); }); $('u-calms').addEventListener('change', e => e.target.blur()); }
+
 { const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; }   // ?style= (tests): applies in assisted / manual; auto = the engine's choice
 const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
 function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
