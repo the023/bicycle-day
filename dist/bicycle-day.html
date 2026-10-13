@@ -259,7 +259,7 @@
   body.playing #settings,body.live #settings{display:block}
   body.side-ui #settings,body.tuning #settings,#settings:focus-visible{visibility:visible}
   body.playing:not(.ui):not(.tuning) #fullscreen,body.live:not(.ui):not(.tuning) #fullscreen{visibility:hidden}
-  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
+body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #shareplay{visibility:hidden}  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
   body.playing #actions #xclose,body.live #actions #xclose{display:block}
   body.ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
   #tune label{display:flex;flex-direction:column;gap:5px}
@@ -710,7 +710,7 @@ void main(){
     gX=mix(dpx,rA*(1.95*dlx/.7*e+dax*nn),uTunnel); gY=mix(dpy,rA*(1.95*dly/.7*e+day*nn),uTunnel); vec3 cA=layer(mix(p,rA*e,uTunnel),cdA);
     gX=mix(dpx,rB*(1.95*dlx/.7*e+dax*nn),uTunnel); gY=mix(dpy,rB*(1.95*dly/.7*e+day*nn),uTunnel); vec3 cB=layer(mix(p,rB*e,uTunnel),cdB);
     gOn=false; c=mix(cA,cB,w); cd=mix(cdA,cdB,w);
-  } else c=layer(p,cd);
+  } else { if (uTile > .001) { gOn = true; gX = dFdx(p); gY = dFdy(p); } c = layer(p, cd); gOn = false; }
   // source anchor: the untouched image stays faintly readable in the centre, even deep inside the kaleidoscope
   // EFFECT source-stretch: the ghost is elongated along a slowly turning axis, sheared, swayed and swirled (uStretch = strength)
   vec2 ps=rot(p0/uSrcZ,uSrcRot);
@@ -1376,7 +1376,7 @@ function setLevel(l, save = true, quiet = false) {
   if (!quiet) { const enHint = document.body.classList.contains('touchdev') ? 'right edge ▲ ▼' : 'Z X'; toast('Control: ' + LVL[l] + ['  ·  engine only; you set Energy (' + enHint + ') and the images', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500); }}
 // live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
 // overlay = DOM box bottom-left; crazy = the same text drawn on a 2D canvas that FS_SCENE mixes into the SOURCE sampling (uCode), so warp, kaleidoscope, tiles, trails, palette all deform it.
-const STILL = Q.get('t') !== null;   // ?t= silent still (test): the overlay then runs on simulated time
+const STILL = Q.get('t') !== null && !Q.has('u') && !Q.has('img');   // ?t= silent still (test); a share link (?u=/?img=) with &t= plays and seeks instead
 const CODE = { mode: 0, user: 0, aScene: null, k: 0, q: [], L: [], last: {}, lastAt: {}, ev: {}, nextAt: 0, fillAt: 0, el: null, cv: null, tex: null, drawAt: 0, sig: '', st: 0, logT: 0 };   // st = song time (s) of the current frame; logT = song time of the last log line queued   // user = the saved choice (assisted/manual); aScene = scene of the last auto decision (T39)
 const CODE_FILL = ['uv = rot2(uv, a) * zoom;', 'col = mix(col, prev, uFb);', 'p = abs(p) / dot(p, p) - k;', 'float h = fract(sin(dot(p, K)) * 43758.5);', 'for (int i = 0; i < N; i++) uv += sin(uv.yx * f + t);', 'fbo.swap(); gl.drawArrays(TRIANGLES, 0, 3);', 'c = pow(c, vec3(.9)) * bright;', 'hue += spd * dt;', 'z = z * z + c;   // julia', 'beat = exp(-d * 7.) + .6 * exp(-d2 * 7.);', 'uv = abs(fract(uv * n) - .5);', 'if (len > R) discard;', 'aber = .002 + ab * .004;', 'next = lerp(a, b, smooth(t));', 'seed = hash(scene * 12.9898);', 'await pump(); // schedule audio', 'const dt = now - last;', 'tex = sampler2D(prev, uv + d);'];
 const LOG_HC = new Set(['scene', 'mood', 'surge', 'cells']);   // log mode in Extreme: only these kinds
@@ -1432,7 +1432,6 @@ function codeFeed(P, ex, dt) {   // called once per frame from render(); ex = { 
   ev('mood', mv, 'mood = ' + (mv || 'none'), 'a', 'mood: ' + (mv ? mv + ' on' : 'off'), 'mood');
   ev('cells', P.cells > .5 ? 1 : 0, 'cells = ' + (P.cells > .5 ? 'on  // strobe grid' : 'off'), 'a', 'strobe grid ' + (P.cells > .5 ? 'on' : 'off'), 'cells');
   ev('tunl', P.tun > .3 ? 1 : 0, null, 'a', 'tunnel ' + (P.tun > .3 ? 'on' : 'off'), 'tun');
-  ev('fold', P.fold, null, 'a', 'fold = ' + Math.round(P.fold), 'fold');
   ev('tileMode', P.tileMode, null, 'a', 'tile mode: ' + ['checker', 'wave', 'shatter'][P.tileMode], 'tilemode');
   ev('energy', USER.energy, null, 'a', 'Energy: ' + EN.names[USER.energy], 'energy');
   ev('ustrans', CL ? USER.trans : TRN, null, 'a', 'transition time ' + (CL ? USER.trans : TRN) + ' s', 'trans');
@@ -2707,8 +2706,8 @@ function shareEncode() {   // returns a URL string, or null if a local (non-shar
   params.set('arc', arcName);
   params.set('min', String(MIN));
   params.set('hue', String(hueBase));
-  params.set('u', b64urlEncode(JSON.stringify(uObj)));
-  const cur = IM[imTo];
+  params.set('t', (isFinite(lastT) ? lastT : 0).toFixed(1));
+  params.set('u', b64urlEncode(JSON.stringify(uObj)));  const cur = IM[imTo];
   if (cur && cur.remote) params.set('img', cur.remote);
   return shareBase() + '?' + params.toString();
 }
@@ -3156,7 +3155,7 @@ addEventListener('load', () => {
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
-    if (dbg !== null) {   // silent still: step the feedback loop up to the requested time
+    if (dbg !== null && STILL) {   // silent still: step the feedback loop up to the requested time
       homeGate(false); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); if (!LOC && STYLES[MUSIC]) { try { buildAudio(new OfflineAudioContext(2, 1, 44100), 0, 0); } catch (e) { console.warn('section plan', e); } } rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
       const fr = x => { if (LOC) localView(x); render(x, step, LOC ? LIVE.bn : 0, LOC ? LIVE.mn : 0, LOC ? LIVE.hn : 0); };
       for (; t < T; t += step) fr(t); fr(T);
@@ -3175,9 +3174,9 @@ addEventListener('load', () => {
 function autoStart() {
   if (!Q.get('arc')) { arcName = ['journey', 'waves', 'slam', 'intense'][Math.floor(Math.random() * 4)]; applyArc(); drawProfile(); }
   start();
+  const tParam = Q.get('t'); if (tParam !== null && playing) { try { seekTo(parseFloat(tParam)); } catch (e) {} }
   if (!playing) return;
-  setTimeout(() => {
-    if (!playing || !ac || ac.state === 'running') return;
+  setTimeout(() => {    if (!playing || !ac || ac.state === 'running') return;
     SUSP = performance.now() - lastT * 1000;   // keep the picture moving; the tap restarts the sound at the current picture time
     const pill = $('tap'); pill.hidden = false;
     const go = () => {
