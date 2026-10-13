@@ -4,7 +4,7 @@
 
 A generative, psychedelic animation built from your images: a WebGL2 shader (warp, kaleidoscope, feedback trails, colour cycling, fractal styles) driven by sound. The sound is either music the app composes itself (Web Audio synth) or music you bring (a file, another browser tab, the microphone). Single HTML file, no dependencies, nothing is uploaded.
 
-The default picture is the Bicycle Day logo. A built-in **gallery** (the 1943 Bicycle Day poster and five public-domain paintings) and your own images can be added, up to 5 at once.
+The default picture is the 1943 Bicycle Day poster (the logo is only the home screen). A built-in **gallery** (the 1943 Bicycle Day poster and five public-domain paintings) and your own images can be added, up to 5 at once.
 
 ## Run
 
@@ -87,8 +87,11 @@ The full table is in [`KEYMAP.md`](KEYMAP.md). A preset stores the Settings valu
 | `level` | `auto`, `assisted`, `manual` (`ctrl=1` = manual) | saved |
 | `quality` | `high`, `medium`, `low` | saved |
 | `style` | `kali`, `julia`, `auto` | off |
+| `img` | one image (http(s) URL, `data:` URI or relative path) as the only picture; skips the start screen and plays a random generative curve (`arc`, `min`, `seed`, `hue`, `music`, `quality` still apply) | default logo |
 | `autoimg`, `trans`, `code`, `pal`, `tile`, `tunnel`, `stretch`, `mood`, `surge` | force a setting (testing) | – |
 | `live=mic`, `local=<url>` | microphone / play an audio file from an http URL | – |
+
+**Share with a community image:** `https://the023.github.io/bicycle-day/?img=https%3A%2F%2Fexample.org%2Flogo.png` (URL-encode the image address). The image host must send `Access-Control-Allow-Origin` (Wikimedia does), or pass a `data:image/...` URI instead. If it cannot be loaded, the default logo plays and a message explains why. Browsers may block sound until the first click: a small "tap for sound" pill appears and the picture keeps running.
 | `showcase=1` | effects gallery, one effect at a time (`seg=<sec>`; N / P next / previous) | – |
 | `t`, `res`, `step` | debug: render one silent still at `t` seconds (see AGENTS.md) | – |
 
@@ -96,7 +99,7 @@ The full table is in [`KEYMAP.md`](KEYMAP.md). A preset stores the Settings valu
 
 ```
 src/index.html                      the whole app (HTML + CSS + JS + shaders); the logo is a __HOME_LOGO__ placeholder
-assets/bicycle-day-logo-home.webp   home screen logo and default picture
+assets/bicycle-day-logo-home.webp   home screen logo
 assets/gallery/                     built-in gallery images (poster + public-domain paintings, ≤ 1280 px)
 build.mjs                           inlines the logo and the gallery, syntax-checks the inline scripts, writes dist/
 dist/                               the deliverable single file (committed so it can be opened without building)
