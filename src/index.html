@@ -795,9 +795,9 @@ void main(){
   float th=uDark*.45; c=max(c-th,0.)/(1.-th); c*=1.+.5*uDark;
   c=c*(1.+1.3*uBlaze)+uBlaze*.3;
   c=mix(c,fract(uT*uRate)<.5?vec3(1.):c*.12,uStrobe*.85);
-  if(uCells>.001){   // strobe grid: an N x N grid (N = uGrid, 3..8), 3-5 random cells (re-rolled ~every second, a pure function of uT) flash white / dark / inverted at 8-14 Hz, the rest is untouched
-    float N=max(3.,uGrid); vec2 cl=floor(uv*N); float id=cl.x+N*cl.y, ep=floor(uT/1.05); int n=3+int(h1(vec2(ep,9.))*3.); float total=N*N; float sel=0.;
-    for(int k=0;k<5;k++){ if(k<n && floor(h1(vec2(ep,float(k)))*total)==id) sel=1.; }
+  if(uCells>.001){   // strobe grid: an N x N grid (N = uGrid, 3..10), ~30% random cells (re-rolled ~every second, a pure function of uT) flash white / dark / inverted at 8-14 Hz, the rest is untouched
+    float N=max(3.,uGrid); vec2 cl=floor(uv*N); float id=cl.x+N*cl.y, ep=floor(uT/1.05); float total=N*N; int n=int(floor(total*0.3+0.5)); if(n<1) n=1; float sel=0.;
+    for(int k=0;k<30;k++){ if(k<n && floor(h1(vec2(ep,float(k)))*total)==id) sel=1.; }
     float hh=h1(vec2(ep,id+20.)), on=step(fract(uT*(8.+6.*hh)+hh*3.),.5), md=floor(h1(vec2(ep,id+40.))*3.);
     vec3 fl=md<.5?vec3(1.):md<1.5?vec3(.02):1.-c;
     c=mix(c,fl,uCells*sel*on);
@@ -844,7 +844,7 @@ function makeTargets() {
   }
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
-let ASPECT = 1; let cellPrev = 0, cellLaunch = 0, cellGrid = 4;   // strobe grid per-launch size (N x N, N in 3..8)
+let ASPECT = 1; let cellPrev = 0, cellLaunch = 0, cellGrid = 4;   // strobe grid per-launch size (N x N, N in 3..10)
 const GALLERY = __GALLERY__;   // [{id, title, src}] inlined by build.mjs; a picture is decoded only when its thumb is clicked (galPick)
 function loadImg(src, ok, fail, maxPx) {
   const bad = () => { if (fail) fail(); else hint.textContent = 'Could not load that image'; };
@@ -1702,7 +1702,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // Calm master slider (T64): one final multiplier toward the neutral poster. Applied to both auto and user paths, before showcase/ctrl so their deltas sit on top of the calmed base.
   if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
   // strobe-grid launch tracking: each rising edge (0 -> on) draws a new grid size
-  if (P.cells > .5 && cellPrev <= .5) { cellLaunch++; const Ns = [3, 4, 5, 6, 7, 8]; cellGrid = Ns[Math.floor(hsh(cellLaunch, 80) * 6)]; }
+  if (P.cells > .5 && cellPrev <= .5) { cellLaunch++; const Ns = [3, 4, 5, 6, 7, 8, 9, 10]; cellGrid = Ns[Math.floor(hsh(cellLaunch, 80) * 8)]; }
   cellPrev = P.cells;
   P.grid = P.cells > .5 ? cellGrid : 4;
   // Calm master slider (T64): one final multiplier toward the neutral poster, after every other term (incl. user keys).
