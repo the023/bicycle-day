@@ -658,6 +658,7 @@ let MAN_BASE = null;   // frozen manual look copied from the previous frame when
 function cloneP(p) { if (!p) return null; const o = { ...p }; if (Array.isArray(o.tilt)) o.tilt = o.tilt.slice(); if (Array.isArray(o.palC)) o.palC = o.palC.slice(); if (Array.isArray(o.palD)) o.palD = o.palD.slice(); return o; }
 function captureManual(p) { if (!p) return; CT.c = (p.palC || CT.c).slice(); CT.d = (p.palD || CT.d).slice(); CT.ha = p.ha ?? CT.ha; }   // sliders are NOT touched: same values in assisted and manual (the yellow bars)
 const ARCQ = Q.get('arc') === 'hardcore' ? 'extreme' : Q.get('arc');   // old links with arc=hardcore keep working
+let PKEY = [];   // T102: piano key/section/bridge change times (song time), filled by pianoScore*() for buildAudio's phrase events (data only)
 let arcName = ARCS[ARCQ] ? ARCQ : 'journey', ARC, KEYS, EMAX = 1, BEATS = [], PH = 0, NOTES = [], MEL = [];
 // music styles. ambient = the original engine (arc drives it, incl. bpm/drive); gnossienne/gymnopedie = piano (swap in the calm 'piano' arc); the others are standalone generators
 // that read energy(u) of the chosen arc but carry their own sections/tempo. bpm = tempo range (energy 0..1) used for BEATS (the picture's pulse); nohb = no heartbeat pulse on the picture.
@@ -702,6 +703,7 @@ function pianoScore2() {
   for (let i = 0; i < TOTAL / (P.beat * .8) + 12; i++) bt.push(bt[i] + P.beat * (1 + .1 * Math.sin(i * .21 + ph) + .06 * Math.sin(i * .53 + 2 * ph) + .04 * (r() - .5)));   // rubato
   const tb = x => { const i = Math.floor(x); return 1.5 + bt[i] + (bt[i + 1] - bt[i]) * (x - i); };
   const BR = (TOTAL >= 300 ? [[.3, .4], [.72, .82]] : TOTAL >= 90 ? [[.45, .6]] : []).map(([a, b]) => [a * TOTAL, b * TOTAL]), inBr = t => BR.some(([a, b]) => t >= a && t < b);
+  BR.forEach(([a, b]) => PKEY.push(a, b));   // T102: the bridge window edges are phrase events
   let dyn = 1;   // phrase / block dynamics, set by the loops below
   const add = (x, m, v, k, rs, lag) => { const t = tb(x) + (lag || 0) + (r() - .5) * .03; if (t < tEnd) E.push({ t, m, v: v * dyn * (.75 + .25 * energy(t / TOTAL)), k, r: rs || 1 }); };
   const SCM = [0, 2, 3, 5, 7, 8, 10], midi = (i, br) => 62 + (br ? SCM : P.sc)[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
@@ -755,10 +757,13 @@ function pianoScore3() {
     for (let i = 0; i < 80; i++) body.push(i);
     for (let bl; (bl = GM3.BLK.filter(([a, b]) => body.length + b - a <= nb)).length;) { const [a, b] = pick(bl); for (let i = a; i < b; i++) body.push(i); }
   } else for (let i = 0, c = GM3.CUT.filter(x => x <= nb).pop() || 0; i < c; i++) body.push(i);   // short: cut at a phrase boundary
+  const BS = [18, 26, 38, 46, 54, 62, 74], bst = [];   // T102: body indexes where a new block (B / C / A') starts
+  body.forEach((m, i) => { if (i && (i >= 80 ? m !== body[i - 1] + 1 : BS.includes(i))) bst.push(i); });
   const ML = body.concat([80, 81]), N = ML.length, beat = clamp(avail / (N * 4), .85, 1.3), bt = [0];
   for (let i = 0; i < N * 4 + 8; i++) bt.push(bt[i] + beat * (1 + .1 * Math.sin(i * .21 + ph) + .06 * Math.sin(i * .53 + 2 * ph) + .04 * (r() - .5)));   // rubato
   const tb = x => { const i = Math.floor(x); return 1.5 + bt[i] + (bt[i + 1] - bt[i]) * (x - i); };
   let dyn = 1;
+  bst.concat(N - 2).forEach(i => { if (tb(i * 4) < tEnd) PKEY.push(tb(i * 4)); });   // T102
   const add = (x, m, v, k, rs, lag) => { const t = tb(x) + (lag || 0) + (r() - .5) * .03; if (t < tEnd) E.push({ t, m, v: v * dyn * (.75 + .25 * energy(t / TOTAL)), k, r: rs || 1 }); };
   const up = p => { while (![0, 1, 3, 5, 7, 8, 10].includes(++p % 12)); return p; }, seen = {};
   ML.forEach((mid, i) => {
@@ -804,6 +809,7 @@ function pianoScoreT() {
   const opts = [0, ...TP.CUT.slice().reverse()]; let cut = opts.find(c => len(c) * .88 <= avail); if (cut === undefined) cut = TP.CUT[0];   // the longest version that fits
   const sc = clamp(avail / len(cut), .88, 1.3), S = segs(cut), tcur = [1.5];
   S.forEach(([a, b], i) => tcur.push(tcur[i] + (os(Math.min(b, lastU)) - os(a)) * sc + gap));
+  S.forEach(([a, b], i) => { if (i && tcur[i] < tEnd) PKEY.push(tcur[i]); TP.CUT.forEach(c => { const x = c * BAR; if (x > a && x < b) { const t = tcur[i] + (os(x) - os(a)) * sc; if (t < tEnd) PKEY.push(t); } }); });   // T102: the jump to the ending + the cadence bars played (section changes)
   const rub = s => .35 * Math.sin(s * .061 + ph) + .2 * Math.sin(s * .173 + ph2), roll = {};
   nt.forEach(n => (roll[n.x] = roll[n.x] || []).push(n)); Object.values(roll).forEach(g => { if (g.length > 2) g.sort((p, q) => p.m - q.m).forEach((n, j) => n.lag = j * (.012 + .012 * r())); });
   S.forEach(([a, b], i) => nt.forEach(n => {
@@ -817,6 +823,7 @@ function pianoScoreT() {
   return E.sort((p, q) => p.t - q.t);
 }
 function pianoScore() {
+  PKEY = [];
   if (MUSIC === 'gnossienne2') return pianoScore2();
   if (MUSIC === 'gnossienne3') return pianoScore3();
   if (MUSIC === 'tempest') return pianoScoreT();
@@ -1432,15 +1439,35 @@ const opening = u => LIVE || hcOn() ? 1 : smooth(.02, .35, u) ** 2;   // generat
 const rampT = (hc = hcOn()) => hc ? 3 : LOC ? clamp(TOTAL * .25, 20, 180) : clamp(TOTAL * .5, 20, 300);   // generated: 50 % of the piece (5 min = 2.5 min); local file keeps its old ramp
 const calm = t => LIVE || hcOn() ? 1 : LOC ? smooth(6, rampT(), t) : Math.pow(clamp((t - 5) / (rampT() - 5)), 1.5);   // generated: from 5 s, almost linear (a smoothstep was flat then jumped at ~45 s)
 // the music's own sections (generated styles with a section plan): [{a, b, e}] = start, end, energy 0..1; [] = no plan (ambient, piano, live, local). Built by buildAudio (window.*PLAN), read here.
+// [[EVT]] (T101) the generated music's dated events, built by buildAudio's plan loops (data only: nothing reads them yet).
+// Record {t, k, s, d, sec, e}: k = section | riser | hit | fill | phrase; s = strength 0..1; d = riser length in s (0 otherwise); sec / e only on section.
+// t is the variable the audio starts from (never a rounded window.*PLAN value). buildAudio resets it; ambient and piano publish none.
+let EVT = [];
+const evtSet = list => { EVT = list.slice().sort((a, b) => a.t - b.t); };
+const evtAt = (t, ks) => { let r; for (const x of EVT) { if (x.t > t) break; if (ks.includes(x.k)) r = x; } return r; };   // last event of kind in ks with t <= t
+const evtNext = (t, ks) => EVT.find(x => x.t > t && ks.includes(x.k));   // first event of kind in ks with t > t
+// T103: EVTM = the music EVT was built for (LOC / LIVE never call buildAudio, so EVT can be stale); evOK() = the event consumers may run; evtIdx(t, ks) = {i: how many events of ks have t <= t, e: the last one} (binary search, filtered lists cached per EVT)
+let EVTM = null;
+const evOK = () => !(LIVE || LOC || SHOW || CTRL || hcOn()) && EVTM === MUSIC;
+const EVC = {};
+function evtIdx(t, ks) {
+  const key = ks.join(); let c = EVC[key]; if (!c || c.src !== EVT) c = EVC[key] = { src: EVT, a: EVT.filter(x => ks.includes(x.k)) };
+  const a = c.a; let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m].t <= t) lo = m + 1; else hi = m; }
+  return { i: lo, e: lo ? a[lo - 1] : null };
+}
+const evtSec = (t, sec, e) => ({ t, k: 'section', s: .8, d: 0, sec, e });
+// T100: a `phrase` every 8 bars of the beat grid B (bar k starts at B[4k]); `skip` = bar numbers that already start a section (no double event)
+const evtPhr = (B, skip, tot) => { const r = []; for (let k = 8; 4 * k < B.length && B[4 * k] < tot; k += 8) if (!skip.includes(k)) r.push({ t: B[4 * k], k: 'phrase', s: .3, d: 0 }); return r; };
+const PLAN_K = { intro: .25, build: .55, drop: .9, break: .3, outro: .2 };
+// energy of one window.*PLAN entry, exactly as vplan() has always computed it
+const planEnergy = x => x.e ?? (x.kind ? PLAN_K[x.kind] ?? .5 : clamp(energy(clamp((x.from + x.to) / 2 / TOTAL)) + (x.eo || 0)));
 let VPC = null;
 function vplan() {
-  if (LIVE || LOC || SHOW || CTRL) return [];
-  const src = MUSIC === 'electro' ? window.ELECTRO_PLAN : MUSIC === 'electro2' ? window.ELECTRO2_PLAN : MUSIC === 'electro3' ? window.ELECTRO3_PLAN : MUSIC === 'drone' ? window.DRONEPLAN : MUSIC === 'chiptune' || MUSIC === 'chiptune2' ? window.CHIPPLAN : MUSIC === 'midi1' ? window.MIDI1_PLAN : MUSIC === 'gamelan' ? window.GAMELANPLAN : null;
-  if (!src || !src.length) return [];
-  if (VPC && VPC.src === src && VPC.tot === TOTAL) return VPC.p;
-  const K = { intro: .25, build: .55, drop: .9, break: .3, outro: .2 };
-  const p = src.map((x, i) => ({ a: i ? x.from : 0, b: i === src.length - 1 ? TOTAL : src[i + 1].from, e: x.e ?? (x.kind ? K[x.kind] ?? .5 : clamp(energy(clamp((x.from + x.to) / 2 / TOTAL)) + (x.eo || 0))) }));
-  VPC = { src, tot: TOTAL, p }; return p;
+  if (LIVE || LOC || SHOW || CTRL || EVTM !== MUSIC) return [];
+  if (VPC && VPC.src === EVT && VPC.tot === TOTAL) return VPC.p;
+  const S = EVT.filter(x => x.k === 'section');
+  const p = S.map((x, i) => ({ a: i ? x.t : 0, b: i < S.length - 1 ? S[i + 1].t : TOTAL, e: x.e }));
+  VPC = { src: EVT, tot: TOTAL, p }; return p;
 }
 // energy of the music's current section (smoothed 4 s at each boundary), null without a plan; pure function of t
 function planE(t) {
@@ -1487,15 +1514,27 @@ function timelines(hc = hcOn()) {
   while (t < 7200) { const d = rr(9, 16); tun.push({ a: t, b: t + d }); t += d + rr(70, 160); }
   const tl = { sur, moods, tun }; TLc[hc ? 1 : 0] = { ph: PH, tot: TOTAL, tl }; return tl;
 }
-function surgeAt(t, hc) {
-  const s = timelines(hc).sur.find(c => t >= c.a && t < c.c); if (!s) return 0;
-  return t < s.b ? s.h * smooth(s.a, s.b, t) : s.h * (1 - smooth(s.b, s.c, t));
+// T103: the surge list. ev (generated, events on): each riser makes a surge that rises over the riser and peaks at its hit (the first hit within 10 s of the riser's end, else the riser's end), then falls over a seeded 6-15 s;
+// the seeded surges stay where no event surge lies within 30 s. Without ev / with Extreme: the seeded list untouched.
+let SLC = null;
+function surList(hc, ev) {
+  if (hc || !ev) return timelines(hc).sur;
+  if (SLC && SLC.src === EVT && SLC.ph === PH && SLC.tot === TOTAL) return SLC.l;
+  const R = EVT.filter(x => x.k === 'riser'), H = EVT.filter(x => x.k === 'hit'), E = [];
+  R.forEach((r, j) => { const re = r.t + r.d, h = H.find(x => x.t >= re - .05), tP = h && h.t <= re + 10 ? h.t : re; E.push({ a: r.t, b: tP, c: tP + 6 + 9 * gHash(j, PH + 5), h: r.s }); });
+  const l = E.concat(timelines(false).sur.filter(c => !E.some(e => c.a < e.c + 30 && e.a < c.c + 30)));
+  SLC = { src: EVT, ph: PH, tot: TOTAL, l }; return l;
+}
+function surgeAt(t, hc, ev = false) {
+  let r = 0;
+  for (const s of surList(hc, ev)) if (t >= s.a && t < s.c) r = Math.max(r, t < s.b ? s.h * smooth(s.a, s.b, t) : s.h * (1 - smooth(s.b, s.c, t)));
+  return r;
 }
 function tunnelAt(t) {   // EFFECT tunnel timeline (generated mode): 0..1, pure function of t
   const s = timelines().tun.find(x => t >= x.a && t < x.b); return s ? smooth(s.a, s.a + 2.5, t) * (1 - smooth(s.b - 3, s.b, t)) : 0;
 }
-function moodAt(t, hc = hcOn()) {
-  const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { sur, moods } = timelines(hc), f = Q.get('mood');
+function moodAt(t, hc = hcOn(), ev = false) {
+  const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { moods } = timelines(hc), sur = surList(hc, ev), f = Q.get('mood');
   const s = f ? { k: f, a: -1e9, b: 1e9, rate: 8 } : moods.find(x => t >= x.a && t < x.b);
   const rp = hc ? .4 : 1.5;
   if (s) { m[s.k] = smooth(s.a, s.a + rp, t) * (1 - smooth(s.b - rp, s.b, t)); m.rate = s.rate; }
@@ -1802,21 +1841,38 @@ function beatNear(x) {
   return best !== undefined && Math.abs(best - x) <= 60 / bpmAt(x / TOTAL) ? best : x;
 }
 function edgeIdx(t, k, edge) { while (t < edge(k)) k--; while (t >= edge(k + 1)) k++; return k; }
-function sceneAt(t, hd) {
+// T103: calm piano (events on, no section plan): the 45 s scene edge snaps to the nearest phrase start within 6 s
+function evSnap(x) {
+  const { i, e } = evtIdx(x, ['phrase']), n = EVC.phrase.a[i];
+  let b = e, d = e ? Math.abs(e.t - x) : 1e9; if (n && Math.abs(n.t - x) < d) { b = n; d = Math.abs(n.t - x); }
+  return b && d <= 6 ? b.t : x;
+}
+function sceneAt(t, hd, ev = false) {
   if (hd) {   // Extreme phases: run/hold = scenes of p.len, ping-pong = A/B alternating (ids p.first, p.first+1)
     const p = extAt(t), e = k => beatNear(p.start + k * p.len), raw = Math.max(0, edgeIdx(t, Math.floor((t - p.start) / p.len), e));
     const pp = p.kind === 'pingpong', k = pp ? raw : Math.min(p.scenes - 1, raw), s0 = e(k);
     return { wi: pp ? p.first + (k & 1) : p.first + k, wf: clamp((t - s0) / p.len), since: Math.max(0, t - s0), len: p.len };
   }
   // fixed ~45 s period (+ seed offset PH), edges on beats
-  const SP = 45, e = k => beatNear((k - PH * .37) * SP), k = edgeIdx(t, Math.floor(t / SP + PH * .37), e), s0 = e(k);
+  const sn = ev && !vplan().length ? evSnap : x => x, SP = 45, e = k => sn(beatNear((k - PH * .37) * SP)), k = edgeIdx(t, Math.floor(t / SP + PH * .37), e), s0 = e(k);
   return { wi: k, wf: clamp((t - s0) / SP), since: Math.max(0, t - s0), len: SP };
 }
-function minorAt(t, hd) {   // mf = seconds since the minor edge / MP (the envelope in render() uses mf * MP)
-  if (hd) { const p = extAt(t), e = k => beatNear(p.start + k * p.MP), k = Math.max(0, edgeIdx(t, Math.floor((t - p.start) / p.MP), e)), s0 = e(k); return { mi: p.firstMinor + k, mf: Math.max(0, t - s0) / p.MP, MP: p.MP }; }
+function minorAt(t, hd, ev = false) {   // mf = seconds since the minor edge / MP (the envelope in render() uses mf * MP)
+  if (hd) { const p = extAt(t), e = k => beatNear(p.start + k * p.MP), k = Math.max(0, edgeIdx(t, Math.floor((t - p.start) / p.MP), e)), s0 = e(k); return { mi: p.firstMinor + k, mf: Math.max(0, t - s0) / p.MP, MP: p.MP, ms: 1 }; }
+  if (ev && evtIdx(1e9, ['fill', 'phrase']).i >= 4) { const { i, e } = evtIdx(t, ['fill', 'phrase']); return { mi: i + 1, mf: e ? (t - e.t) / 15 : 99, MP: 15, ms: !e ? 0 : e.k === 'fill' ? 1 : .4 + .6 * e.s }; }   // T103: edges on the music's fills / phrases
   const MP = 15, e = k => beatNear((k - PH * .2) * MP), k = edgeIdx(t, Math.floor(t / MP + PH * .2), e), s0 = e(k);
-  return { mi: k, mf: Math.max(0, t - s0) / MP, MP };
+  return { mi: k, mf: Math.max(0, t - s0) / MP, MP, ms: 1 };
 }
+// ?debug=1 (T104, read only): window.__pic(t) = what the generated picture does at song time t (scene id, scene punch, minor envelope, surge, plan energy); mirrors render()'s formulas, changes nothing
+if (Q.has('debug')) window.__pic = t => {
+  const EV = evOK(), VP = vplan(), sc = sceneAt(t, false, EV), g15 = smooth(.13, .18, t / TOTAL), hs = (n, k) => { const x = Math.sin((n + PH) * 12.9898 + k * 78.233) * 43758.5453; return x - Math.floor(x); };
+  let wi = sc.wi, since = sc.since, secE = 1, i = -1; if (VP.length) { i = VP.findIndex(x => t < x.b); if (i < 0) i = VP.length - 1; wi = i; since = t - VP[i].a; const pe = VP[i - 1] ? VP[i - 1].e : VP[i].e; secE = lerp(pe, VP[i].e, smooth(0, 4, since)); }
+  const kind = VP.length ? (VP[wi] && VP[wi].e < .4 ? 0 : 1) : 1, pk = a => a[Math.floor(hs(wi, 9) * a.length)], TR = calm(t) < 1 ? pk([5, 10]) : kind ? pk([0, 1, 1, 3]) : pk([3, 5, 10]), trD = Math.max(.6, TR / 2), cz = calm(t) * g15;
+  const mn = minorAt(t, false, EV), tm = g15 * (mn.mf < .08 ? 0 : Math.exp(-mn.mf * mn.MP / 1.2) * calm(t) * mn.ms), tr = g15 * (wi > 0 ? Math.exp(-since / trD) * calm(t) : 0);
+  const h = EV ? evtIdx(t, ['hit']).e : null, th = h ? h.s * Math.exp(-(t - h.t) / trD) * g15 * calm(t) : 0, trP = Math.max(tr, th), flash = h ? .5 * h.s * Math.exp(-(t - h.t) / .3) * cz : 0;
+  const raw = surgeAt(t, false, EV);
+  return { t, wi, tr, tm, mi: mn.mi, ms: mn.ms, surge: raw, sg: raw * cz * (VP.length ? .6 + .8 * secE : 1), th, trP, blaze: Math.max(moodAt(t, false, EV).blaze, flash), planE: planE(t), calm: calm(t), cz, g15, TRN: TR };
+};
 function tileSizeAt(t) {   // T55 tile effect: cell-size factor, seeded pure function of t, easing smoothly between 2.0 and 5.0 (doubled from 1.0-2.5); each target held for a seeded random 2-20 s
   if (!isFinite(t) || t <= 0) return 2;
   const sr = mulberry32((((PH * 1e6) | 0) * 48271 + 101) | 0);
@@ -1834,7 +1890,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // local file = 5 s ramp-up (fixed, not track-proportional); live = calmer for 10 s (x0.3 → 1), then the full music-driven look; controlled / showcase / extreme = always 1
   const g15 = CTRL || SHOW || Hd ? 1 : LOC ? smooth(0, 5, t) : LIVE ? lerp(.3, 1, smooth(0, 10, t)) : smooth(.13, .18, t / TOTAL);
   // scene look: which effect leads and which palette, changing on every drop (live) or every ~45 s (generated); per-state emphasis eases in
-  const sc = sceneAt(t, Hd), VP = Hd ? [] : vplan();
+  const EV = isGen && !Hd && evOK(), sc = sceneAt(t, Hd, EV), VP = Hd ? [] : vplan();
   let wi = sc.wi, wf = sc.wf, since = sc.since, secE = 1;   // scene = the music's own section when the generator publishes a plan (electro / chiptune / chiptune2 / drone / gamelan), else a fixed ~45 s period
   if (VP.length) { let i = VP.findIndex(x => t < x.b); if (i < 0) i = VP.length - 1; const c = VP[i], pe = VP[i - 1] ? VP[i - 1].e : c.e; wi = i; since = t - c.a; wf = clamp(since / Math.max(1, c.b - c.a)); secE = lerp(pe, c.e, smooth(0, 4, since)); }
   const scene = LIVE ? LIVE.scenes : wi;
@@ -1844,12 +1900,13 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   { const pk = a => a[Math.floor(hsh(scene, 9) * a.length)]; TRN = CL || SHOW ? USER.trans : calm(t) < 1 ? pk([5, 10]) : Hd ? pk([0, 0, 1]) : kindOf(scene) ? pk([0, 1, 1, 3]) : pk([3, 5, 10]); if (Hd && extKind(t) === 'pingpong') TRN = 0; }   // T41: ping-pong = hard cuts
   const trD = CL || SHOW ? 1.4 : Math.max(.6, TRN / 2);   // decay of the scene-change punch
   if (LIVE && scene !== lastScene) { lastScene = scene; trT0 = t; }
-  const mn = minorAt(t, Hd), mi = LIVE ? LIVE.minors : mn.mi, mf = mn.mf, MP = mn.MP;
+  const mn = minorAt(t, Hd, EV), mi = LIVE ? LIVE.minors : mn.mi, mf = mn.mf, MP = mn.MP;
   if (LIVE && mi !== lastMinor) { lastMinor = mi; tmT0 = t; }
-  const tm = g15 * (LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * MP / 1.2) * calm(t));   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
+  const tm = g15 * (LIVE ? Math.exp(-(t - tmT0) / 1.2) : mf < .08 ? 0 : Math.exp(-mf * MP / 1.2) * calm(t) * mn.ms);   // minor-change envelope: hue shift, small zoom nudge, tile re-roll
   if (!SHOW) autoImg(dt, scene);
   const tk = scene * 50 + mi;
   const tr = g15 * (LIVE ? Math.exp(-(t - trT0) / trD) : wi > 0 ? Math.exp(-since / trD) * calm(t) * (Hd && extKind(t) === 'pingpong' ? .4 : 1) : 0);   // 1 at the start of a scene, fades in ~3 s: zoom punch, warp, tile burst
+  const hH = EV ? evtIdx(t, ['hit']).e : null, th = hH ? hH.s * Math.exp(-(t - hH.t) / trD) * g15 * calm(t) : 0, trP = Math.max(tr, th);   // T103: a `hit` event punches like a scene start (no scene change); closed form in t - hit.t
   const palRaw = n => { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[Math.floor(hsh(n, 4) * pool.length)]; };
   const palIdx = n => { const a = palRaw(n); if (n > 0 && a === palRaw(n - 1)) { const pool = kindOf(n) ? PAL_HI : PAL_LO; return pool[(pool.indexOf(a) + 1) % pool.length]; } return a; };
   const pp = Hd && !LIVE && extKind(t) === 'pingpong';   // ping-pong (generated, Extreme): look A (even wi) = tiles lead, B = not; palette per A/B, not per beat
@@ -1873,8 +1930,8 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // tunnel: seeded stretches (generated), or on drops / strong builds (live, eased); stretch of the source ghost grows with intensity + surges
   if (LIVE) tunLive += ((st === 'drop' ? .85 : st === 'build' ? .5 * smooth(.25, .6, LIVE.tension) : 0) - tunLive) * (1 - Math.exp(-dt / 1.5));
   const tun = g15 * (Q.has('tunnel') ? +Q.get('tunnel') : LIVE ? tunLive : tunnelAt(t));
-  const cz = calm(t) * g15, sg = Q.has('surge') ? +Q.get('surge') : (hk <= 0 || hk >= 1 ? surgeAt(t, hk >= 1) : lerp(surgeAt(t, false), surgeAt(t, true), hk)) * cz * (VP.length ? .6 + .8 * secE : 1),
-    mdR = hk <= 0 || hk >= 1 ? moodAt(t, hk >= 1) : (m0 => { const m1 = moodAt(t, true), o = {}; for (const k in m1) o[k] = lerp(m0[k], m1[k], hk); return o; })(moodAt(t, false)),   // a hardcore toggle blends both seeded schedules
+  const cz = calm(t) * g15, sg = Q.has('surge') ? +Q.get('surge') : (hk <= 0 || hk >= 1 ? surgeAt(t, hk >= 1, EV) : lerp(surgeAt(t, false, EV), surgeAt(t, true), hk)) * cz * (VP.length ? .6 + .8 * secE : 1),
+    mdR = hk <= 0 || hk >= 1 ? moodAt(t, hk >= 1, EV) : (m0 => { const m1 = moodAt(t, true), o = {}; for (const k in m1) o[k] = lerp(m0[k], m1[k], hk); return o; })(moodAt(t, false, EV)),   // a hardcore toggle blends both seeded schedules
     md = Hd && extKind(t) === 'pingpong' ? { ...mdR, strobe: 0 } : mdR;   // T41: no strobe during a ping-pong (a copy: mdR may be a cached timeline object)
   // T85: when the background ghost is morphing between two images (T77), raise its
   // blend so the (slow) change is actually visible - only in that case, so the
@@ -1884,7 +1941,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   const fbx = fb0 * (1 + .08 * wob(t, 2)) * UE.fb * LOOK.f, fb = clamp(fbx <= .7 ? fbx : .7 + .18 * (1 - Math.exp(-(fbx - .7) / .18)), 0, .9);   // soft knee: cranking the slider still leaves the engine's variation
   hue += hueSpd * UE.hueK * UE.calm * dt; if (LIVE) rotA += (BAND.mid * .12 + tr * .5 + tm * .2) * dt * rotDir; if (hk > 0) rotA += dt * rotDir * HCspin(t) * hk; rotA += dt * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (.02 + .06 * kal0 + .03 * wob(t, 5));   // poster stays upright while calm
   // tiles: a window every ~45 s (more often on drops); each window picks its own grid size and mode from the seed
-  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + tr * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * UE.tile) * g15, tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
+  let tile = clamp((smooth(.15, .35, wf) * (1 - smooth(.65, .85, wf)) * smooth(.22, .42, u) * (1 - .6 * kal) * (leadTile ? 1 : .4) * (LIVE ? 0 : 1) + (LIVE ? LIVE.boost * .9 * (leadTile ? 1 : .15) : 0) + trP * .7 * (leadTile ? 1 : 0) + tm * .35 * (leadTile ? 1 : .5)) * UE.tile) * g15, tileN = [8, 12, 16, 25][Math.floor(hsh(LIVE ? tk : wi, 1) * 4)], tileMode = Math.floor(hsh(LIVE ? tk : wi, 2) * 3);
   if (CL && USER.force >= 0) { tile = clamp(Math.max(tile, (.55 + .25 * Math.sin(t * .35 + PH)) * UE.tile)) * g15; tileMode = USER.force; }   // a chosen mode keeps the tiles on, still breathing
   // heartbeat (lub-dub) + low-frequency energy of the actual sound
   let pulse = 0;
@@ -1896,15 +1953,15 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // zoom: slow breathing in and out (below 1 the picture tiles into a tunnel), a build slowly pushes in, every new scene punches out or in
   const op = opening(u0) * g15; pulse *= op;
   const zp = isGen ? 1 + (zoomPulseAt(t) - 1) * calm(t) : 1;
-  const zoom = (1 + zoomAmp * op * .25 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.35 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + tr * hl(1, 1.6) * (scene % 2 ? .55 : -.4)) * (1 + tm * hl(.12, .3) * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04) * zp;
+  const zoom = (1 + zoomAmp * op * .25 * Math.sin(t * .23 + wob(t, 6) * 2)) * Math.exp(.35 * cz * Math.sin(t * .06 + PH * 1.7)) * (1 + BAND.zt) * (1 + trP * hl(1, 1.6) * (scene % 2 ? .55 : -.4)) * (1 + tm * hl(.12, .3) * (mi % 2 ? 1 : -1)) * USER.zoom * (1 + bassE * .04) * zp;
   const stretch = Q.has('stretch') ? +Q.get('stretch') : clamp((.15 + .6 * u + .5 * sg) * (LIVE ? smooth(10, 50, t) : cz * op) * .9);
-  const wr = warp * op * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * tr) * LOOK.w * (.4 + 1.3 * sg) * hl(1, 1.3) * UE.wp, ab = (aber * op + BAND.hi * .6) * (1 + .5 * sg) * hl(1, 1.8) + hl(0, .4);
+  const wr = warp * op * (1 + .3 * wob(t, 1)) * (1 + .35 * BAND.mid) * (1 + .5 * trP) * LOOK.w * (.4 + 1.3 * sg) * hl(1, 1.3) * UE.wp, ab = (aber * op + BAND.hi * .6) * (1 + .5 * sg) * hl(1, 1.8) + hl(0, .4);
   const gen0 = !(LIVE || LOC || SHOW || CTRL || hcOn()), fadeT = clamp(TOTAL * .06, 8, 15), gFade = gen0 ? smooth(0, fadeT, t) : 1, gZoom = gen0 ? 1 + .22 * (1 - smooth(0, fadeT * 1.5, t)) : 1;   // generated start: black, the picture comes up over 8-15 s with a slow zoom-out
   // final parameters of this frame: in showcase mode they are replaced by a neutral baseline + the active FX entry
   const cellNow = hk * smooth(.8, .95, sg);
   const P = { t, warp: wr, kal, fold, fb: fb * (1 - .75 * (Q.get('tile') ? 1 : tile)), fbHue: UE.hueK * (.006 + .02 * pal) * LOOK.ha, hue: hue + LOOK.hj, pal: pal * LOOK.p, side, breath: breath * op, melt: melt * op * (.5 + sg) * UE.mt, zoom: zoom * gZoom, rot: rotA + USER.rot, ab, pulse, bright: bright * gFade * (Hd && !LOC ? smooth(0, 3, t) : 1), anchor, tilt,
     srcZ: 1 + .3 * cz * Math.sin(t * .045 + PH), srcRot: .5 * cz * Math.sin(t * .031 + PH * 2), palC: LOOK.c, palD: LOOK.d, ha: LOOK.ha, stretch: stretch * UE.st, tun: clamp(tun * UE.tn), mono: Math.max(UE.monoK, md.bw), tile, tileN, tileMode,
-    surge: sg, kali: Math.min(1, LOOK.sk * (.3 + sg) * cz * UE.ka), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz * UE.ju), dark: md.dark, blaze: md.blaze, strobe: md.strobe, rate: md.rate, cells: cellNow, grid: cellGrid, glitch: glitchAmt(t) };
+    surge: sg, kali: Math.min(1, LOOK.sk * (.3 + sg) * cz * UE.ka), julia: Math.min(1, LOOK.sj * (.3 + sg) * cz * UE.ju), dark: md.dark, blaze: Math.max(md.blaze, hH ? .5 * hH.s * Math.exp(-(t - hH.t) / .3) * cz : 0), strobe: md.strobe, rate: md.rate, cells: cellNow, grid: cellGrid, glitch: glitchAmt(t) };
   if (UE.amp !== 1) { const f = UE.amp; for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) P[k] *= f; P.tilt = P.tilt.map(v => v * f); P.ha *= Math.min(1, f); P.fb *= Math.min(1, f); P.srcZ = 1 + (P.srcZ - 1) * f; P.srcRot *= f; P.zoom = Math.pow(P.zoom / USER.zoom, f) * USER.zoom; P.rot = (P.rot - USER.rot) * f + USER.rot; }   // master Effects: 0 = plain image
   // arrow rotate / zoom holds (all levels, independent of control params)
   CT.held.forEach(c => { if (c === 'ArrowUp') USER.zoom *= Math.exp(.7 * dt); else if (c === 'ArrowDown') USER.zoom *= Math.exp(-.7 * dt); else if (c === 'ArrowLeft') USER.rot -= 1.1 * dt; else if (c === 'ArrowRight') USER.rot += 1.1 * dt; });
@@ -2060,6 +2117,7 @@ const MT = (() => {
 })();
 let analyser = null, fdata = null;
 function buildAudio(a, t0, off = 0) {
+  EVT = []; EVTM = MUSIC;   // T101: refilled by the style branches below (whole-piece plan loops only)
   const rand = rng, pick = arr => arr[Math.floor(rand() * arr.length)];
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12), SC = SCALE;            // D dorian
   const note = i => ROOT + SC[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
@@ -2102,6 +2160,11 @@ function buildAudio(a, t0, off = 0) {
       for (let c = live.reduce((q, o) => q + o.es.filter(e => e > t).length, oscs.length), lim = CAP - 90 * dd - (lt ? 60 : 0); c > lim && live.length;) { const o = live.shift(); c -= o.es.filter(e => e > t).length; o.out.gain.setValueAtTime(o.v, t); o.out.gain.setTargetAtTime(0, t, .03); o.oscs.forEach(x => { if (o.end > t + .25) x.stop(t + .25); }); }   // voice cap: the oldest notes fade out in ~0.1 s
       live.push({ end, out, oscs, es, v: v * .2 });
     };
+    {   // T102: phrase events (data only): the first melody note after a gap >= 1.8 s (s .2-.35), key / section / bridge changes (s .5); the whole piece, whatever `off` is
+      const key = PKEY.slice().sort((x, y) => x - y), L = key.map(t => ({ t, k: 'phrase', s: .5, d: 0 }));
+      MEL.forEach((n, i) => { const g = n.t - (i ? MEL[i - 1].t : 0); if (g >= 1.8 && !key.some(q => Math.abs(q - n.t) < 1.5)) L.push({ t: n.t, k: 'phrase', s: +(.2 + .15 * clamp((g - 1.8) / 4)).toFixed(3), d: 0 }); });
+      evtSet(L);
+    }
     let pi = NOTES.findIndex(n => n.t >= off); if (pi < 0) pi = NOTES.length;
     return function pump() { const hz = a.currentTime + (MOBILE ? 8 : 30); while (pi < NOTES.length && t0 + NOTES[pi].t < hz) { const n = NOTES[pi++]; if (t0 + n.t > a.currentTime - .05) pn(Math.max(t0 + n.t, a.currentTime), n.m, n.v, n.r, n.l); } };
   }
@@ -2229,6 +2292,11 @@ function buildAudio(a, t0, off = 0) {
     { let pi = Math.floor(PRp() * EPALS.length); SECS.forEach((s, i) => { const sw = PRp() < .35, nx = 1 + Math.floor(PRp() * (EPALS.length - 1)); if (FPAL !== null) pi = (+FPAL) % EPALS.length; else if (i && sw) pi = (pi + nx) % EPALS.length; s.P = mkPal(EPALS[pi]); }); }   // sound palette: one per play, a section may switch
     if (!off) console.log('[sound] electro palettes per section: ' + SECS.map(s => s.P.n).join(' > '));
     window.ELECTRO_PLAN = SECS.map(s => ({ kind: s.kind, from: +(BEATS[Math.min(s.b0, NB - 1)]).toFixed(1), to: +(BEATS[Math.min(s.b1, NB - 1)]).toFixed(1), key: s.ks, prog: s.prog.join(''), eo: +s.eo.toFixed(2), dens: +s.dens.toFixed(2), drums: s.dv, bass: s.bp, arp: s.arpT + '/' + s.arpR, lead: s.leadT, cut: Math.round(s.cut), pal: s.P.n }));
+    // T100 events: sections, hit on a drop's first beat (the crash/kick of `beat`), riser = the 8-beat pre-drop window (the rising sweep), phrase every 8 bars. Same BEATS entries `beat` uses.
+    evtSet([...SECS.map((s, i) => evtSec(BEATS[Math.min(s.b0, NB - 1)], s.kind, planEnergy(window.ELECTRO_PLAN[i]))),
+      ...SECS.filter(s => s.kind === 'drop' && s.b0 > 0 && s.b0 < NB).map(s => ({ t: BEATS[s.b0], k: 'hit', s: .9, d: 0 })),
+      ...SECS.filter(s => s.next === 'drop' && s.b1 - 8 >= s.b0 && s.b1 - 8 < NB - 1).map(s => ({ t: BEATS[s.b1 - 8], k: 'riser', s: .8, d: BEATS[Math.min(s.b1, NB - 1)] - BEATS[s.b1 - 8] })),
+      ...evtPhr(BEATS, SECS.map(s => s.b0 / 4), TOTAL)]);
     // — graph: tonal bus (ducked by the kick, filtered) + drum buses
     const tb = a.createGain(), duck = a.createGain(), mf = a.createBiquadFilter(); tb.gain.value = .8; mf.type = 'lowpass'; mf.Q.value = 1.4; mf.frequency.value = 1500;
     tb.connect(duck); duck.connect(mf); mf.connect(master); send(mf, .2, .1);
@@ -2337,6 +2405,8 @@ function buildAudio(a, t0, off = 0) {
     }
     if (n0 >= 3 && !SEC.some(s => s.role === 'drop')) { let b = 1; for (let i = 1; i < n0 - 1; i++) if (SEC[i].e > SEC[b].e) b = i; SEC[b].role = 'drop'; }
     window.CHIPPLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1) }));   // read by vplan(): the picture changes scene with the music's sections
+    // T101 events: a section per entry; a fill on the last bar of every section but the last (the isFill bar of schedBar)
+    evtSet(SEC.map((x, i) => evtSec(x.tA, x.role, planEnergy(window.CHIPPLAN[i]))).concat(SEC.slice(0, -1).map(x => ({ t: B[4 * (x.k1 - 1)], k: 'fill', s: .5, d: 0 }))));
     let prevSh = 0;
     for (const S of SEC) {
       const R = S.role, OFF = { intro: [-.35, .3], build: [-.15, .3], drop: [.15, 0], break: [-.4, .1], outro: [-.05, -.4] }[R];
@@ -2454,6 +2524,8 @@ function buildAudio(a, t0, off = 0) {
     }
     if (n0 >= 3 && !SEC.some(s => s.role === 'drop')) { let b = 1; for (let i = 1; i < n0 - 1; i++) if (SEC[i].e > SEC[b].e) b = i; SEC[b].role = 'drop'; }
     window.CHIPPLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1) }));   // read by vplan()
+    // T101 events: a section per entry; a fill on the last bar of every section but the last (the isFill bar of schedBar, fill type in S.fill)
+    evtSet(SEC.map((x, i) => evtSec(x.tA, x.role, planEnergy(window.CHIPPLAN[i]))).concat(SEC.slice(0, -1).map(x => ({ t: B[4 * (x.k1 - 1)], k: 'fill', s: .5, d: 0 }))));
     // bass patterns [step, 0 root / 1 octave / 2 fifth, length, slide in from 2 semitones below]
     const BP = [[[0, 0, 2], [2, 0, 2], [4, 1, 2, 1], [6, 0, 2], [8, 0, 2], [10, 0, 2], [12, 1, 2, 1], [14, 2, 2]], [[0, 0, 3], [3, 0, 3], [6, 1, 2, 1], [8, 0, 3], [11, 2, 3], [14, 1, 2]],
       [[0, 0, 4], [4, 2, 4], [8, 1, 4, 1], [12, 2, 2], [14, 1, 2]], [[0, 0, 6], [6, 0, 2], [8, 2, 6, 1], [14, 1, 2]], [[0, 0, 8], [8, 0, 8]],
@@ -2645,6 +2717,12 @@ function buildAudio(a, t0, off = 0) {
     }
     for (const S of SEC) S.fill = MT.fill(SP, SEC[S.i + 1] ? SEC[S.i + 1].role : 'outro');
     window.MIDI1_PLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1), key: x.key, mode: x.mode, bass: x.bass, pad: x.padM, drum: x.drum, theme: x.th ? 'B' : 'A', prog: (x.cellM ? [x.rc[0], ...x.rc[1]] : x.prog).join('') }));
+    // T100 events (whole-piece plan, same B / stT the audio uses): sections, hit on a drop's first beat, riser = the snare build, from step 8 of the bar before the fill to the drop, fill = the fill bar of every section with a next one, phrase every 8 bars
+    evtSet([...SEC.map((x, i) => evtSec(x.tA, x.role, planEnergy(window.MIDI1_PLAN[i]))),
+      ...SEC.filter(x => x.role === 'drop' && x.i > 0).map(x => ({ t: x.tA, k: 'hit', s: .9, d: 0 })),
+      ...SEC.slice(0, -1).filter(x => SEC[x.i + 1].role === 'drop' && x.k1 - x.k0 >= 2).map(x => ({ t: stT(x.k1 - 2, 8), k: 'riser', s: .8, d: x.tB - stT(x.k1 - 2, 8) })),
+      ...SEC.slice(0, -1).map(x => ({ t: stT(x.k1 - 1, 0), k: 'fill', s: .5, d: 0 })),
+      ...evtPhr(B, SEC.map(x => x.k0), TOTAL)]);
     window.__midi1Piece = { tonic: TON % 12, mode: homeMode, lead: LEAD, backbeat: SNR };
     if (Q.has('debug')) console.log('MIDI1 plan', JSON.stringify(window.__midi1Piece), JSON.stringify(window.MIDI1_PLAN));
     // — persistent voices. Graph: pad + lead -> duck (the kick dips them) -> master; bass -> master; drums -> master.
@@ -2826,6 +2904,12 @@ function buildAudio(a, t0, off = 0) {
     }
     for (const S of SEC) S.fill = MT.fill(SP, SEC[S.i + 1] ? SEC[S.i + 1].role : 'outro');
     window.ELECTRO2_PLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1), key: x.key, mode: x.mode, prog: x.prog.join(''), theme: x.th ? 'B' : 'A', lead: x.lv, pad: x.pad, bass: x.bv, perc: x.pc.join('+'), swing: x.swing, drum: x.drum }));
+    // T100 events (whole-piece plan, same B / stT the audio uses): sections, hit on a drop's first beat, riser = the riser() before a drop (fill bar, `barLen`), fill = the fill bar of every section with a next one, phrase every 8 bars
+    evtSet([...SEC.map((x, i) => evtSec(x.tA, x.role, planEnergy(window.ELECTRO2_PLAN[i]))),
+      ...SEC.filter(x => x.role === 'drop' && x.i > 0).map(x => ({ t: x.tA, k: 'hit', s: .9, d: 0 })),
+      ...SEC.slice(0, -1).filter(x => SEC[x.i + 1].role === 'drop' && x.k1 - x.k0 >= 2).map(x => ({ t: stT(x.k1 - 1, 0), k: 'riser', s: .8, d: stT(x.k1 - 1, 16) - stT(x.k1 - 1, 0) })),
+      ...SEC.slice(0, -1).map(x => ({ t: stT(x.k1 - 1, 0), k: 'fill', s: .5, d: 0 })),
+      ...evtPhr(B, SEC.map(x => x.k0), TOTAL)]);
     if (Q.has('debug')) console.log('ELECTRO2 plan', JSON.stringify(window.ELECTRO2_PLAN));
     // — graph: pads / bass / arp (ducked by the kick) and leads (not ducked) -> gentle lowpass (warmth) -> master; drums go straight to master
     const tb = a.createGain(), duck = a.createGain(), lbus = a.createGain(), mf = a.createBiquadFilter(), dm = a.createGain();
@@ -3025,6 +3109,9 @@ function buildAudio(a, t0, off = 0) {
     EV.sort((x, y) => x.bar - y.bar); const nVar = k => VAR.filter(v => v <= k).length;
     E3.events = EV.map(e => ({ bar: e.bar, t: +B[4 * e.bar].toFixed(1), what: e.what.join(' + ') })); E3.sections = SEC.map(s => ({ role: s.role, bars: [s.k0, s.k1] })); E3.nP = nP;
     window.ELECTRO3_PLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1), e: { intro: .35, drop: .6, break: .45, outro: .3 }[x.role], key: keyAt(x.k0), mode: MODE, prog: PROG.join(''), groove: GR }));
+    // T100 events: sections + a `phrase` for each scripted change (E3.events: layer in/out, variation) that is not itself a section start; no drops / fills / risers in this style
+    evtSet([...SEC.map((x, i) => evtSec(x.tA, x.role, planEnergy(window.ELECTRO3_PLAN[i]))),
+      ...EV.filter(e => !SEC.some(x => x.k0 === e.bar)).map(e => ({ t: B[4 * e.bar], k: 'phrase', s: .3, d: 0 }))]);
     E3.plan = { groove: GR, mode: MODE, tonic: TON % 12, prog: PROG.join(''), motifBars: MB, motif: motif.map(n => [n.s, n.d]), bass: BASSM, voice: VOXT, lift: liftK >= 0 };
     if (DBG) { console.log('ELECTRO3 plan', JSON.stringify(E3.plan), JSON.stringify(E3.sections)); E3.events.forEach(e => console.log(`ELECTRO3 EVENT bar ${e.bar} t=${e.t}s ${e.what}`)); }
     // — slow modulation targets of a bar (all reached with tau = 4 bars)
@@ -3139,6 +3226,8 @@ function buildAudio(a, t0, off = 0) {
       prevSet = si; prevRoot = rt; prevTex = m;
     }
     globalThis.DRONEPLAN = SEC.map(s => ({ from: +s.t0.toFixed(1), to: +s.t1.toFixed(1), root: s.rootOff, f0: +s.f0.toFixed(1), set: s.setName, tex: s.tex + '+' + s.tex2, dens: +s.dens.toFixed(2), bright: +s.bright.toFixed(2), eo: +s.eo.toFixed(2) }));
+    // T101 events: sections only. The drone plan has no role, so sec is derived from the energy with the chiptune thresholds
+    evtSet(SEC.map((s, i) => { const e = planEnergy(globalThis.DRONEPLAN[i]); return evtSec(s.t0, e >= .62 ? 'drop' : e < .3 ? 'break' : 'build', e); }));
     const SWL = SEC.flatMap(s => s.sw), hwOf = j => Math.min(10, .22 * Math.min(SEC[j - 1].len, SEC[j].len));
     const stateAt = t => {   // everything that varies in time, blended across section boundaries (frequencies in the log domain)
       const X = [1]; for (let j = 1; j < NS; j++) { const hw = hwOf(j); X.push(smooth(bnd[j] - hw, bnd[j] + hw, t)); } X.push(0);
@@ -3274,7 +3363,7 @@ function buildAudio(a, t0, off = 0) {
       san: { P: KET, D: .55, dm: .6, pm: 2, tw: 4.4, twm: 0, A: .1, atk: .0015, nz: .3, nzm: 0, bus: 'san', res: 3 },
       gender: { P: [[1, 1, 1], [2.76, .08, .15], [5.4, .03, .08]], D: 3.4, dm: .55, pm: 1, tw: 2.4, twm: 1, A: .15, atk: .003, nz: .15, nzm: 0, bus: 'gender', res: 1 } };
     // — event list (pure function of the seed): every random draw happens here, in a fixed order
-    const MASKS = [[[1, 0, 1, 0], [0, 1, 0, 1]], [[1, 0, 0, 1], [0, 1, 1, 0]], [[1, 0, 1, 1], [0, 1, 0, 0]], [[0, 1, 1, 0], [1, 0, 0, 1]]], EV = [], dd = x => cc(x, 0, 5); let V = 1;
+    const MASKS = [[[1, 0, 1, 0], [0, 1, 0, 1]], [[1, 0, 0, 1], [0, 1, 1, 0]], [[1, 0, 1, 1], [0, 1, 0, 0]], [[0, 1, 1, 0], [1, 0, 0, 1]]], EV = [], PHR = [], dd = x => cc(x, 0, 5); let V = 1;
     const hit = (i, tt, d, oc, v, jit = .006) => EV.push({ t: Math.max(.05, tt + (r() + r() - 1) * jit), i, f: fq(d, oc), v: cc(v * V * rr(.8, 1.1), .03, 1), c: rr(-3, 3) });
     SEC.forEach(s => {
       const K = s.kind, G = CL / 4, ends = [], base = [];
@@ -3290,7 +3379,7 @@ function buildAudio(a, t0, off = 0) {
           V = kv * (K === 'build' ? .75 + .25 * pos : K === 'outro' ? 1 - .55 * pos : 1);
           const thin = K !== 'outro' || r() < 1 - .8 * pos;
           // colotomic layer
-          if (idx === CL - 1) hit('gong', t, s.g, -2, 1, 0);
+          if (idx === CL - 1) { hit('gong', t, s.g, -2, 1, 0); PHR.push({ t: EV[EV.length - 1].t, s: kv }); }   // cycle end (T101 phrase; t = the jittered time the hit plays at)
           if (idx % 4 === 3) hit('kenong', t, p, 0, K === 'drop' ? .8 : .65, .004);
           if (idx % 4 === 1 && idx > 1 && (K === 'build' || K === 'drop')) hit('kempul', t, pc[idx + 2], -1, .55, .004);
           if ((K === 'build' || K === 'drop') && idx % 4 === 2) hit('kethuk', t, 0, 2, .5, .004);
@@ -3322,6 +3411,8 @@ function buildAudio(a, t0, off = 0) {
     });
     V = 1; hit('gong', .35, SEC[0].g, -2, .9, 0);   // opening gong (buka)
     EV.sort((x, y) => x.t - y.t);
+    // T101 events: a section per plan entry (its first beat), a phrase at each cycle-end gong
+    evtSet([...SEC.map((s, i) => evtSec(BT[s.b0].t, s.kind, planEnergy(window.GAMELANPLAN[i]))), ...PHR.map(p => ({ t: p.t, k: 'phrase', s: p.s, d: 0 }))]);
     // — sound
     const BUSC = { gong: [0, .55, 1, 900], kgong: [.2, .4, 1, 2500], kethuk: [-.35, .12, 1, 4000], demung: [-.2, .35, 1, 2500], saron: [.3, .3, 1, 3200], peking: [.1, .25, 1, 4000], bonang: [-.1, .3, 1, 3000], pol: [-.6, .25, 1, 3500], san: [.6, .25, 1, 3500], gender: [.05, .5, 1, 2000] }, BUS = {};
     for (const k in BUSC) {   // one bus per voice group: gain -> pan -> master (+ the shared reverb send); noise strikes go through a bandpass into the same bus
@@ -3388,6 +3479,7 @@ function buildAudio(a, t0, off = 0) {
     }
   };
   // one-off gestures: riser into the dissolve, impact, exhale
+  evtSet([{ t: TOTAL * ARC.marks.riser[0], k: 'riser', s: .8, d: TOTAL * (ARC.marks.riser[1] - ARC.marks.riser[0]) }, { t: TOTAL * ARC.marks.hit, k: 'hit', s: .9, d: 0 }, { t: TOTAL * ARC.marks.exhale, k: 'fill', s: .4, d: 0 }]);   // T102: data only, emitted whether or not the audio plays them (seek / still)
   if (t0 + TOTAL * ARC.marks.riser[0] > a.currentTime + .1) { const t = t0 + TOTAL * ARC.marks.riser[0], d = TOTAL * (ARC.marks.riser[1] - ARC.marks.riser[0]), n = noise(t, d + .1), f = a.createBiquadFilter(); f.type = 'bandpass'; f.Q.value = 1.2;
     f.frequency.setValueAtTime(200, t); f.frequency.exponentialRampToValueAtTime(7000, t + d);
     const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(.3, t + d); g.gain.setValueAtTime(.0001, t + d + .05);
@@ -3462,8 +3554,9 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   off = clamp(off, 0, Math.max(0, TOTAL - 3));
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
-  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; cellGrid = 4; integrateTo(off); paused = false; setPP();
-  pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); if (STYLES[MUSIC]) drawProfile(); pump(); pumpId = setInterval(pump, 1000);
+  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; cellGrid = 4; paused = false; setPP();
+  pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); if (Q.has('debug') && !LOC) console.log('EVT', MUSIC, JSON.stringify(EVT)); integrateTo(off);   // T103: after buildAudio (uAt -> planE -> vplan reads EVT)
+  if (STYLES[MUSIC]) drawProfile(); pump(); pumpId = setInterval(pump, 1000);
 }
 let SUSP = null;
 function start() {
@@ -4453,7 +4546,7 @@ addEventListener('load', () => {
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');
     if (dbg !== null && STILL) {   // silent still: step the feedback loop up to the requested time
-      homeGate(false); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); if (!LOC && STYLES[MUSIC]) { try { buildAudio(new OfflineAudioContext(2, 1, 44100), 0, 0); } catch (e) { console.warn('section plan', e); } } rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
+      homeGate(false); document.body.classList.add('still'); const T = parseFloat(dbg); let t = 0; if (lq) { await localReady; if (localData) { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); } } newSeed(); if (!LOC) { try { buildAudio(new OfflineAudioContext(2, 1, 44100), 0, 0); if (Q.has('debug')) console.log('EVT', MUSIC, JSON.stringify(EVT)); } catch (e) { console.warn('section plan', e); } } rotA = 0; bi = 0; const step = parseFloat(Q.get('step')) || .2;
       const fr = x => { if (LOC) localView(x); render(x, step, LOC ? LIVE.bn : 0, LOC ? LIVE.mn : 0, LOC ? LIVE.hn : 0); };
       for (; t < T; t += step) fr(t); fr(T);
     }

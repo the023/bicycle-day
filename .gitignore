@@ -13,3 +13,6 @@ assets/local/
 .tickets/
 # agent workflow (local)
 WORKFLOW.md
+
+# local media, never committed
+assets/midi/

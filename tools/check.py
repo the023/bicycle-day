@@ -1,18 +1,14 @@
 """Automated checks for bicycle-day (T44).
 
-Run:  python3 tools/check.py              all 5 checks, one process each, at most 2 at a time (CHECK_JOBS=n to change), low priority
-      python3 tools/check.py --only N     only check N (1..5), run in this process
+Run:  python3 tools/check.py              all 5 checks in this process, one browser at a time, low priority
+      python3 tools/check.py --only N     only check N (1..5)
 Opens dist/bicycle-day.html in headless Chromium (software GL) and prints PASS/FAIL.
 Run Python without -I (playwright lives in the user site-packages).
 """
 import argparse
 import json
 import os
-import re
-import subprocess
 import sys
-import tempfile
-import time
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = os.path.join(ROOT, "dist", "bicycle-day.html")
@@ -27,8 +23,10 @@ CHROME_ARGS = [
 ]
 
 N_CHECKS = 5
-JOBS = int(os.environ.get("CHECK_JOBS", "2"))   # browsers running at the same time (default 2; CHECK_JOBS=1 is the gentlest)
-RESULT_RE = re.compile(r"^(\d+)\. .*: (PASS|FAIL)(\s|$)")
+# Software GL renders every frame on the CPU. These checks test the UI and the key logic, not the picture, so the
+# offscreen buffer is tiny (res=.1 -> 160x90): same code paths and shaders, about half the time. The viewport stays
+# 1280x720 because check 2 measures the layout there.
+FAST = "quality=low&res=.1"
 
 
 results = []  # (num, ok)
@@ -43,6 +41,15 @@ def wait_ready(page, timeout=60000):
     page.wait_for_function(
         "() => typeof ready !== 'undefined' && ready === true", timeout=timeout
     )
+
+
+def settle(page, errs, secs=2.5):
+    """start() and wait until `secs` s of song time have been drawn (a fixed sleep wastes time when frames are fast and is too short when they are slow)."""
+    try:
+        page.evaluate("start()")
+        page.wait_for_function("() => lastT >= %s" % secs, timeout=60000)
+    except Exception as e:
+        errs.append("start(): " + str(e))
 
 
 def make_page(browser, qs="", vp=None, init_local_storage=None):
@@ -71,44 +78,36 @@ def main(only=None):
     def want(n):
         return only is None or only == n
 
-    # ---------- 1. no console/page errors across modes ----------
-    if want(1):
-        label = "no console/page errors at start (auto, assisted, manual, showcase, hc=1)"
-        try:
-            modes = [
-                ("auto", "quality=low"),
-                ("assisted", "quality=low&level=assisted"),
-                ("manual", "quality=low&level=manual"),
-                ("showcase", "quality=low&showcase=1"),
-                ("hc", "quality=low&hc=1"),
-            ]
-            bad_modes = []
-            for name, qs in modes:
-                with sync_playwright() as p:
-                    browser = p.chromium.launch(args=CHROME_ARGS)
-                    ctx, page, errs = make_page(browser, qs=qs)
-                    try:
-                        page.evaluate("start()")
-                    except Exception as e:
-                        errs.append("start(): " + str(e))
-                    page.wait_for_timeout(2500)
-                    browser.close()
-                if errs:
-                    bad_modes.append(name + ": " + "; ".join(errs[:3]))
-            record(
-                1,
-                label,
-                not bad_modes,
-                "FAIL in " + " | ".join(bad_modes) if bad_modes else "all clean",
-            )
-        except Exception as e:
-            record(1, label, False, str(e))
-
-    if not any(want(n) for n in range(2, N_CHECKS + 1)):
-        return _finish()
-
     with sync_playwright() as p:
         browser = p.chromium.launch(args=CHROME_ARGS)
+
+        # ---------- 1. no console/page errors across modes ----------
+        if want(1):
+            label = "no console/page errors at start (auto, assisted, manual, showcase, hc=1)"
+            try:
+                modes = [
+                    ("auto", FAST),
+                    ("assisted", FAST + "&level=assisted"),
+                    ("manual", FAST + "&level=manual"),
+                    ("showcase", FAST + "&showcase=1"),
+                    ("hc", FAST + "&hc=1"),
+                ]
+                bad_modes = []
+                for name, qs in modes:
+                    ctx, page, errs = make_page(browser, qs=qs)
+                    settle(page, errs)
+                    ctx.close()
+                    if errs:
+                        bad_modes.append(name + ": " + "; ".join(errs[:3]))
+                record(
+                    1,
+                    label,
+                    not bad_modes,
+                    "FAIL in " + " | ".join(bad_modes) if bad_modes else "all clean",
+                )
+            except Exception as e:
+                record(1, label, False, str(e))
+
 
         # ---------- 2. pupitre geometry ----------
         # The full pupitre (#pult) is hidden in auto, so it is measured in assisted (same layout as before T78).
@@ -117,13 +116,9 @@ def main(only=None):
             label = "pupitre geometry at 1280x720 (full: height 100-120; minimal auto: on screen; no horizontal overflow)"
             try:
                 geoms = {}
-                for qs, sel in [("quality=low&level=assisted", "pult"), ("quality=low", "mpult")]:
+                for qs, sel in [(FAST + "&level=assisted", "pult"), (FAST, "mpult")]:
                     ctx, page, errs = make_page(browser, qs=qs)
-                    try:
-                        page.evaluate("start()")
-                    except Exception as e:
-                        errs.append("start(): " + str(e))
-                    page.wait_for_timeout(2500)
+                    settle(page, errs)
                     geoms[sel] = page.evaluate(
                         """(sel) => {
                             const q = s => document.querySelector(s);
@@ -165,12 +160,8 @@ def main(only=None):
         if want(3):
             label = "auto keys: C J T , W Q unchanged; Z X N change USER.energy"
             try:
-                ctx1, page1, errs1 = make_page(browser, qs="quality=low")
-                try:
-                    page1.evaluate("start()")
-                except Exception as e:
-                    errs1.append("start(): " + str(e))
-                page1.wait_for_timeout(2500)
+                ctx1, page1, errs1 = make_page(browser, qs=FAST)
+                settle(page1, errs1)
 
                 def snap_state():
                     return page1.evaluate(
@@ -201,6 +192,7 @@ def main(only=None):
                     if before == after:
                         energy_changes.append(code)
                 ok_auto = (not bad_auto) and (not energy_changes)
+                ctx1.close()
                 record(
                     3,
                     label,
@@ -215,12 +207,8 @@ def main(only=None):
         if want(4):
             label = "assisted: Shift+W lowers kal no toggle; Shift+C palette -1; Shift+Right +10s"
             try:
-                ctx2, page2, errs2 = make_page(browser, qs="quality=low&level=assisted")
-                try:
-                    page2.evaluate("start()")
-                except Exception as e:
-                    errs2.append("start(): " + str(e))
-                page2.wait_for_timeout(2500)
+                ctx2, page2, errs2 = make_page(browser, qs=FAST + "&level=assisted")
+                settle(page2, errs2)
 
                 # Shift+W lowers kal without toggling
                 before_kal = page2.evaluate("USER.kal")
@@ -245,6 +233,7 @@ def main(only=None):
                 after_t = page2.evaluate("lastT")
                 ok_shiftarrow = (after_t - before_t) >= 9.5
 
+                ctx2.close()
                 ok_assisted = ok_shiftw and ok_shiftc and ok_shiftarrow and (not errs2)
                 record(
                     4,
@@ -264,11 +253,12 @@ def main(only=None):
                 print("MIGRATION START", flush=True)
                 ctx3, page3, errs3 = make_page(
                     browser,
-                    qs="quality=low",
+                    qs=FAST,
                     init_local_storage={"slot1": {"fx": 0, "inten": -1, "kal": 0}},
                 )
                 print("MIGRATION PAGE READY", flush=True)
                 migrated_energy = page3.evaluate("applyTweaks(lsGet('slot1')); USER.energy")
+                ctx3.close()
                 record(5, label, migrated_energy == 0, "USER.energy=%s" % migrated_energy)
             except Exception as e:
                 record(5, label, False, str(e))
@@ -285,69 +275,15 @@ def _finish():
     return 1 if total - passed else 0
 
 
-def run_parallel():
-    """Run every check in its own process (Playwright sync API is not thread-safe)."""
-    script = os.path.abspath(__file__)
-    t_all = time.time()
-    procs = {}
-    ends = {}
-    todo = list(range(1, N_CHECKS + 1))
-    running = set()
-    # software GL (SwiftShader) uses every core per browser: cap the number of browsers at once and run them at low priority so the machine stays usable
-    while todo or running:
-        while todo and len(running) < JOBS:
-            n = todo.pop(0)
-            out = tempfile.TemporaryFile(mode="w+")
-            proc = subprocess.Popen(
-                [sys.executable, "-u", script, "--only", str(n)],
-                stdout=out,
-                stderr=subprocess.STDOUT,
-                preexec_fn=lambda: os.nice(15),
-            )
-            procs[n] = (proc, out, time.time())
-            running.add(n)
-        for n in list(running):
-            if procs[n][0].poll() is not None:
-                ends[n] = time.time()
-                running.discard(n)
-        time.sleep(0.05)
-    total_wall = time.time() - t_all
-
-    passed = failed = 0
-    for n in range(1, N_CHECKS + 1):
-        proc, out, t0 = procs[n]
-        out.seek(0)
-        lines = out.read().splitlines()
-        out.close()
-        wall = ends[n] - t0
-        result = None
-        for line in lines:
-            m = RESULT_RE.match(line)
-            if m and int(m.group(1)) == n:
-                result = line
-                break
-        if result is None:
-            result = "%d. (no PASS/FAIL line, child exit %s) FAIL" % (n, proc.returncode)
-            ok = False
-        else:
-            ok = RESULT_RE.match(result).group(2) == "PASS"
-        passed += ok
-        failed += not ok
-        print(f"{result}  [wall {wall:.1f} s]", flush=True)
-
-    print(f"total wall {total_wall:.1f} s", flush=True)
-    print("SUMMARY: %d checks, %d PASS, %d FAIL" % (passed + failed, passed, failed), flush=True)
-    return 1 if failed else 0
-
-
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description="bicycle-day automated checks")
     ap.add_argument("--only", type=int, choices=range(1, N_CHECKS + 1), metavar="N",
                     help="run only check N (1..%d) in this process" % N_CHECKS)
     args = ap.parse_args()
     try:
+        os.nice(15)   # software GL uses every core: stay out of the way of the desktop
         if args.only is None:
-            sys.exit(run_parallel())
+            sys.exit(main(None))
         sys.exit(main(args.only))
     except SystemExit:
         raise
