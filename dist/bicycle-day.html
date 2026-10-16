@@ -281,7 +281,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   body.playing #actions #xclose,body.live #actions #xclose{display:block}
   body.ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
   #tune label{display:flex;flex-direction:column;gap:5px}
-  body:not(.mic) .micOnly{display:none}
+  body:not(.mic) #tune .micOnly{display:none}
   #mlev{position:relative;width:110px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
   #mlev i{position:absolute;left:0;top:0;bottom:0;width:0;background:#2cff8a;transition:background .2s}
   #mtxt{font-size:10px;letter-spacing:.1em;min-width:120px}
@@ -440,12 +440,12 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   </div>
 </div>
 <div id="pult" class="pult">
-  <div id="pxt" class="pxt"><p><b>Control levels.</b> auto: the engine decides everything except Energy, images and camera. assisted: the engine + your effect keys (each one fades out by itself). manual: a quiet base, only what you switch on.</p><p><b>Energy</b> (calm … extreme): how wild the picture is. Picture only, the music does not change. Extreme = Energy 4.</p><p><b>Gauge:</b> green = what the engine sends now. Orange marker = your slider.</p><p><b>Yellow name</b> = the effect is on (assisted / manual: you switched it on; auto: the engine uses it strongly).</p><p><b>transition</b> = how long a change takes to fade in and out (0 = instant, up to 10 s).</p><p><b>hold</b> = how long an effect you switched on in assisted stays on before it fades out by itself (random 4.5–15 s by default; manual effects stay on until you switch them off; in auto the engine chooses its own transition per scene).</p><p><b>Palette, Tiles, Live code:</b> in auto the engine decides them.</p></div>
+  <div id="pxt" class="pxt"><p><b>Control levels.</b> auto: the engine decides everything except Energy, images and camera. assisted: the engine + your effect keys (each one fades out by itself). manual: a quiet base, only what you switch on.</p><p><b>Energy</b> (calm … extreme): how wild the picture is. Picture only, the music does not change. Extreme = Energy 4.</p><p><b>Gauge:</b> green = what the engine sends now. Orange marker = your slider.</p><p><b>Yellow name</b> = the effect is on (assisted / manual: you switched it on; auto: the engine uses it strongly).</p><p><b>transition</b> = how long a change takes to fade in and out (0 = instant, up to 10 s).</p><p><b>hold</b> = how long an effect you switched on in assisted stays on before it fades out by itself (random 4.5–15 s by default; manual effects stay on until you switch them off; in auto the engine chooses its own transition per scene).</p><p><b>Palette, Tiles, Live code:</b> in auto the engine decides them.</p><p><b>Mouse:</b> move = kaleidoscope centre, click = ripple, drag = turn, wheel = zoom out / in.</p><p><b>Presets:</b> keys 1–8 recall a preset, Shift+1–8 save the current look into it (advanced).</p></div>
   <div id="pmain" class="pmain">
     <div class="pucol pc1" id="pc1">
       <div class="pcell" style="cursor:default;gap:6px"><div id="plvl" class="plvl" title="Control level (key M)"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div><kbd class="pk u0" data-code="KeyM">M</kbd><span class="trw" title="Calm: master effect strength (0 = plain image)" style="margin-left:6px"><kbd class="pk gG u0" data-code="KeyV">V</kbd><span>calm</span><input type="range" class="pr" id="u-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="ucv">100%</span><kbd class="pk gG u0" data-code="KeyB">B</kbd></span></div>
       <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more, N = extreme). Look only."><kbd class="pk gX" data-code="KeyZ">Z</kbd><div class="enb" id="enp"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk gX" data-code="KeyX">X</kbd></div>
-      <div class="pchips"><span><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span><span><kbd class="pk gI" data-code="Semicolon">;</kbd>auto</span><span class="trw" title="Assisted only: how long a toggled effect stays on (rand = random 4.5-15 s, 31 = until switched off)"><span>hold</span><input type="range" class="pr" id="u-hold" min="0" max="31" step="1" value="0"><span class="pvv" id="uhv"></span></span><span class="trw" title="Transition time (keys , and .). Assisted / manual: drag to set it. Auto: chosen by the engine in auto (read only)"><span>trans</span><input type="range" class="pr" id="u-trans" min="0" max="10" step=".5" value="3" style="width:32px"><span class="pvv" id="ptrv"></span></span></div>
+      <div class="pchips"><span><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span><span><kbd class="pk gI" data-code="Semicolon">;</kbd>auto img <b id="pai">off</b></span><span class="trw" title="Assisted only: how long a toggled effect stays on (rand = random 4.5-15 s, 31 = until switched off)"><span>hold</span><input type="range" class="pr" id="u-hold" min="0" max="31" step="1" value="0"><span class="pvv" id="uhv"></span></span><span class="trw" title="Transition time (keys , and .). Assisted / manual: drag to set it. Auto: chosen by the engine in auto (read only)"><span>trans</span><input type="range" class="pr" id="u-trans" min="0" max="10" step=".5" value="3" style="width:32px"><span class="pvv" id="ptrv"></span></span></div>
     </div>
     <div class="pucol pgrid pfx" id="pfx"></div>
     <div class="pucol pgrid pmd" id="pmd"></div>
@@ -2611,7 +2611,7 @@ $('stopb').addEventListener('click', stopPlay);
 $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopPlay(); });   // same as Esc
 const trTxt = () => USER.trans ? ' → ' + USER.trans + ' s' : '';
 const AIS = [0, 30, 60, -1], aiTxt = v => v === 0 ? 'off' : v < 0 ? 'some scenes (~2 in 5)' : v + ' s';
-const markAI = () => document.querySelectorAll('#ais button').forEach(b => b.classList.toggle('on', +b.dataset.ai === USER.auto));
+const markAI = () => { document.querySelectorAll('#ais button').forEach(b => b.classList.toggle('on', +b.dataset.ai === USER.auto)); const pai = $('pai'); if (pai) pai.textContent = USER.auto === 0 ? 'off' : USER.auto < 0 ? 'scenes' : USER.auto + ' s'; };
 function setAuto(v, quiet) { USER.auto = v; AI.acc = 0; markAI(); autosave(); if (!quiet) toast('Auto image: ' + aiTxt(v) + (IM.length < 2 ? '  (add a second image first)' : ''), 1800); }
 const TRS = [0, 1, 3, 5, 10];
 const markTR = () => { $('u-trans').value = USER.trans; };
@@ -2801,6 +2801,7 @@ if (USER.energy < 4) EN.last = USER.energy; markEN();
 if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();
 if (Q.has('calm')) USER.calm = clamp(Math.round(+Q.get('calm') || 0), 0, 100); markCalm();
 if (Q.has('autoimg')) USER.auto = +Q.get('autoimg') || 0; markAI();   // ?autoimg=<s> (tests; -1 = some scenes, ~2 in 5)   // ?trans=<s> (tests)
+markAI();   // pupitre `;` auto-image mode label
 // share link restore (?u=<base64url JSON>): apply the compact tweaks it carries (all tweaks except quality, plus level/images when present)
 { const UQ = Q.get('u'); if (UQ) {
   try {
