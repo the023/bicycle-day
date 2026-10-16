@@ -392,7 +392,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
       <section class="step" id="st2" hidden aria-labelledby="s2"><span class="field" id="s2"><span id="s2t">Music and energy</span></span>
       <div id="cards">
         <div class="card" id="c-gen" hidden>
-          <div><span class="field sub" id="f-mus">Style</span><div id="mus" role="group" aria-labelledby="f-mus"><button data-music="ambient">Ambient</button><button data-music="gnossienne">Gnossienne</button><button data-music="gnossienne2">Gnossienne 2</button><button data-music="gnossienne3">Gnossienne 3</button><button data-music="gymnopedie">Gymnopedie</button><button data-music="electro">Electro</button><button data-music="chiptune">Chiptune</button><button data-music="chiptune2">Chiptune 2</button><button data-music="drone">Drone</button><button data-music="gamelan">Gamelan</button></div></div>
+          <div><span class="field sub" id="f-mus">Style</span><div id="mus" role="group" aria-labelledby="f-mus"><button data-music="ambient">Ambient</button><button data-music="gnossienne">Gnossienne</button><button data-music="gnossienne2">Gnossienne 2</button><button data-music="gnossienne3">Gnossienne 3</button><button data-music="tempest">Tempest</button><button data-music="gymnopedie">Gymnopedie</button><button data-music="electro">Electro</button><button data-music="electro2">Electro 2</button><button data-music="electro3">Electro 3</button><button data-music="chiptune">Chiptune</button><button data-music="chiptune2">Chiptune 2</button><button data-music="midi1">MIDI 1</button><button data-music="drone">Drone</button><button data-music="gamelan">Gamelan</button></div></div>
           <details id="more">
             <summary id="len-sum">Length: 5 min, more options</summary>
             <div><span class="field sub" id="f-arc">Shape</span><div id="opts" role="group" aria-labelledby="f-arc"><button data-arc="journey">Journey</button><button data-arc="slam">Slam</button><button data-arc="intense">Intense</button><button data-arc="extreme">Non-stop</button></div>
@@ -655,8 +655,8 @@ const ARCQ = Q.get('arc') === 'hardcore' ? 'extreme' : Q.get('arc');   // old li
 let arcName = ARCS[ARCQ] ? ARCQ : 'journey', ARC, KEYS, EMAX = 1, BEATS = [], PH = 0, NOTES = [], MEL = [];
 // music styles. ambient = the original engine (arc drives it, incl. bpm/drive); gnossienne/gymnopedie = piano (swap in the calm 'piano' arc); the others are standalone generators
 // that read energy(u) of the chosen arc but carry their own sections/tempo. bpm = tempo range (energy 0..1) used for BEATS (the picture's pulse); nohb = no heartbeat pulse on the picture.
-const STYLES = { electro: { bpm: [100, 138] }, chiptune: { bpm: [126, 164] }, chiptune2: { bpm: [118, 152] }, drone: { bpm: [60, 80], nohb: 1 }, gamelan: { bpm: [60, 96], nohb: 1 } };
-const MUSICS = ['ambient', 'gnossienne', 'gnossienne2', 'gnossienne3', 'gymnopedie', ...Object.keys(STYLES)];
+const STYLES = { electro: { bpm: [100, 138] }, electro2: { bpm: [104, 124] }, electro3: { bpm: [112, 124] }, chiptune: { bpm: [126, 164] }, chiptune2: { bpm: [118, 152] }, midi1: { bpm: [100, 124] }, drone: { bpm: [60, 80], nohb: 1 }, gamelan: { bpm: [60, 96], nohb: 1 } };
+const MUSICS = ['ambient', 'gnossienne', 'gnossienne2', 'gnossienne3', 'tempest', 'gymnopedie', ...Object.keys(STYLES)];
 let MUSIC = MUSICS.includes(Q.get('music')) ? Q.get('music') : (() => { try { const m = JSON.parse(localStorage.getItem('bicycleday.music')); return MUSICS.includes(m) ? m : 'ambient'; } catch (e) { return 'ambient'; } })();
 function score(u) {
   let i = 0; while (i < KEYS.length - 2 && u > KEYS[i + 1][0]) i++;
@@ -670,7 +670,7 @@ const energy = u => clamp(energyRaw(u) / EMAX);
 const bpmAt = u => { const [a, b] = Q.get('bpm') ? [BPM0, BPM1] : (STYLES[MUSIC]?.bpm || ARC.bpm || [BPM0, BPM1]); return lerp(a, b, energy(u)); };
 const hbW = u => ARC.piano || STYLES[MUSIC]?.nohb ? 0 : smooth(.05, .2, u) * (1 - smooth(.93, .97, u));
 function setArc(name, pi) {   // arcName = the user's chosen arc; a piano music choice swaps in the calm 'piano' arc (pi)
-  ARC = ARCS[pi && (MUSIC === 'gnossienne' || MUSIC === 'gnossienne2' || MUSIC === 'gnossienne3' || MUSIC === 'gymnopedie') ? 'piano' : name]; KEYS = ARC.keys; EMAX = 1;
+  ARC = ARCS[pi && (MUSIC === 'gnossienne' || MUSIC === 'gnossienne2' || MUSIC === 'gnossienne3' || MUSIC === 'tempest' || MUSIC === 'gymnopedie') ? 'piano' : name]; KEYS = ARC.keys; EMAX = 1;
   let m = 0; for (let i = 0; i <= 200; i++) m = Math.max(m, energyRaw(i / 200)); EMAX = m || 1;
   BEATS = []; for (let s = TOTAL * .06; s < TOTAL * .97; s += 60 / bpmAt(s / TOTAL)) BEATS.push(s);   // heartbeat times, shared by sound and picture
 }
@@ -775,9 +775,45 @@ function pianoScore3() {
   });
   return E.sort((a, b) => a.t - b.t);
 }
+// tempest: Beethoven, Piano Sonata No. 17 "The Tempest" (op. 31 no. 2), 2nd movement (Adagio, B-flat major, 3/4). The composition is public domain; the notes were read as data
+// from a sequenced MIDI performance (unknown licence, nothing else is used). TP.N = 5 numbers per note (base 36): start delta, written length, extra ring (sustain pedal), pitch*3 + part
+// (0 melody line, 1 bass, 2 inner voices), velocity; 1 unit = 10 MIDI ticks (480 per quarter note, a bar = 144 units; the file's bar 1 is a rest, the music starts at bar 2).
+// TP.T = the performance's tempo curve: first the length of a quarter note in us/100, then (delta units, us/100) pairs. A short piece jumps from just before one of the TP.CUT bars
+// (cadences: I or V of B-flat) to the real ending, bars TP.END..104; a long one (10 min) plays the whole movement, slower. The seed adds rubato, phrase dynamics, a slight chord roll,
+// hand lag and pedal ring; never a different note.
+const TP = {
+  N: '40,6,6p,14,16,6,6,6j,1p,15,6,6,6d,24,14,6,6,67,2h,13,6,6,61,2q,12,6,6,5v,35,11,36,18,1n,4f,1d,16,8,1h,4i,1j,6,18,b,4o,1k,1c,1c,0,14,17,0,1c,0,1p,17,0,1c,0,24,17,0,1c,0,2h,17,0,1c,0,2q,17,0,1c,0,33,17,1c,3u,0,1a,11,0,3u,0,1p,11,0,3t,0,2b,11,0,3u,0,2k,11,0,3u,0,2q,11,0,3w,0,30,11,40,18,0,50,1i,16,6,0,53,1n,6,17,0,59,1o,1c,1c,0,21,1b,0,1c,0,2q,1b,0,1c,0,3b,1b,0,1c,0,3i,1b,1c,40,0,24,16,0,40,0,2q,16,0,40,0,35,16,0,2w,0,3f,16,2w,6,0,3f,w,4,8,0,3o,x,4,6,0,3i,z,4,6,0,3f,11,4,6,0,3i,12,4,8,0,3o,14,4,8,0,3u,16,4,8,0,40,17,4,6,0,43,19,4,6,0,49,1a,4,17,0,4f,1k,16,6,0,4i,1o,6,12,0,4o,1q,1c,1c,0,2h,21,0,1c,0,38,21,0,1c,0,3z,21,0,1c,0,4o,21,1c,20,0,2k,1n,0,1c,0,38,1n,0,20,0,3w,1n,0,1c,0,4o,1n,1c,j,0,3b,1e,0,j,0,4i,1e,o,j,0,2q,1e,0,j,0,3h,1e,0,j,0,45,1e,0,j,0,4f,1e,o,j,0,2w,1i,0,j,0,3k,1i,0,j,0,45,1i,0,j,0,49,1i,o,j,0,2w,1m,0,j,0,3n,1m,0,j,0,45,1m,0,j,0,49,1m,o,20,0,2q,1p,0,20,0,3n,1p,0,20,0,45,1p,0,6,0,49,1p,4,6,0,4f,1l,4,6,0,49,1l,4,6,0,4f,1k,4,6,0,49,1k,4,6,0,4f,1k,4,6,0,49,1j,4,6,0,4f,1j,4,6,0,49,1i,4,8,0,46,1i,6,8,0,49,1i,6,c,0,4f,1j,c,c,0,49,1f,c,o,0,3q,1b,0,o,0,42,1b,0,o,0,49,1b,10,c,0,2q,16,c,c,0,2k,17,0,c,0,2u,17,c,c,0,2b,18,0,c,0,30,18,c,40,0,14,18,0,16,0,24,18,0,16,0,2h,18,0,40,0,33,1a,16,6,0,2b,1d,0,6,0,2k,1d,6,1c,0,2h,1i,0,1c,0,2q,1i,1c,1c,0,2h,1e,0,1c,0,2q,1e,1c,2o,0,24,1b,0,2o,0,2h,1b,0,2o,0,2q,1b,0,o,0,4f,1b,o,6,0,4i,1a,4,6,0,4f,1c,4,6,0,49,1d,4,8,0,4f,1e,6,8,0,4i,1g,6,1c,0,4o,1l,1c,1c,0,14,1f,0,1c,0,24,1f,0,1c,0,2h,1b,0,1c,0,2q,1b,0,1c,0,33,1h,1c,40,0,p,1e,0,40,0,1p,1e,0,y,0,2b,1e,0,16,0,2k,1e,0,40,0,30,1d,16,6,0,2h,1i,0,6,0,2q,1i,6,1c,0,2k,1r,0,1c,0,2t,1r,1c,1c,0,2k,1m,0,1c,0,2t,1m,1c,1c,0,1p,1l,0,2o,0,2k,1h,0,2o,0,2t,1h,0,p,0,59,1l,o,6,0,5f,1l,4,6,0,59,1m,4,6,0,56,1o,4,7,0,59,1p,6,7,0,5f,1r,6,1c,0,5i,1x,1c,1c,0,35,1t,0,1c,0,3b,1t,0,1c,0,3k,1t,0,1c,0,3r,1t,1c,18,0,32,1m,0,18,0,3b,1m,0,16,0,3k,1m,0,2o,0,3o,1m,16,6,0,38,1s,0,6,0,3h,1s,6,1c,0,3b,1x,0,1c,0,3k,1x,1c,1c,0,3b,1t,0,1c,0,3k,1t,1c,2o,0,2q,1s,0,1c,0,3b,1p,0,2o,0,3k,1p,0,p,0,59,1s,o,6,0,5f,1p,4,6,0,59,1q,4,6,0,56,1r,4,8,0,59,1t,6,8,0,5f,1v,6,1c,0,32,1v,0,1c,0,5i,21,1c,1c,0,2t,26,0,1c,0,3b,26,0,1c,0,3k,26,0,1c,0,42,26,0,1c,0,4i,26,1c,o,0,2w,1s,0,o,0,35,1s,0,o,0,3h,1s,0,o,0,45,1s,0,o,0,4f,1s,1c,2o,0,4u,2n,1c,g,0,2n,22,0,g,0,35,22,0,g,0,3e,22,0,g,0,3w,22,0,g,0,45,22,0,g,0,4e,22,1c,2o,0,4o,1v,1c,g,0,2q,1i,0,g,0,35,1j,0,g,0,3h,1j,0,g,0,3q,1j,0,g,0,45,1j,0,g,0,4h,1j,1c,g,0,1p,1d,0,g,0,2q,1d,0,g,0,3b,1d,0,g,0,3k,1d,0,g,0,42,1d,1c,v,0,14,19,0,v,0,24,18,0,v,0,35,18,0,v,0,3h,18,0,v,0,45,18,10,4,18,24,13,4,4,14,14,12,4,4,10,24,10,4,j,h,14,z,10,4,18,24,13,4,4,14,14,11,4,4,10,24,10,4,j,h,14,y,10,4,48,24,11,4,4,44,14,10,4,4,40,24,y,4,j,3h,14,x,0,1c,2o,2w,1c,0,1c,2o,35,1c,0,1c,2o,3i,1c,1c,1c,1c,2q,1f,0,1c,1c,35,1f,0,1c,1c,3f,1f,1c,1c,0,2n,1j,0,1c,0,35,1j,0,1c,0,3c,1j,1c,1c,10,2n,1f,0,1c,10,35,1f,0,1c,10,3c,1f,10,4,18,24,11,4,4,14,14,10,4,4,10,24,y,4,j,h,14,w,0,o,c,2q,17,0,o,c,35,17,0,o,c,3f,17,10,4,18,24,x,4,4,14,14,v,4,4,10,24,u,4,j,h,14,t,10,4,47,24,x,4,4,43,14,w,4,4,3z,24,v,4,j,3g,14,u,0,2o,1b,2k,14,0,2o,1b,2w,14,0,u,35,39,18,u,6,2z,3f,15,6,6,2t,39,17,6,6,2n,36,19,6,o,1z,39,1a,o,o,1b,3i,1b,o,1c,0,2k,19,0,1c,0,2t,19,0,o,n,39,1c,o,o,0,30,1f,o,1c,u,2k,18,0,1c,u,2t,18,0,1c,u,32,18,0,1c,u,39,1c,10,4,12,24,t,4,4,y,14,s,4,4,u,24,q,4,i,c,14,p,0,o,6,2h,15,0,o,6,2q,15,0,o,6,33,15,10,4,12,24,t,4,4,y,14,r,4,4,u,24,q,4,j,b,14,o,10,4,47,24,s,4,4,43,14,r,4,4,3z,24,p,4,j,3g,14,o,0,1c,2n,3h,13,0,1c,2n,43,17,1c,1c,1b,35,17,0,1c,1b,3h,17,0,1c,1b,3u,1b,1c,1c,0,32,1d,0,1c,0,3h,1d,0,1c,0,3o,1e,1c,1m,2e,2w,19,0,1m,2e,3b,19,0,1m,2e,3l,19,10,4,2w,2b,y,4,4,2s,1a,x,4,4,2o,2b,v,4,j,25,1a,u,o,o,1c,2w,18,0,o,1c,3b,18,0,o,1c,3l,18,c,4,1k,5b,13,4,4,1g,4b,11,4,4,1c,5b,10,4,o,o,32,1a,0,o,o,3b,1a,0,o,o,3o,1a,0,o,o,4b,z,o,o,0,35,1b,0,o,0,3b,1b,0,o,0,3u,1b,o,10,30,35,1d,0,10,30,3b,1d,0,10,30,3u,1d,10,4,2w,2b,1a,0,c,2o,2z,1f,0,c,2o,3b,1f,0,c,2o,3l,1f,4,4,2s,1a,19,4,4,2o,2b,17,4,j,25,1a,15,0,g,28,32,1g,0,g,28,3b,1g,0,g,28,3o,1g,o,o,1c,32,1h,0,o,1c,3b,1h,0,o,1c,3o,1h,o,o,o,3b,1j,0,o,o,3n,1j,0,o,o,3u,1j,c,4,w,5b,1i,4,4,s,4b,1g,4,4,o,5b,1e,4,o,0,3b,1k,0,o,0,3q,1k,0,o,0,40,1k,0,o,0,4b,1d,o,20,20,3b,1m,0,10,30,3q,1m,0,10,30,40,1m,10,4,2w,2b,1k,0,c,2o,3k,1o,0,c,2o,3r,1o,4,4,2s,1a,1j,4,4,2o,2b,1h,4,j,25,1a,1f,0,g,28,3n,1p,0,g,28,3u,1p,o,o,1c,3b,1q,0,o,1c,3n,1q,0,o,1c,3u,1q,o,o,o,3b,1s,0,o,o,3q,1s,0,o,o,40,1s,c,4,w,5b,1n,4,4,s,4b,1m,4,4,o,5b,1k,4,o,0,3b,1t,0,o,0,3w,1t,0,o,0,43,1t,0,o,0,4b,1j,o,20,20,3b,1v,0,10,30,3w,1v,0,10,30,43,1v,10,4,2w,2b,1t,0,c,2o,3n,1x,0,c,2o,3x,1x,4,4,2s,1a,1r,4,4,2o,2b,1o,4,j,25,1a,1m,0,g,28,3q,1y,0,g,28,40,1y,o,o,1c,3b,1z,0,o,1c,3q,1z,0,o,1c,40,1z,c,4,1k,5b,1u,4,4,1g,4b,1s,4,4,1c,5b,1q,4,o,o,3h,21,0,o,o,3q,21,0,o,o,3z,21,0,o,o,46,21,0,o,o,4b,1o,o,o,0,3h,22,0,o,0,3q,22,0,o,0,3z,22,0,o,0,46,22,c,4,8,5b,1y,4,4,4,4b,1x,4,4,0,5b,1v,4,o,3c,3n,1s,0,o,3c,3w,1s,0,o,3c,49,1v,o,12,2a,3b,1r,0,12,2a,3n,1r,0,12,2a,3u,1r,c,6,2u,2b,1m,6,6,2o,1a,1k,6,j,25,2b,1h,o,o,1c,3b,1t,0,o,1c,3n,1t,0,o,1c,3u,1t,c,6,1i,5b,1m,6,6,1c,4b,1k,6,o,o,3h,1q,0,o,o,3q,1q,0,o,o,46,1q,0,o,o,5b,1h,o,o,0,3h,1n,0,o,0,3q,1n,0,o,0,3u,1n,o,o,3c,3b,1k,0,o,3c,3n,1k,0,o,3c,49,1k,o,12,2a,3b,1m,0,12,2a,3n,1m,0,12,2a,3u,1m,c,6,2u,2b,1f,6,6,2o,1a,1d,6,j,25,2b,19,o,o,1c,3b,1n,0,o,1c,3n,1n,0,o,1c,3u,1n,c,6,1i,5b,1f,6,6,1c,4b,1b,6,o,o,3h,1l,0,o,o,3q,1l,0,o,o,46,1l,0,o,o,5b,18,o,o,0,3h,1i,0,o,0,3q,1i,0,o,0,3u,1i,o,o,40,3b,1g,0,o,40,3n,1g,0,o,40,49,1j,o,1c,2o,3b,1e,0,1c,2o,3n,1e,0,1c,2o,3u,1i,c,6,3i,2b,19,6,6,3c,1a,15,6,g,2w,2b,11,o,12,1m,2w,1b,0,1c,1c,3b,1b,0,1c,1c,3l,1f,c,6,26,2b,14,6,6,20,1a,11,6,j,1h,2b,y,o,14,8,2n,19,0,15,7,2w,19,0,16,6,39,1c,c,6,u,2b,11,6,6,o,1a,y,6,j,5,2b,v,o,o,0,39,18,o,o,0,38,18,o,o,0,35,1c,0,1c,0,39,1c,o,o,0,32,1g,c,4,0,3f,1e,6,4,0,3l,1h,6,n,0,2w,1k,0,n,0,35,1k,0,4,0,3o,1j,6,4,0,3u,1m,6,4,0,40,1p,6,4,0,43,1r,6,80,0,1p,1t,0,2i,0,49,1u,o,1c,0,2q,1n,o,1c,0,32,1m,0,1c,0,3b,1m,0,1c,0,3q,1r,o,1c,0,2q,1l,i,6,0,40,1u,6,1c,0,35,1k,0,1c,0,3h,1k,0,1c,0,3q,1o,0,16,0,4o,1t,o,19,0,2q,1k,i,6,0,4f,1s,6,1c,0,32,1j,0,1c,0,3b,1j,0,2i,0,49,1r,o,1c,0,2q,1i,o,1c,0,32,1h,0,1c,0,3b,1h,0,1c,0,3q,1m,o,o,0,2q,1h,i,6,0,40,1o,6,o,0,2h,1g,0,o,0,3q,1k,0,16,0,43,1n,o,o,0,24,1f,0,o,0,3h,1j,i,6,0,3u,1m,6,40,0,1a,1m,0,2o,0,3o,1l,o,1c,0,2b,1e,0,j,0,32,1i,o,1c,0,2q,1d,0,1,0,32,1d,0,12,0,3b,1h,o,1c,0,2b,1c,o,1c,0,2n,1b,0,1c,0,2w,1b,0,12,0,3b,1f,0,c,0,40,1h,c,c,0,3u,1h,c,19,0,2b,1b,0,c,0,3o,1g,c,c,0,3u,1g,c,20,0,1p,1d,0,1c,0,2n,1a,0,1l,0,3b,1d,0,16,0,3u,1f,o,o,0,2b,19,i,6,0,3x,1e,6,o,0,2q,18,0,o,0,40,1b,o,o,0,21,1a,o,o,0,24,1b,6,4,0,39,1d,6,4,0,3f,1f,6,4,0,3l,1h,6,o,0,1v,1j,0,4,0,3o,1j,6,4,0,3u,1l,6,4,0,40,1n,6,4,0,43,1p,6,80,0,1p,1v,0,2i,0,49,1v,o,1c,0,2q,1p,c,c,0,3n,1u,c,1c,0,32,1o,0,1c,0,3b,1o,0,2o,0,3q,1t,o,1c,0,2q,1n,i,6,0,40,1t,6,1c,0,35,1m,0,1c,0,3h,1m,0,16,0,4o,1s,o,1a,0,2q,1l,i,6,0,4f,1r,6,1c,0,32,1k,0,1c,0,3b,1k,0,2i,0,49,1r,o,1c,0,2q,1j,c,c,0,3n,1n,c,1c,0,32,1i,0,1c,0,3b,1i,0,1c,0,3q,1m,o,o,0,2q,1h,i,6,0,40,1o,6,o,0,2h,1g,0,o,0,3q,1k,0,a,0,49,1o,c,o,0,43,1n,c,o,0,24,1f,0,o,0,3h,1j,c,c,0,3u,1n,c,2o,0,2b,1i,0,o,0,32,1e,0,2o,0,3o,1m,o,19,0,2q,1g,0,o,0,32,1g,o,o,0,32,1i,0,o,0,3b,1i,o,o,0,2q,1k,0,o,0,32,1k,o,1c,0,1a,1o,0,o,0,2n,1n,0,o,0,2w,1n,0,1c,0,39,1o,o,o,0,2b,1h,0,o,0,2n,1h,o,10,16,p,1d,0,10,16,1p,1d,0,10,16,2b,1d,0,10,16,2q,1d,0,10,16,30,1i,10,4,12,1p,x,4,4,y,p,v,4,4,u,1p,t,4,g,e,p,s,10,4,12,1p,z,4,4,y,p,y,4,4,u,1p,w,4,g,e,p,v,o,o,0,3o,18,o,1c,u,3o,19,10,4,12,1p,10,4,4,y,p,z,4,4,u,1p,y,4,g,e,p,x,0,2o,0,32,1c,0,2o,0,3k,1c,0,20,6,3r,1c,10,4,12,1p,12,4,4,y,p,10,4,4,u,1p,y,4,g,e,p,x,o,o,0,3r,1g,o,1c,u,3r,1h,10,4,12,1p,18,4,4,y,p,17,4,4,u,1p,15,4,g,e,p,13,0,2o,0,3k,1k,0,2o,0,3t,1k,0,20,6,40,1k,10,4,12,1p,1b,4,4,y,p,19,4,4,u,1p,17,4,k,a,p,15,o,o,0,40,1o,o,1c,u,40,1p,10,4,12,1p,1f,4,4,y,p,1d,4,4,u,1p,1c,4,g,e,p,1a,0,2o,0,3k,1s,0,2o,0,3t,1s,0,2o,0,42,1s,0,20,6,49,1s,10,4,12,1p,1j,4,4,y,p,1h,4,4,u,1p,1f,4,k,a,p,1d,o,o,0,49,1v,o,o,0,49,20,o,10,1o,4i,2b,c,3,29,32,1w,0,3,29,3b,1w,4,3,25,2q,1t,4,3,21,32,1r,0,3,21,3b,1r,4,g,1k,2q,1o,c,6,1i,4f,1u,6,6,1c,49,1s,6,6,16,43,1q,6,6,10,40,1p,6,6,u,3u,1n,6,6,o,3o,1l,6,6,i,3l,1j,6,6,c,3i,1i,6,6,6,3f,1g,6,6,0,39,1e,6,6,0,33,1c,6,6,0,30,1a,6,6,0,3i,19,6,6,0,30,17,6,40,0,14,16,0,40,0,24,16,0,40,0,2h,16,0,40,0,33,15,16,6,0,2k,17,6,1c,0,2q,1d,1c,1c,0,2q,1a,1c,2o,0,24,17,0,2o,0,2h,16,0,2o,0,2q,16,0,q,0,4f,17,o,6,0,4i,15,4,6,0,4f,17,4,6,0,49,18,4,8,0,4f,19,6,8,0,4i,1b,6,1c,0,4o,1f,1c,1c,0,14,1b,0,1c,0,1p,1b,0,1c,0,24,1b,0,1c,0,2h,1b,0,1c,0,33,1c,1c,40,0,1a,18,0,40,0,1p,18,0,40,0,2b,18,0,40,0,2k,18,0,40,0,30,19,16,6,0,2q,1f,6,1c,0,2t,1l,1c,1c,0,2t,1i,1c,1c,0,2t,1e,0,2o,0,3b,1e,0,2o,0,3k,1e,0,q,0,50,1e,o,6,0,53,1f,4,6,0,50,1g,4,6,0,4u,1g,4,8,0,50,1h,6,8,0,53,1i,6,1c,0,2q,1m,0,1c,0,59,1m,1c,1c,0,21,1g,0,1c,0,2q,1g,0,1c,0,3k,1g,1c,40,0,14,1i,0,40,0,24,1i,0,40,0,2q,1i,0,18,0,2z,1i,0,40,0,3h,1i,16,6,0,35,1o,6,1c,0,38,1v,1c,1c,0,38,1r,1c,1c,0,38,1m,0,2o,0,3q,1m,0,2o,0,3z,1m,0,p,0,4f,1l,o,6,0,4i,1o,4,6,0,4f,1o,4,6,0,49,1p,4,8,0,4f,1q,6,8,0,4i,1r,6,1c,0,35,1w,0,1c,0,4o,1w,1c,1c,0,2h,1s,0,1c,0,35,1s,0,1e,0,3z,1s,0,1c,0,4o,1s,1c,20,0,2k,22,0,o,0,35,22,0,20,0,3w,22,0,1c,0,4o,22,o,o,0,38,1u,o,j,0,3b,1q,0,j,0,4i,1q,o,j,0,2q,1n,0,j,0,3h,1n,0,j,0,45,1n,0,j,0,4f,1n,o,j,0,2w,1s,0,j,0,3k,1s,0,j,0,45,1s,0,j,0,49,1s,o,j,0,2w,1x,0,j,0,3n,1x,0,j,0,45,1x,0,j,0,49,1x,o,20,0,2q,1s,0,1z,0,3n,1s,0,21,0,45,1s,0,4,0,49,1s,4,4,0,4f,1r,4,4,0,49,1r,4,4,0,4f,1q,4,4,0,49,1q,4,4,0,4f,1p,4,4,0,49,1p,4,4,0,4f,1o,4,4,0,49,1o,4,6,0,46,1n,6,6,0,49,1m,6,c,0,4f,1m,c,c,0,49,1k,c,o,0,3q,1f,0,o,0,42,1f,0,o,0,49,1f,u,6,0,2o,18,6,6,0,2u,19,6,6,0,2o,19,6,6,0,2l,19,6,6,0,2o,19,6,6,0,2i,1a,0,6,0,2u,1a,6,6,0,29,1a,0,6,0,30,1a,6,18,0,24,1a,0,18,0,2f,1e,0,40,40,33,1e,16,6,6o,29,1d,0,6,6o,2i,1d,6,1c,5c,2f,1e,0,1c,5c,2o,1e,6,6,6c,55,18,6,6,66,5h,18,6,6,60,55,18,6,6,5u,4q,18,6,6,5o,55,19,6,6,5i,4h,19,6,6,5c,4q,19,6,1c,40,2f,1g,0,1c,40,2o,1g,0,6,56,45,19,6,6,50,4h,1a,6,6,4u,3q,1a,6,6,4o,45,1a,6,6,4i,3h,1a,6,6,4c,3q,1a,6,6,46,35,1b,6,6,40,3h,1b,6,6,3u,2q,1b,0,p,3b,4f,1i,6,6,3o,35,1b,6,6,3i,2h,1c,6,6,3c,2q,1c,6,6,36,24,1c,0,6,36,4i,1g,4,6,32,4f,1h,2,6,30,2h,1c,2,6,2y,49,1i,4,6,2u,1p,1c,0,8,2s,4f,1i,6,6,2o,24,1d,0,7,2n,4i,1k,6,6,2i,1g,1d,0,1c,1c,4o,1l,6,6,2c,14,1d,6,6,26,1g,1d,6,6,20,1p,1e,6,6,1u,24,1e,6,6,1o,1g,1e,6,6,1i,1p,1e,6,6,1c,24,1e,6,6,16,2h,1f,0,1c,0,33,1n,6,6,10,24,1f,6,6,u,1p,1f,6,6,o,1g,1f,6,6,i,24,1g,6,6,c,1p,1g,6,6,6,1g,1g,6,6,0,14,1g,6,1c,5c,p,1g,0,18,0,29,1p,0,18,0,2i,1p,0,40,2o,30,1p,16,6,5c,2f,1r,0,6,5c,2o,1r,6,1c,40,2i,1w,0,1c,40,2r,1w,6,6,50,5b,1i,6,6,4u,5k,1j,6,6,4o,5b,1j,6,6,4i,52,1j,6,6,4c,5b,1j,6,6,46,4t,1j,6,6,40,52,1k,6,1c,2o,2i,1t,0,1c,2o,2r,1t,0,6,3u,4k,1k,6,6,3o,4t,1k,6,6,3i,4b,1k,6,6,3c,4k,1l,6,6,36,42,1l,6,6,30,4b,1l,6,6,2u,3t,1l,6,6,2o,42,1l,6,6,2i,3k,1m,0,q,1y,59,1w,6,6,2c,3t,1m,6,6,26,3b,1m,6,6,20,3k,1m,6,6,1u,32,1n,0,6,1u,5f,1u,4,6,1q,59,1u,2,6,1o,3b,1n,2,6,1m,56,1v,4,6,1i,2t,1n,0,8,1g,59,1w,6,6,1c,32,1n,0,8,1a,5f,1x,6,6,16,2b,1n,0,1c,0,5i,1y,6,6,10,2t,1o,6,6,u,2k,1o,6,6,o,32,1o,6,6,i,2t,1o,6,6,c,3b,1p,6,6,6,32,1p,6,6,0,2t,1p,6,1c,0,3i,20,0,1c,0,3r,20,6,6,10,2k,1p,6,6,u,24,1q,6,6,o,2t,1q,6,6,i,2k,1q,6,6,c,35,1q,6,6,6,2t,1r,6,6,0,2k,1r,6,1c,5c,21,1r,0,m,k,39,23,0,m,k,3i,23,0,39,3f,3o,23,o,h,1,30,24,0,h,1,39,24,i,6,5c,36,25,0,6,5c,3f,25,6,1c,40,39,29,0,1c,40,3i,29,6,6,50,5b,1t,6,6,4u,5k,1t,6,6,4o,5b,1t,6,6,4i,52,1u,6,6,4c,5b,1u,6,6,46,4k,1u,6,6,40,52,1u,6,m,3e,39,27,0,n,3d,3i,27,0,6,3u,4b,1u,6,6,3o,4k,1v,6,6,3i,42,1v,6,6,3c,4b,1v,6,6,36,3k,1v,6,6,30,42,1w,6,5,2v,3b,1w,0,c,2o,59,29,6,6,2o,3k,1w,6,6,2i,32,1w,0,p,1z,59,29,6,6,2c,3b,1w,6,6,26,2q,1x,6,6,20,32,1x,6,6,1u,2b,1x,0,6,1u,5f,27,4,6,1q,59,28,2,6,1o,2q,1x,2,6,1m,56,29,4,6,1i,21,1y,0,7,1h,59,2a,6,6,1c,2b,1y,0,8,1a,5f,2b,6,6,16,1p,1y,0,1c,0,5i,2d,6,6,10,21,1y,6,6,u,1a,1y,6,6,o,1p,1z,6,6,i,11,1z,6,6,c,1a,1z,6,6,6,p,1z,6,6,0,11,20,6,1c,0,42,26,0,1c,0,4b,26,0,1c,0,4i,2e,6,6,10,s,23,6,6,u,11,20,6,6,o,1a,1x,6,6,i,1s,1v,6,6,c,21,1s,6,6,6,2b,1p,6,6,0,2t,1m,6,o,o,45,28,0,o,o,4f,2g,6,6,10,v,22,6,6,u,14,1z,6,6,o,1g,1w,6,6,i,1v,1t,6,6,c,24,1q,6,6,6,2h,1n,6,6,0,2w,1k,6,2o,0,4u,2u,6,6,2c,1m,21,6,6,26,1v,21,6,6,20,24,20,6,6,1u,2n,1z,6,6,1o,2w,1y,6,6,1i,35,1x,6,6,1c,2w,1w,6,6,16,3e,1v,0,g,w,3w,22,0,g,w,45,22,0,g,w,4e,22,6,6,10,35,1t,6,6,u,2w,1s,6,6,o,2n,1q,6,6,i,2e,1p,6,6,c,24,1n,6,6,6,1v,1m,6,6,0,1m,1k,6,2o,0,4o,25,6,6,10,1p,1g,6,6,u,24,1g,6,6,o,2h,1f,6,6,i,2q,1e,6,6,c,2h,1d,6,6,6,24,1c,6,6,0,1p,1c,6,g,w,3q,1m,0,g,w,45,1m,0,g,w,4h,1m,6,6,10,1p,1a,6,6,u,24,19,6,6,o,2h,18,6,6,i,2q,17,6,6,c,2h,17,6,6,6,24,16,6,6,0,1p,15,6,6,16,2k,14,0,g,w,3k,1e,0,g,w,3q,1e,0,g,w,42,1e,6,6,10,2b,13,6,6,u,21,12,6,6,o,1p,12,6,6,i,1j,11,6,6,c,1a,10,6,6,6,11,z,6,6,0,p,y,6,10,16,14,y,0,g,0,35,17,0,g,0,3h,17,0,g,0,3q,17,0,g,0,45,17,10,4,12,24,x,4,4,y,14,v,4,4,u,24,t,4,g,e,14,s,10,4,12,24,x,4,4,y,14,v,4,4,u,24,t,4,g,e,14,r,10,4,4a,24,z,4,4,46,14,y,4,4,42,24,w,4,g,3m,14,v,0,18,2t,2z,18,0,18,2t,35,18,0,18,2t,3o,1c,1c,18,1h,2w,1b,0,18,1h,35,1b,0,18,1h,3i,1f,1c,18,5,2t,1e,0,18,5,35,1e,0,18,5,3f,1h,1c,18,y,2t,1h,0,18,y,35,1h,0,18,y,3f,1h,10,4,12,24,13,4,4,y,14,12,4,4,u,24,10,4,g,e,14,z,0,m,8,2w,1d,0,m,8,35,1d,0,m,8,3i,1d,10,4,12,24,13,4,4,y,14,11,4,4,u,24,10,4,g,e,14,z,10,4,48,24,12,4,4,44,14,11,4,4,40,24,10,4,g,3k,14,y,0,18,2s,35,1i,0,1c,2o,3q,1i,0,1c,2o,3x,1i,1c,18,1g,35,1l,0,1c,1c,3k,1l,0,1c,1c,3u,1l,1c,18,4,35,1o,0,1c,0,3h,1o,0,1c,0,3r,1o,1c,2o,u,35,1r,0,1c,u,3h,1r,0,1c,u,3r,1r,10,4,12,2k,18,4,4,y,1j,16,4,4,u,2k,14,4,g,e,1j,12,0,1y,8,3k,1m,0,1y,8,3u,1m,10,4,12,2k,19,4,4,y,1j,18,4,4,u,2k,16,4,g,e,1j,15,o,m,42,3u,1p,c,4,48,2k,19,4,4,44,1j,17,4,4,40,2k,16,4,g,3k,1j,15,0,1c,2o,3w,1p,0,1c,2o,4i,1s,1c,1c,1c,3k,1s,0,1c,1c,3w,1s,0,1c,1c,49,1u,1c,1c,0,3h,1x,0,1c,0,3w,1x,0,1c,0,43,1w,1c,1c,2o,3b,1e,0,1m,2e,3q,1e,0,1m,2e,40,1o,10,4,2w,2q,12,4,4,2s,1p,11,4,4,2o,2q,z,4,g,28,1p,x,o,m,1e,3b,1c,0,m,1e,3q,1c,0,m,1e,40,1c,c,4,1k,5q,14,4,4,1g,4q,12,4,4,1c,5q,11,4,m,q,3h,1d,0,m,q,3q,1d,0,m,q,43,1d,0,m,q,4q,z,o,m,2,3k,1f,0,m,2,3q,1f,0,m,2,49,1f,o,x,33,3k,1g,0,1u,26,3q,1g,0,x,33,49,1g,10,4,2w,2q,1b,0,b,2p,3e,1i,0,b,2p,40,1i,4,4,2s,1p,19,4,4,2o,2q,17,4,g,28,1p,15,0,g,28,3h,1j,0,g,28,43,1j,o,m,1e,3h,1l,0,m,1e,3q,1l,0,m,1e,43,1l,c,4,1k,5q,1c,4,4,1g,4q,1b,4,4,1c,5q,19,4,m,q,3q,1m,0,m,q,42,1m,0,m,q,49,1m,0,m,q,4q,17,o,m,2,3q,1n,0,m,2,45,1n,0,m,2,4f,1n,o,1u,26,3q,1p,0,x,33,45,1p,0,x,33,4f,1p,10,4,2w,2q,1g,0,b,2p,3z,1r,0,b,2p,46,1r,4,4,2s,1p,1f,4,4,2o,2q,1d,4,g,28,1p,1b,0,g,28,42,1s,0,g,28,49,1s,o,m,1e,3q,1t,0,m,1e,42,1t,0,m,1e,49,1t,c,4,1k,5q,1l,4,4,1g,4q,1j,4,4,1c,5q,1h,4,m,q,3q,1u,0,m,q,45,1u,0,m,q,4f,1u,0,m,q,4q,1f,o,m,2,3q,1w,0,m,2,49,1w,0,m,2,4i,1w,o,1u,26,3q,1x,0,x,33,4b,1x,0,x,33,4i,1x,10,4,2w,2q,1o,0,b,2p,42,1z,0,b,2p,4c,1z,4,4,2s,1p,1m,4,4,2o,2q,1l,4,g,28,1p,1j,0,g,28,45,20,0,g,28,4f,20,o,m,1e,3q,21,0,m,1e,45,21,0,m,1e,4f,21,c,4,1k,5q,1s,4,4,1g,4q,1q,4,4,1c,5q,1o,4,m,q,3w,23,0,m,q,45,23,0,m,q,4e,23,0,m,q,4l,23,0,m,q,4q,1m,o,m,2,3w,24,0,m,2,45,24,0,m,2,4e,24,0,m,2,4l,24,c,4,8,5q,1w,4,4,4,4q,1u,4,4,0,5q,1t,4,m,3e,42,1w,0,m,3e,49,1w,0,m,3e,4q,1r,o,12,2a,3q,1q,0,12,2a,42,1q,0,12,2a,49,1q,c,6,2u,2q,1k,6,4,2q,1p,1h,6,g,28,2q,1f,o,m,1e,3q,1n,0,m,1e,42,1n,0,m,1e,49,1n,c,6,1i,5q,1h,6,6,1c,4q,1d,6,m,q,3w,1m,0,m,q,45,1m,0,m,q,4l,1m,0,m,q,5q,1a,o,m,2,3w,1k,0,m,2,45,1k,0,m,2,49,1k,o,m,3e,42,1g,0,m,3e,4b,1g,0,m,3e,4o,1g,o,12,2a,3q,1j,0,12,2a,42,1j,0,12,2a,49,1j,c,6,2u,2q,1c,6,6,2o,1p,1a,6,g,28,2q,18,o,m,1e,3q,1j,0,m,1e,42,1j,0,m,1e,49,1j,c,6,1i,5q,1a,6,6,1c,4q,17,6,m,q,3w,1i,0,m,q,45,1i,0,m,q,4l,1i,0,c,10,5q,15,o,m,2,3w,1g,0,m,2,45,1g,0,m,2,49,1g,o,m,3e,3q,1e,0,m,3e,42,1e,0,m,3e,4o,1e,o,12,2a,3q,1b,0,12,2a,42,1b,0,12,2a,49,1e,c,6,2u,2q,16,6,6,2o,1p,14,6,m,22,2q,11,o,12,y,3b,18,0,12,y,3q,18,0,12,y,40,1b,c,6,1i,2q,14,6,6,1c,1p,10,6,m,q,2q,x,o,14,w,32,16,0,12,y,3b,16,0,13,x,3o,19,c,6,6,2q,12,6,6,0,1p,z,6,10,c,2q,x,o,m,2,3q,16,o,m,0,3n,19,o,m,0,3k,1e,0,18,0,3o,1e,o,m,0,3h,1i,c,6,0,3u,1h,6,6,0,40,1j,6,m,0,3b,1n,0,m,0,3k,1n,0,6,0,43,1l,6,6,0,49,1n,6,6,0,4f,1p,6,6,0,4i,1r,6,80,0,24,1x,0,2g,0,4o,1z,o,1c,0,35,1m,o,1c,0,3h,1l,0,1c,0,3q,1l,0,18,0,45,1u,o,1c,0,35,1k,i,6,0,4f,1v,6,1c,0,3k,1j,0,1c,0,3w,1j,0,18,0,45,1r,0,18,0,53,1u,o,1c,0,35,1h,i,6,0,4u,1s,6,1c,0,3h,1g,0,1c,0,3q,1g,0,2g,0,4o,1s,o,1c,0,35,1f,o,1c,0,3h,1e,0,1c,0,3q,1e,0,18,0,45,1l,o,m,0,35,1c,i,6,0,4f,1o,6,m,0,2w,1b,0,m,0,45,1i,0,18,0,4i,1o,o,m,0,2k,1a,0,m,0,3w,1g,i,6,0,49,1m,6,40,0,1p,1f,0,2o,0,43,1l,o,1c,0,2q,17,o,1c,0,35,16,0,18,0,3h,1b,0,18,0,3q,1b,o,1c,0,2q,15,o,1b,0,32,13,0,1a,0,3b,13,0,18,0,3q,18,0,c,0,4f,1h,c,c,0,49,1h,c,1a,0,2q,12,0,c,0,43,1g,c,c,0,49,1g,c,1u,0,24,15,0,1a,0,32,11,0,1u,0,3q,15,0,16,0,49,1f,o,m,0,2q,10,i,6,0,4c,1e,6,m,0,35,y,0,o,0,4f,1b,o,m,0,2h,15,o,m,0,2k,1b,6,4,0,3o,1d,6,4,0,3u,1e,6,4,0,40,1g,6,m,0,2b,1h,0,4,0,43,1h,6,4,0,49,1j,6,4,0,4f,1l,6,4,0,4i,1m,6,7y,0,24,1r,0,2i,0,4o,1t,o,1c,0,35,1k,c,b,0,42,1p,c,1c,0,3h,1j,0,1c,0,3q,1j,0,2g,0,45,1o,o,1b,0,35,1h,i,6,0,4f,1q,6,1b,0,3k,1g,0,1c,0,3w,1g,0,16,0,53,1q,o,1c,0,35,1e,i,6,0,4u,1p,6,1a,0,3h,1d,0,1b,0,3q,1d,0,2h,0,4o,1p,o,1c,0,35,1b,c,b,0,42,1g,c,1b,0,3h,1a,0,1b,0,3q,1a,0,18,0,45,1f,o,m,0,35,18,i,6,0,4f,1m,6,m,0,2w,17,0,m,0,45,1c,0,g,0,4o,1l,c,o,0,4i,1l,c,m,0,2k,15,0,m,0,3w,1b,c,c,0,49,1k,c,2g,0,2q,1a,0,m,0,3h,14,0,2o,0,43,1k,o,1a,0,35,15,0,m,0,3h,15,o,1c,0,3h,17,0,m,0,3q,17,o,m,0,35,19,0,m,0,3h,19,o,18,0,p,1c,0,18,0,1p,1c,0,m,0,32,19,0,m,0,32,19,0,1c,0,3o,1g,o,m,0,2q,14,0,m,0,32,14,o,10,16,24,16,0,o,6,2q,16,0,o,6,35,16,0,o,6,3f,1e,10,4,12,24,r,4,4,y,14,q,4,4,u,24,o,4,g,e,14,n,10,4,1k,24,t,4,4,1g,14,r,4,4,1c,24,q,4,g,w,14,o,o,o,0,33,15,o,1c,u,33,16,10,4,12,24,y,4,4,y,14,x,4,4,u,24,w,4,g,e,14,u,0,2o,0,2h,18,0,2o,0,2q,18,0,2o,0,2z,18,0,20,o,36,19,10,4,1k,24,15,4,4,1g,14,13,4,4,1c,24,11,4,g,w,14,z,o,o,0,36,1e,o,1c,u,36,1f,10,4,12,24,19,4,4,y,14,17,4,4,u,24,15,4,g,e,14,14,0,2o,0,2q,1h,0,2o,0,2z,1h,0,2o,0,38,1h,0,20,o,3f,1i,10,4,1k,24,1d,4,4,1g,14,1a,4,4,1c,24,18,4,g,w,14,16,o,o,0,3f,1n,o,2o,u,3f,1o,10,4,12,24,1j,4,4,y,14,1h,4,4,u,24,1f,4,g,e,14,1e,0,1c,u,2z,1q,0,1c,u,38,1q,0,1c,u,3o,1q,10,4,12,24,1l,4,4,y,14,1j,4,4,u,24,1h,4,g,e,14,1g,0,1c,u,38,1v,0,1c,u,3h,1v,0,1c,u,3q,1v,0,1c,u,3x,1x,10,4,12,24,1o,4,4,y,14,1n,4,4,u,24,1l,4,g,e,14,1j,0,2o,1c,46,27,10,4,12,2z,1n,4,4,y,24,1l,4,4,u,2z,1j,4,g,e,24,1h,0,1c,1c,3h,1k,0,1c,1c,3q,1k,0,1c,1c,3z,1k,10,4,1k,2z,1f,4,4,1g,24,1d,4,4,1c,2z,1b,4,g,w,24,18,0,1c,0,3h,1d,0,1c,0,3q,1d,0,o,o,43,1n,o,o,0,3x,1k,o,1c,u,3r,1g,10,4,12,24,18,4,4,y,14,17,4,4,u,24,16,4,g,e,14,14,0,2o,0,35,19,0,2o,0,3k,19,0,20,o,3u,1j,10,4,1k,24,1a,4,4,1g,14,18,4,4,1c,24,17,4,g,w,14,15,o,o,0,43,1p,o,2o,u,4i,1q,10,4,12,35,1i,4,4,y,24,1g,4,4,u,35,1e,4,g,e,24,1c,0,2o,0,3k,1r,0,2o,0,3t,1r,0,21,5,42,1r,10,4,12,35,1i,4,4,y,24,1g,4,4,u,35,1e,4,g,e,24,1c,0,o,6,49,1m,o,o,0,40,1l,o,1c,u,49,1k,10,4,12,24,1c,4,4,y,14,1b,4,4,u,24,19,4,g,e,14,17,0,1c,1c,3h,1a,0,1c,1c,3q,1a,0,20,o,43,1h,10,4,1k,24,1a,4,4,1g,14,17,4,4,1c,24,15,4,g,w,14,12,0,1c,0,3q,18,0,1c,0,3z,18,o,o,0,4f,1m,o,o,0,4o,1r,o,20,u,4i,1w,c,4,12,35,1k,4,4,y,24,1i,4,4,u,35,1g,4,g,e,24,1e,0,o,6,3w,1j,0,o,6,45,1j,o,o,u,3t,1m,0,o,u,42,1m,c,4,12,35,1f,4,4,y,24,1d,4,4,u,35,1c,4,g,e,24,1a,0,o,6,3k,1a,0,o,6,3t,1a,0,o,6,49,1h,o,o,40,3b,1b,0,o,40,3k,1b,0,o,40,3t,1b,0,o,40,40,1d,c,4,48,35,19,4,4,44,24,17,4,4,40,35,15,4,40,0,24,18,0,18,2s,2h,14,0,o,3c,3h,14,0,o,3c,3q,14,0,o,3c,43,18,16,6,2o,2b,17,0,6,2o,2k,17,6,1c,1c,2h,1g,0,1c,1c,2q,1g,1c,1c,0,2b,19,0,1c,0,2k,19,6,4,12,3o,17,6,4,w,3l,19,6,4,q,3o,1a,6,4,k,3u,1b,6,4,e,40,1c,6,4,8,43,1d,6,4,2,49,1f,6,20,0,24,1h,0,20,0,2h,1h,0,2n,0,3q,1h,0,16,0,43,1h,0,16,0,4f,1h,16,6,0,49,1l,0,6,0,4i,1l,6,1c,0,4f,1p,0,1c,0,4o,1p,1c,1c,0,3q,1l,0,1c,0,49,1l,0,1c,0,4i,1l,6,4,0,2q,1m,6,4,0,2n,1m,6,4,0,2q,1n,6,4,0,2w,1o,6,4,0,32,1p,6,4,0,35,1q,6,4,0,3b,1r,6,16,0,35,1z,0,16,0,3h,1z,0,h,0,3q,1u,0,i,0,43,1u,0,i,0,4f,1u,16,6,0,3b,1y,0,6,0,3k,1y,6,1a,0,3h,22,0,1b,0,3q,22,1c,1c,0,14,1h,1c,3x,0,11,16,40,p,0,59,18,o,6,0,5f,1a,4,6,0,59,1b,4,6,0,56,1c,4,8,0,59,1d,6,8,0,5f,1g,6,18,0,5i,1m,1c,1c,0,35,1b,0,5c,0,3b,1b,0,5c,0,3k,1b,0,1c,0,3r,1o,1c,40,0,32,17,0,2h,0,3o,1b,2g,6,0,3u,y,4,6,0,3o,z,4,6,0,3l,10,4,6,0,3o,12,4,6,0,3u,13,4,6,0,40,14,4,6,0,43,15,4,6,0,49,16,4,6,0,4f,17,4,6,0,4i,19,4,6,0,4o,1a,4,6,0,4u,1b,4,6,0,50,1c,4,6,0,53,1d,4,p,0,59,1i,o,6,0,5f,1i,4,6,0,59,1k,4,6,0,56,1m,4,8,0,59,1o,6,8,0,5f,1q,6,16,0,5i,1w,1c,1c,0,2t,1g,0,1c,0,3k,1g,0,1c,0,42,1g,0,1c,0,4b,1g,0,1c,0,4i,1r,1c,o,0,2w,19,0,o,0,35,1b,0,o,0,3h,1b,0,o,0,45,1b,0,o,0,4f,1g,1c,2o,0,4u,2b,o,g,0,2n,2c,0,g,0,35,2c,0,g,0,3e,2c,o,g,0,3w,28,0,g,0,45,28,0,g,0,4e,28,1c,2o,0,4o,1u,o,g,0,2q,1f,0,g,0,35,1i,0,g,0,3h,1i,o,g,0,3q,1g,0,g,0,45,1g,0,g,0,4h,1g,o,g,0,p,1b,0,g,0,1p,1d,o,g,0,3b,1a,0,g,0,3k,1a,0,g,0,42,1a,o,g,0,1p,16,0,g,0,2q,17,o,3y,0,14,14,0,3y,0,24,14,0,g,0,35,14,0,g,0,3h,14,0,g,0,43,14,o,o,0,3q,1a,0,o,0,4o,1a,o,o,0,3h,1d,0,o,0,4f,1d,o,o,0,38,1g,0,o,0,46,1g,o,o,0,35,1k,0,o,0,43,1k,o,o,0,2z,1i,0,o,0,3x,1i,o,3y,0,14,1g,0,3y,0,24,1g,0,o,0,2w,1g,0,o,0,3u,1g,o,o,0,35,1e,0,o,0,43,1e,o,o,0,2k,1c,0,o,0,3i,1c,o,o,0,2w,1a,0,o,0,3u,1a,o,o,0,2b,18,0,o,0,39,18,o,c,0,2q,16,0,c,0,3o,16,c,c,0,2k,1a,0,c,0,3i,1a,c,3w,0,24,16,0,o,0,2h,16,0,o,0,3f,16,o,o,0,3q,1b,o,o,0,3h,1d,o,o,0,38,1g,0,1c,0,4f,1g,o,o,0,35,1l,o,o,0,2z,1j,0,4,0,4f,1a,4,4,0,4i,1b,4,4,0,4f,1d,4,6,0,49,1e,6,6,0,4f,1g,6,3y,0,24,1h,0,o,0,2w,1h,0,o,0,4o,1i,o,o,0,35,1f,0,o,0,4i,1f,o,o,0,2k,1d,o,o,0,2w,1a,0,1c,0,4i,1a,o,o,0,2b,18,o,c,0,2q,16,0,4,0,40,10,4,4,0,43,12,4,4,0,40,13,4,c,0,2k,15,0,6,0,3u,14,6,6,0,40,16,6,18,0,24,15,0,o,0,2h,15,0,o,0,43,18,o,c,0,2q,18,c,c,0,2k,14,0,c,0,40,14,c,18,0,24,13,0,o,0,2h,13,0,o,0,43,13,o,c,0,2q,16,c,c,0,2k,12,0,c,0,42,12,0,c,0,49,12,c,18,0,24,11,0,o,0,2h,11,0,o,0,45,11,0,o,0,4f,11,o,c,0,2q,14,c,c,0,2k,z,0,c,0,4b,z,0,c,0,50,z,c,q,0,24,y,0,o,0,2h,y,0,o,0,4h,y,0,o,0,53,11,o,i,0,5f,17,i,6,0,59,1b,6,1c,0,59,18,1c,o,0,53,x,o,q,0,14,v',
+  T: '3uw,40,8qg,6,8kn,c,8qg,6,92s,6,9g4,6,cuy,30,aad,16,ais,6,aad,2i,ais,6,aad,3v,ais,5,aad,16,ais,6,aad,2j,ais,5,aad,2u,ais,6,aad,o,ais,6,bko,6,aad,16,ais,6,aad,1c,ais,1c,aad,1o,ais,c,aad,1c,bko,r,aad,12,ais,i,bko,c,c6l,10,ais,c,b0t,c,dm7,c,aad,16,ais,6,aad,2j,ais,5,aad,16,ais,6,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,16,ais,6,aad,16,ais,6,aad,16,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,2o,b0t,20,aad,38,c6l,4,aad,3u,ais,6,aad,3w,c6l,4,aad,u,b0t,c,bko,6,aad,20,b0t,o,aad,3w,cuy,4,aad,3u,ais,6,aad,3c,ais,o,aad,3c,ais,o,aad,3c,ais,o,aad,3l,b0t,b,c6l,4,aad,3c,ais,o,aad,3c,ais,1c,b0t,2y,cuy,a,fyp,4,exm,m,bko,2e,b0t,u,c6l,6,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,16,ais,6,aad,2o,ais,14,b0t,8,aad,16,ais,6,aad,1i,b0t,z,cuy,6,aad,10,ais,b,aad,16,ais,6,aad,16,ais,6,aad,10,ais,c,aad,16,ais,6,aad,16,b0t,6,aad,2c,ais,10,b0t,o,bko,o,aad,1o,ais,10,b0t,o,aad,3c,b0t,o,aad,3c,b0t,o,aad,3c,b0t,o,aad,n,bko,l,cuy,2,l1k,d,cuy,6,c6l,1i,cuy,6,e11,6,jag,6,l1k,5,aad,16,ais,6,aad,2i,ais,6,aad,10,ais,c,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,10,ais,c,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,14,ais,7,aad,1c,ais,1c,aad,1u,ais,c,aad,16,b0t,t,ais,1j,b0t,o,c6l,1c,cuy,8,e11,4,aad,16,ais,6,aad,2i,ais,6,aad,13,ais,9,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,13,ais,9,aad,2i,ais,6,aad,16,ais,6,aad,2i,ais,6,aad,13,ais,9,aad,16,ais,6,aad,16,ais,6,aad,16,ais,c,aad,2c,ais,6,aad,3n,bko,7,fyp,t,aad,39,ais,4,aad,3o,ais,b,aad,3w,ais,4,aad,3o,ais,b,aad,3q,ais,9,aad,3u,ais,6,aad,3c,ais,o,aad,3c,ais,o,aad,3c,ais,o,aad,3b,ais,p,aad,3c,ais,o,aad,3c,ais,1c,b0t,30,cuy,6,dm7,u,ais,2c,b0t,v,c6l,5,aad,2i,ais,6,aad,18,ais,3,aad,2i,ais,6,aad,16,ais,6,aad,2o,ais,10,b0t,1i,ais,6,aad,1g,b0t,11,c6l,6,aad,10,ais,b,aad,16,ais,6,aad,16,ais,6,aad,z,ais,d,aad,16,ais,6,aad,16,ais,c,aad,2a,ais,v,b0t,1i,aad,1i,ais,10,b0t,o,aad,3c,b0t,o,aad,3c,b0t,o,aad,3w,ais,4,aad,3c,b0t,o,aad,3c,b0t,o,aad,1u,ais,6,aad,1c,b0t,o,aad,3c,ais,o,aad,i,ais,6,aad,16,ais,6,aad,o,ais,o,b0t,o,aad,16,b0t,6,aad,1c,b0t,17,c6l,4,aad,16,b0t,6,aad,1d,b0t,15,c6l,4,aad,18,b0t,6,iio,1c,cuy,5c,b0t,o,ais,f,b0t,9,aad,2i,ais,6,aad,1o,b0t,20,bko,6,c6l,6,aad,o,ais,f,b0t,8,aad,16,ais,1i,aad,16,ais,c,aad,1u,ais,1c,aad,2o,c6l,o,b0t,o,aad,36,ais,6,aad,3i,ais,5,b0t,c,aad,3c,ais,i,b0t,u,aad,2o,ais,i,b0t,6,aad,10,b0t,c,aad,10,b0t,c,ais,10,exm,c,h5a,13,l1k',
+  CUT: [18, 44, 60, 73, 93], END: 99,
+};
+function pianoScoreT() {
+  const r = mulberry32(seedUsed * 31 + 17), ph = r() * 6.28, ph2 = r() * 6.28, E = [], tEnd = TOTAL - 8, BAR = 144, nums = s => s.split(',').map(x => parseInt(x, 36)), T = nums(TP.T), D = nums(TP.N);
+  const eu = [0], us = [T[0] * 100], cs = [0];   // tempo events: unit, us per quarter, seconds at that unit
+  for (let i = 1; i < T.length; i += 2) { const k = eu.length - 1, u = eu[k] + T[i]; cs.push(cs[k] + (u - eu[k]) * 10 / 480 * us[k] / 1e6); eu.push(u); us.push(T[i + 1] * 100); }
+  const os = x => { let i = eu.length - 1; while (i > 0 && eu[i] > x) i--; return cs[i] + (x - eu[i]) * 10 / 480 * us[i] / 1e6; };   // seconds of the performance at unit x
+  const nt = []; for (let i = 0, x = 0; i < D.length; i += 5) { x += D[i]; const pk = D[i + 3]; nt.push({ x, d: D[i + 1], ex: D[i + 2], m: Math.floor(pk / 3) + 21, k: 'mbc'[pk % 3], v: D[i + 4] }); }
+  const lastU = nt[nt.length - 1].x, avail = tEnd - 1.5 - 5, gap = 1;
+  const segs = c => c ? [[BAR, (c - 1) * BAR], [(TP.END - 1) * BAR, lastU + 1]] : [[BAR, lastU + 1]];
+  const len = c => segs(c).reduce((s, [a, b]) => s + os(Math.min(b, lastU)) - os(a), 0) + (c ? gap : 0);
+  const opts = [0, ...TP.CUT.slice().reverse()]; let cut = opts.find(c => len(c) * .88 <= avail); if (cut === undefined) cut = TP.CUT[0];   // the longest version that fits
+  const sc = clamp(avail / len(cut), .88, 1.3), S = segs(cut), tcur = [1.5];
+  S.forEach(([a, b], i) => tcur.push(tcur[i] + (os(Math.min(b, lastU)) - os(a)) * sc + gap));
+  const rub = s => .35 * Math.sin(s * .061 + ph) + .2 * Math.sin(s * .173 + ph2), roll = {};
+  nt.forEach(n => (roll[n.x] = roll[n.x] || []).push(n)); Object.values(roll).forEach(g => { if (g.length > 2) g.sort((p, q) => p.m - q.m).forEach((n, j) => n.lag = j * (.012 + .012 * r())); });
+  S.forEach(([a, b], i) => nt.forEach(n => {
+    if (n.x < a || n.x >= b) return;
+    const o = os(n.x), o0 = os(a), t = tcur[i] + (o - o0) * sc + rub(o) - rub(o0) + (n.lag || 0) + (n.k === 'm' ? .008 + .014 * r() : 0) + (r() - .5) * .016;
+    if (t >= tEnd) return;
+    const ring = os(n.x + n.d + n.ex) - o, fin = n.x >= lastU - 40, dyn = (1 + .07 * Math.sin(o * .35 + ph)) * (n.x > lastU - 600 ? .9 : 1);   // phrase breathing, the last bars fade a little
+    const v = clamp((.14 + .62 * clamp((n.v - 20) / 50, 0, 1.2)) * dyn * (n.k === 'm' ? 1.04 : 1) * (.96 + .08 * r()), .08, .9) * (.75 + .25 * energy(t / TOTAL));
+    E.push({ t, m: n.m, v, k: n.k, r: fin ? 2.6 : clamp(.7 + ring * .45, .9, 2.2) * (.92 + .16 * r()), l: (os(n.x + n.d) - o) * sc });
+  }));
+  return E.sort((p, q) => p.t - q.t);
+}
 function pianoScore() {
   if (MUSIC === 'gnossienne2') return pianoScore2();
   if (MUSIC === 'gnossienne3') return pianoScore3();
+  if (MUSIC === 'tempest') return pianoScoreT();
   const P = PIANO[MUSIC], r = mulberry32(seedUsed * 31 + 7), pick = a => a[Math.floor(r() * a.length)], ph = r() * 6.28, E = [], tEnd = TOTAL - 8, bt = [0];
   for (let i = 0; i < TOTAL / (P.beat * .8) + 12; i++) bt.push(bt[i] + P.beat * (1 + .1 * Math.sin(i * .21 + ph) + .06 * Math.sin(i * .53 + 2 * ph) + .04 * (r() - .5)));   // rubato
   const tb = x => { const i = Math.floor(x); return 1.5 + bt[i] + (bt[i + 1] - bt[i]) * (x - i); };
@@ -1393,11 +1429,11 @@ const calm = t => LIVE || hcOn() ? 1 : LOC ? smooth(6, rampT(), t) : Math.pow(cl
 let VPC = null;
 function vplan() {
   if (LIVE || LOC || SHOW || CTRL) return [];
-  const src = MUSIC === 'electro' ? window.ELECTRO_PLAN : MUSIC === 'drone' ? window.DRONEPLAN : MUSIC === 'chiptune' || MUSIC === 'chiptune2' ? window.CHIPPLAN : MUSIC === 'gamelan' ? window.GAMELANPLAN : null;
+  const src = MUSIC === 'electro' ? window.ELECTRO_PLAN : MUSIC === 'electro2' ? window.ELECTRO2_PLAN : MUSIC === 'electro3' ? window.ELECTRO3_PLAN : MUSIC === 'drone' ? window.DRONEPLAN : MUSIC === 'chiptune' || MUSIC === 'chiptune2' ? window.CHIPPLAN : MUSIC === 'midi1' ? window.MIDI1_PLAN : MUSIC === 'gamelan' ? window.GAMELANPLAN : null;
   if (!src || !src.length) return [];
   if (VPC && VPC.src === src && VPC.tot === TOTAL) return VPC.p;
   const K = { intro: .25, build: .55, drop: .9, break: .3, outro: .2 };
-  const p = src.map((x, i) => ({ a: i ? x.from : 0, b: i === src.length - 1 ? TOTAL : src[i + 1].from, e: x.kind ? K[x.kind] ?? .5 : clamp(energy(clamp((x.from + x.to) / 2 / TOTAL)) + (x.eo || 0)) }));
+  const p = src.map((x, i) => ({ a: i ? x.from : 0, b: i === src.length - 1 ? TOTAL : src[i + 1].from, e: x.e ?? (x.kind ? K[x.kind] ?? .5 : clamp(energy(clamp((x.from + x.to) / 2 / TOTAL)) + (x.eo || 0))) }));
   VPC = { src, tot: TOTAL, p }; return p;
 }
 // energy of the music's current section (smoothed 4 s at each boundary), null without a plan; pure function of t
@@ -2023,7 +2059,7 @@ function buildAudio(a, t0, off = 0) {
   const note = i => ROOT + SC[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
   const master = a.createGain(), fi = Math.min(5, TOTAL * .15), fo = Math.min(10, TOTAL * .25);
   const ts = t0 + off;   // song time 'off' happens now when seeking
-  const TRIM = ARC.piano || MUSIC === 'chiptune' || MUSIC === 'chiptune2' || MUSIC === 'drone' ? 1 : MUSIC === 'gamelan' ? 2 : MUSIC === 'electro' ? .72 : .8;   // the richer kit voices are ~2-3 dB hotter than the old plain ones
+  const TRIM = ARC.piano || MUSIC === 'chiptune' || MUSIC === 'chiptune2' || MUSIC === 'drone' || MUSIC === 'electro2' || MUSIC === 'electro3' ? 1 : MUSIC === 'midi1' ? .85 : MUSIC === 'gamelan' ? 2 : MUSIC === 'electro' ? .72 : .8;   // the richer kit voices are ~2-3 dB hotter than the old plain ones
   master.gain.setValueAtTime(0, ts); master.gain.linearRampToValueAtTime(.9 * TRIM, ts + (off ? 1.2 : fi));
   master.gain.setValueAtTime(.9 * TRIM, Math.max(ts + .01, t0 + TOTAL - fo)); master.gain.linearRampToValueAtTime(0, Math.max(ts + .02, t0 + TOTAL - .3));   // clamped: a seek into the last seconds must not schedule at a negative time
   const comp = a.createDynamicsCompressor(); comp.threshold.value = -16; comp.ratio.value = 4; comp.knee.value = 14;
@@ -2040,20 +2076,28 @@ function buildAudio(a, t0, off = 0) {
   const env = (t, at, pk, dec, dest) => { const g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(pk, t + at); g.gain.exponentialRampToValueAtTime(.0001, t + at + dec); g.connect(dest); return g; };
 
   if (ARC.piano) {   // piano: additive partials (slight inharmonicity), fast attack, long decay, hammer noise, reverb send; no drone/heartbeat/arps
-    const pn = (t, m, v, rs = 1) => {
-      const f = mtof(m), tau = lerp(3.4, .8, clamp((m - 36) / 60)) * rs, K = Math.min(m < 50 ? 8 : m < 70 ? 6 : 4, MOBILE ? 5 : 8), lp = a.createBiquadFilter(), out = a.createGain();
+    const live = [], onsets = [], CAP = MOBILE ? 120 : 240;   // sounding notes (oldest first) and recent onset times: oscillator cap + density-aware voices (the slow styles peak near 225 oscillators, below the cap)
+    const pn = (t, m, v, rs = 1, dl = 9) => {
+      t = Math.max(t, a.currentTime);
+      while (onsets.length && onsets[0] < t - 1) onsets.shift();
+      onsets.push(t); const dd = clamp((onsets.length - 8) / 12);   // 0 up to 8 notes in the last second (the slow styles never leave it), 1 at 20: fewer partials, one string, shorter decay
+      const f = mtof(m), tau = lerp(3.4, .8, clamp((m - 36) / 60)) * rs * (1 - .5 * dd), K0 = Math.min(m < 50 ? 8 : m < 70 ? 6 : 4, MOBILE ? 5 : 8), lt = dl < 9, K1 = lt ? Math.min(K0, m < 60 ? 5 : 4) : K0, K = dd ? Math.max(2, Math.round(K1 * (1 - .55 * dd))) : K1, one = dl < .2 || dd > .5 || lt && m >= 60, lp = a.createBiquadFilter(), out = a.createGain(), oscs = [];
       lp.type = 'lowpass'; lp.frequency.value = 900 + 4500 * v + f; out.gain.value = v * .2; lp.connect(out); out.connect(master); send(out, .32);
-      for (let k = 1; k <= K; k++) for (let s = 0; s < (k === 1 && !MOBILE ? 2 : 1); s++) {   // two slightly detuned strings on the fundamental
-        const o = a.createOscillator(), g = a.createGain(), A = (k === 1 ? .55 : .9 / Math.pow(k, 1.15)) * (k > 2 ? .5 + v : 1);
+      let end = t; const es = [];
+      for (let k = 1; k <= K; k++) for (let s = 0; s < (k === 1 && !MOBILE && !one ? 2 : 1); s++) {   // two slightly detuned strings on the fundamental
+        const o = a.createOscillator(), g = a.createGain(), A = (k === 1 ? (one ? .7 : .55) : .9 / Math.pow(k, 1.15)) * (k > 2 ? .5 + v : 1);
         o.frequency.value = f * k * Math.sqrt(1 + 3e-4 * k * k * (f > 260 ? 1.6 : 1)); o.detune.value = s ? 1.6 : -1.6;
         g.gain.setValueAtTime(0, t); g.gain.linearRampToValueAtTime(A, t + .004); const tk = tau / (1 + .55 * (k - 1)); g.gain.setTargetAtTime(0, t + .004, tk);
-        o.connect(g); g.connect(lp); o.start(t); o.stop(t + Math.min(tau * 5, 12, .1 + 8 * tk));   // stop once inaudible (-70 dB): the upper partials die in ~1 s, so far fewer live oscillators
+        o.connect(g); g.connect(lp); o.start(t); const e = t + Math.min(tau * 5, 12, .1 + 8 * tk); o.stop(e); end = Math.max(end, e); oscs.push(o); es.push(e);   // stop once inaudible (-70 dB): the upper partials die in ~1 s, so far fewer live oscillators
       }
       const n = noise(t, .06), bp = a.createBiquadFilter(), ng = a.createGain(); bp.type = 'bandpass'; bp.frequency.value = Math.min(f * 4, 5000); bp.Q.value = 1.2;   // hammer
       ng.gain.setValueAtTime(v * .25, t); ng.gain.setTargetAtTime(0, t, .012); n.connect(bp); bp.connect(ng); ng.connect(out);
+      for (let i = live.length; i--;) if (live[i].end <= t) live.splice(i, 1);
+      for (let c = live.reduce((q, o) => q + o.es.filter(e => e > t).length, oscs.length), lim = CAP - 90 * dd - (lt ? 60 : 0); c > lim && live.length;) { const o = live.shift(); c -= o.es.filter(e => e > t).length; o.out.gain.setValueAtTime(o.v, t); o.out.gain.setTargetAtTime(0, t, .03); o.oscs.forEach(x => { if (o.end > t + .25) x.stop(t + .25); }); }   // voice cap: the oldest notes fade out in ~0.1 s
+      live.push({ end, out, oscs, es, v: v * .2 });
     };
     let pi = NOTES.findIndex(n => n.t >= off); if (pi < 0) pi = NOTES.length;
-    return function pump() { const hz = a.currentTime + (MOBILE ? 8 : 30); while (pi < NOTES.length && t0 + NOTES[pi].t < hz) { const n = NOTES[pi++]; if (t0 + n.t > a.currentTime - .05) pn(Math.max(t0 + n.t, a.currentTime), n.m, n.v, n.r); } };
+    return function pump() { const hz = a.currentTime + (MOBILE ? 8 : 30); while (pi < NOTES.length && t0 + NOTES[pi].t < hz) { const n = NOTES[pi++]; if (t0 + n.t > a.currentTime - .05) pn(Math.max(t0 + n.t, a.currentTime), n.m, n.v, n.r, n.l); } };
   }
 
   // [[KIT]] shared instrument kit for electro + ambient (chiptune/drone/piano keep their own voices). makeKit(dest, nBase): dest = tonal bus, nBase = persistent oscillators of the caller.
@@ -2531,6 +2575,539 @@ function buildAudio(a, t0, off = 0) {
     let nk = 0; while (nk < nBars - 1 && B[4 * (nk + 1)] <= off) nk++;
     return function pump() {
       const hz = a.currentTime + (MOBILE ? 8 : 30);
+      while (nk < nBars && t0 + B[4 * nk] < hz && B[4 * nk] < TOTAL) schedBar(nk++);
+    };
+  }
+  // (spacer)
+  // [[STYLE midi1]]: derived from three Eurythmics MIDI files (assets/midi/eur), nothing copied. From "Sweet Dreams": the driving 8th-note bass in the low register (a 2-bar riff cell: tonic bar, then a bar that changes chord
+  // in its second half, with tonic "tags" on the off 8ths), the root/octave pump of the verse, four-on-the-floor kick + backbeat, the bass dropping out in the "chorus" (pad + 16th shaker only), the section pacing
+  // (riff alone -> verse -> riff + chords -> chorus -> breakdown -> riff). From "Love is a Stranger": octave-alternating 8th bass, constant 16th shaker. From "Here Comes the Rain": plain 8th root pulses + off-beat chord stabs.
+  // Different key (not C / D / F), mode, chord order and voicing; the melody is a fresh MT.period in a narrow range. Warm voices only (rhodes / kalimba / marimba / harp lead, round bass, soft saw pad, noise + sine percussion).
+  // Deep bass (G1-F#3), pad in the middle (C3-E4), lead A3-D5; only the shaker / ticks are high. PERSISTENT nodes (one bass, 3 pad voices, one lead, kick, tone, noise), pure function of (seed, bar), window.MIDI1_PLAN.
+  if (MUSIC === 'midi1') {
+    const SP = mulberry32(Math.floor(seedUsed * 1000) * 17 + 86420);   // plan rng (independent of `rng`, which is reseeded on every seek)
+    const cc = (x, lo, hi) => Math.min(hi, Math.max(lo, x)), spick = arr => arr[Math.floor(SP() * arr.length)], into = (m, lo, hi) => { while (m > hi) m -= 12; while (m < lo) m += 12; return m; };
+    const B = BEATS.length > 8 ? BEATS.slice() : (() => { const r = []; for (let s = 0; s < TOTAL; s += 60 / bpmAt(s / TOTAL)) r.push(s); return r; })();
+    const p0 = B[1] - B[0], pl = B[B.length - 1] - B[B.length - 2];
+    while (B[0] >= p0) B.unshift(B[0] - p0);
+    while (B[B.length - 1] < TOTAL + 6) B.push(B[B.length - 1] + pl);
+    const nBars = Math.floor((B.length - 1) / 4) - 1;
+    const stT = (k, s) => { const bi = 4 * k + (s >> 2); return B[bi] + (s & 3) * (B[bi + 1] - B[bi]) / 4; };
+    // — section plan (like chiptune2, a bit shorter sections like the 6-8 bar blocks of the source): on 4-bar boundaries, at least 8 bars
+    const nSecT = cc(Math.round(TOTAL / (26 + SP() * 14)), 3, 14), kB = [0];
+    for (let i = 1; i < nSecT; i++) {
+      const tt = TOTAL * (i + (SP() - .5) * .3) / nSecT; let j = 0; while (j < B.length - 1 && B[j] < tt) j++;
+      const k = Math.max(Math.round(j / 16) * 4, kB[kB.length - 1] + 8); if (k > nBars - 4 || B[4 * k] > TOTAL - 8) break; kB.push(k);
+    }
+    kB.push(nBars);
+    const SEC = [], eAt = t => energy(cc(t / TOTAL, 0, 1)), n0 = kB.length - 1;
+    for (let i = 0; i < n0; i++) {
+      const tA = B[4 * kB[i]], tB = i === n0 - 1 ? TOTAL : B[4 * kB[i + 1]], e = eAt((tA + tB) / 2);
+      let role = i === 0 ? 'intro' : i === n0 - 1 ? 'outro' : e > .62 ? 'drop' : e < .3 ? 'break' : 'build';
+      if (i > 0 && i < n0 - 1) { const pv = SEC[i - 1].role; if (pv === 'intro' && role === 'break') role = 'build'; if (pv === 'break' && role === 'break') role = 'build'; if (pv === 'build' && e >= .45) role = 'drop'; }
+      SEC.push({ i, k0: kB[i], k1: kB[i + 1], tA, tB, e, role });
+    }
+    if (n0 >= 3 && !SEC.some(s => s.role === 'drop')) { let b = 1; for (let i = 1; i < n0 - 1; i++) if (SEC[i].e > SEC[b].e) b = i; SEC[b].role = 'drop'; }
+    // — piece-level choices (same for the whole play): tonic (E F# G A Bb B: never the C / D / F of the sources), home mode, lead voice, two themes, backbeat voice
+    const TON = 36 + spick([4, 6, 7, 9, 10, 11]), homeMode = spick(['dorian', 'dorian', 'phrygian', 'aeolian']), LEAD = spick(['rhodes', 'kalimba', 'marimba', 'harp']), SNR = spick(['snare', 'clap', 'rim']);
+    const per = r => { const A = MT.motif(r, -1, 5), Bm = MT.motif(r, -1, 5), how = () => MT.rp(r, ['tail', 'seq', 'inv', 'orn', 'shift', 'thin']);   // a narrow, singable range
+      return [A, MT.vary(r, A, how()), Bm, MT.cad(MT.vary(r, Bm, 'tail'), 4), MT.vary(r, A, 'orn'), MT.vary(r, A, how()), MT.vary(r, Bm, how()), MT.cad(A, 0)]; };
+    const TH = [per(mulberry32(Math.floor(SP() * 1e6))), per(mulberry32(Math.floor(SP() * 1e6)))];
+    // riff cells: [bar 1 root degree, [bar 2 first half, bar 2 second half]] (the source: i | VI-V); drop-outs in `turn` every other pair
+    const RC = [[0, [3, 4]], [0, [6, 5]], [0, [2, 6]], [0, [5, 3]], [0, [6, 4]], [0, [3, 6]], [0, [2, 3]]];
+    // bass patterns [step, kind, length in steps]: r root, l root an octave below the line, o octave, f fifth, t third, p key tonic (the "tag" that returns home)
+    const BP = [[[0, 'l', 2], [2, 'r', 2], [4, 'r', 2], [6, 'p', 2], [8, 'r', 2], [10, 't', 2], [12, 'r', 2], [14, 'p', 2]],           // 0 drive: 8ths with tonic tags (Sweet Dreams)
+      [[0, 'r', 2], [2, 'o', 2], [4, 'r', 2], [6, 'o', 2], [8, 'r', 2], [10, 'o', 2], [12, 'r', 2], [14, 'o', 2]],                    // 1 octave 8ths (Love is a Stranger)
+      [[0, 'r', 3], [4, 'o', 2], [7, 'r', 3], [10, 'o', 2], [12, 'f', 2], [14, 'o', 2]],                                              // 2 pump (verse of Sweet Dreams, shifted)
+      [[0, 'r', 8], [8, 'f', 6], [14, 'o', 2]],                                                                                       // 3 pedal
+      [[0, 'r', 2], [2, 'r', 2], [4, 'r', 2], [6, 'r', 2], [8, 'r', 2], [10, 'r', 2], [12, 'r', 2], [14, 'f', 2]],                    // 4 plain 8ths (Here Comes the Rain)
+      [[0, 'l', 2], [3, 'r', 1], [4, 'r', 2], [7, 'r', 1], [8, 'f', 2], [10, 'r', 2], [12, 'p', 2], [15, 'o', 1]]];                   // 5 syncopated
+    const PCP = [[3, 6, 11, 14], [2, 5, 10, 13], [1, 7, 9, 15], [3, 7, 11, 15]], STAB = [[4, 6, 10, 12], [2, 6, 10, 14], [3, 6, 11, 14], [4, 7, 10, 13]], HATS = ['s', 'o', 'q', 'o'];
+    let prevKey = 0, drops = 0;
+    for (const S of SEC) {
+      const R = S.role, OFF = { intro: [-.35, .3], build: [-.15, .3], drop: [.15, 0], break: [-.4, .1], outro: [-.05, -.4] }[R];
+      S.eOff = OFF[0]; S.eRamp = OFF[1]; S.seed = Math.floor(SP() * 1e6);
+      S.mode = R === 'build' || R === 'break' ? spick([homeMode, 'dorian', 'aeolian']) : homeMode;
+      let key = 0; if (R === 'drop' && S.i > 1 && SP() < .35) key = 2;   // the 'lift': the same riff one tone higher
+      S.key = prevKey = key;
+      S.cellM = R === 'intro' || R === 'drop' || R === 'outro';   // the riff sections use the 2-bar cell, build / break use a 4-bar progression
+      S.rc = spick(RC); S.turn = spick([4, 6, 2, 4]); S.prog = MT.prog(SP, S.mode); S.sev = SP() < .6;
+      S.bass = R === 'intro' ? spick([0, 0, 4, 1]) : R === 'build' ? spick([2, 2, 1]) : R === 'drop' ? spick([0, 0, 5, 1]) : R === 'outro' ? spick([4, 3, 0]) : -1;   // break: the bass drops out, as in the chorus of the source
+      S.padM = R === 'intro' ? 'off' : R === 'build' ? spick(['stab', 'stab', 'hold']) : R === 'drop' ? spick(['hold', 'hold', 'stab']) : 'hold'; S.stab = spick(STAB);
+      S.drum = Math.floor(SP() * 4); S.pat = spick(PCP); S.pcv = spick(['wood', 'rim', 'conga']);
+      S.th = R === 'break' ? 1 : R === 'drop' ? drops++ % 2 : 0; S.phrase = TH[S.th];
+    }
+    for (const S of SEC) S.fill = MT.fill(SP, SEC[S.i + 1] ? SEC[S.i + 1].role : 'outro');
+    window.MIDI1_PLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1), key: x.key, mode: x.mode, bass: x.bass, pad: x.padM, drum: x.drum, theme: x.th ? 'B' : 'A', prog: (x.cellM ? [x.rc[0], ...x.rc[1]] : x.prog).join('') }));
+    window.__midi1Piece = { tonic: TON % 12, mode: homeMode, lead: LEAD, backbeat: SNR };
+    if (Q.has('debug')) console.log('MIDI1 plan', JSON.stringify(window.__midi1Piece), JSON.stringify(window.MIDI1_PLAN));
+    // — persistent voices. Graph: pad + lead -> duck (the kick dips them) -> master; bass -> master; drums -> master.
+    const END = t0 + TOTAL + 1, osc = (ty, f) => { const o = a.createOscillator(); o.type = ty; o.frequency.value = f; o.start(ts); o.stop(END); return o; };
+    const duck = a.createGain(), dm = a.createGain(); dm.gain.value = .9; duck.connect(master); dm.connect(master);
+    // bass: a saw through a LOW-Q lowpass whose cutoff falls (the pluck, warm not buzzy) + a sine sub + (after the 'round bass' recipe of the sound lab)
+    const bT = osc('sawtooth', 55), bS = osc('sine', 55), bL = a.createBiquadFilter(), bG = a.createGain(), bSG = a.createGain();
+    bL.type = 'lowpass'; bL.Q.value = .6; bL.frequency.value = 600; bG.gain.value = 0; bSG.gain.value = .55;
+    bT.connect(bL); bL.connect(bG); bS.connect(bSG); bSG.connect(bG); bG.connect(master);
+    // pad: 3 voices (a detuned saw each) -> one lowpass -> one gain; chord tones are set per voice, in time order
+    const pL = a.createBiquadFilter(), pG = a.createGain(); pL.type = 'lowpass'; pL.Q.value = .4; pL.frequency.value = 900; pG.gain.value = 0;
+    const pads = [0, 1, 2].map(i => { const o1 = osc('sawtooth', 200); o1.detune.value = [-9, 2, 10][i]; o1.connect(pL); return o1; });
+    pL.connect(pG); pG.connect(duck);
+    // lead: carrier + FM modulator + one partial (rhodes: FM bell that decays; kalimba / marimba: sine + a short partial; harp: triangle with a falling lowpass); monophonic
+    const VOX = { rhodes: { ty: 'sine', fm: 1.5, pr: 7, pl: .1, pd: .07, lp: 4, lb: 1500, lv: 1 }, kalimba: { ty: 'sine', fm: 0, pr: 5.4, pl: .22, pd: .09, lp: 6, lb: 0, lv: 1.1 },
+      marimba: { ty: 'sine', fm: 0, pr: 4, pl: .2, pd: .06, lp: 8, lb: 0, lv: 1 }, harp: { ty: 'triangle', fm: 0, pr: 2, pl: 0, pd: .05, lp: 6, lb: 0, lv: 1.1 } }[LEAD];
+    const mC = osc(VOX.ty, 220), mM = VOX.fm ? osc('sine', 220) : null, mMG = a.createGain(), mP = VOX.pl ? osc('sine', 440) : null, mPG = a.createGain(), mG = a.createGain(), mL = a.createBiquadFilter(), mB = a.createGain();   // modulator / partial only for the voices that use them
+    mMG.gain.value = 0; mPG.gain.value = 0; mG.gain.value = 0; mL.type = 'lowpass'; mL.Q.value = .5; mL.frequency.value = 3000; mB.gain.value = .9;
+    if (mM) { mM.connect(mMG); mMG.connect(mC.frequency); } mC.connect(mG); if (mP) mP.connect(mPG); mPG.connect(mL); mG.connect(mL); mL.connect(mB); mB.connect(duck);
+    // drums: a sine kick / tom, one triangle 'tone' (snare body, rim, wood, conga), one noise source with two bandpasses (backbeat, shaker)
+    const kO = osc('sine', 60), kG = a.createGain(), tO = osc('triangle', 300), tG = a.createGain(); kG.gain.value = 0; tG.gain.value = 0; kO.connect(kG); kG.connect(dm); tO.connect(tG); tG.connect(dm);
+    const nsrc = a.createBufferSource(); nsrc.buffer = nb; nsrc.loop = true; nsrc.start(ts, 0); nsrc.stop(END);
+    const bpS = a.createBiquadFilter(), snG = a.createGain(), bpH = a.createBiquadFilter(), hG = a.createGain(); bpS.type = 'bandpass'; bpS.Q.value = .7; bpS.frequency.value = 1800; bpH.type = 'bandpass'; bpH.frequency.value = 5800; bpH.Q.value = .55; snG.gain.value = 0; hG.gain.value = 0;
+    nsrc.connect(bpS); bpS.connect(snG); snG.connect(dm); nsrc.connect(bpH); bpH.connect(hG); hG.connect(dm);
+    if (!MOBILE) { send(pG, .1); send(mB, .12); send(snG, .08); }
+    // — note helpers (events of one AudioParam are always scheduled in time order; nothing before time 0)
+    const Z = x => Math.max(0, x);
+    const bnote = (t, m, len, v, acc) => {
+      const f = mtof(m), g = bG.gain;
+      bT.frequency.setValueAtTime(f, t); bS.frequency.setValueAtTime(f, t);
+      bL.frequency.setValueAtTime(cc(f * (acc ? 9 : 6), 300, 1400), t); bL.frequency.setTargetAtTime(Math.max(f * 1.8, 130), t + .006, Math.max(.05, len * .3));
+      g.setTargetAtTime(v, t, .004); g.setTargetAtTime(v * .55, t + .05, Math.max(.06, len * .45)); g.setTargetAtTime(0, t + len * .85, .012);
+    };
+    const mnote = (t, m, d, v) => {   // d = note length in s
+      const f = mtof(m), L = cc(.4 + d * .8, .5, 1.4), g = mG.gain, tau = L / 7;
+      g.setTargetAtTime(0, Z(t - .007), .0015);
+      mC.frequency.setValueAtTime(f, t); if (mM) { mM.frequency.setValueAtTime(f, t); mMG.gain.setValueAtTime(f * VOX.fm, t); mMG.gain.setTargetAtTime(f * .1, t, L * .2); }
+      if (mP) mP.frequency.setValueAtTime(f * VOX.pr, t);
+      mL.frequency.setValueAtTime(cc(f * VOX.lp + VOX.lb, 700, 7000), t); if (LEAD === 'harp') mL.frequency.setTargetAtTime(Math.max(f * 1.8, 300), t + .01, .15);
+      g.setValueAtTime(0, t); g.setTargetAtTime(v * VOX.lv, t, .002); g.setTargetAtTime(0, t + .012, tau);
+      if (mP) { mPG.gain.setValueAtTime(v * VOX.pl, t); mPG.gain.setTargetAtTime(0, t + .001, VOX.pd * .4); }
+    };
+    const kick = (t, v, soft) => { kO.frequency.setValueAtTime(soft ? 105 : 135, t); kO.frequency.setTargetAtTime(44, t + .002, .035); kG.gain.setTargetAtTime(v, t, .0012); kG.gain.setTargetAtTime(0, t + .012, .075); duck.gain.setTargetAtTime(.55, t, .004); duck.gain.setTargetAtTime(1, t + .03, .11); };
+    const tom = (t, v, pf) => { kO.frequency.setValueAtTime(200 * pf, t); kO.frequency.setTargetAtTime(130 * pf, t + .002, .05); kG.gain.setTargetAtTime(v, t, .0012); kG.gain.setTargetAtTime(0, t + .014, .07); };
+    const tone = (t, f0, f1, tau, v, dec) => { tO.frequency.setValueAtTime(f0, t); tO.frequency.setTargetAtTime(f1, t, tau); tG.gain.setTargetAtTime(v, t, .0008); tG.gain.setTargetAtTime(0, t + .004, dec); };
+    const snare = (t, v, ty) => {
+      if (ty === 'clap') { bpS.frequency.setValueAtTime(1400, t); for (let j = 0; j < 3; j++) { snG.gain.setValueAtTime(v * .7, t + j * .012); snG.gain.setTargetAtTime(0, t + j * .012 + .002, .005); } snG.gain.setValueAtTime(v, t + .036); snG.gain.setTargetAtTime(0, t + .037, .06); }
+      else if (ty === 'rim') { tone(t, 900, 820, .01, v * .9, .018); bpS.frequency.setValueAtTime(3500, t); snG.gain.setValueAtTime(v * .35, t); snG.gain.setTargetAtTime(0, t + .002, .01); }
+      else { bpS.frequency.setValueAtTime(3000, t); bpS.frequency.setTargetAtTime(1600, t, .04); snG.gain.setValueAtTime(v, t); snG.gain.setTargetAtTime(0, t + .01, .06); tone(t, 190, 140, .03, v * .5, .035); }
+    };
+    const hat = (t, v, dec = .03) => { hG.gain.setValueAtTime(0, t); hG.gain.setTargetAtTime(v, t, .004); hG.gain.setTargetAtTime(0, t + .012, dec); };   // a shaker: soft attack, nothing metallic
+    const tick = (t, ty, v) => { if (ty === 'wood') tone(t, 820, 780, .02, v, .02); else if (ty === 'rim') { tone(t, 900, 820, .01, v * .8, .016); } else tone(t, 360, 250, .05, v, .06); };
+    // pad voicing: 3rd, 5th and 7th (or the root's octave) stacked close, the lowest placement that keeps the top at or below E4 (pure function of the chord, so a seek resumes the same voicing)
+    const voicing = (T, mode, cr, sev) => {
+      const ds = sev ? [2, 4, 6] : [2, 4, 7];
+      for (let F = 48; F <= 58; F++) { let p = F - 1; const v = ds.map(x => { let m = T + MT.st(mode, cr + x); while (m <= p) m += 12; while (m - 12 > p) m -= 12; return p = m; }); if (v[2] <= 64 || F === 58) return v; }
+    };
+    const secAt = k => SEC.find(s => k >= s.k0 && k < s.k1) || SEC[SEC.length - 1];
+    const GB = .6, GK = .55, GP = 6, GL = 3.2, GH = 4;   // layer gains (bass, kick, pad, lead, shaker): the bass stays deep and first, but the middle voices must be heard
+    const schedBar = k => {
+      const S = secAt(k), lb = k - S.k0, nb = S.k1 - S.k0, br = mulberry32(S.seed * 131 + lb * 17 + 5), tbar = B[4 * k], NX = SEC[S.i + 1];
+      const pr = cc((tbar - S.tA) / Math.max(1, S.tB - S.tA), 0, 1), role = S.role, brk = role === 'break';
+      const d = cc(Math.max(.14, energy(tbar / TOTAL) * .7 + .2 + S.eOff + S.eRamp * pr), 0, 1), vs = .4 + .75 * d;
+      const isFill = lb === nb - 1 && !!NX, FL = isFill ? MT.FILLS[S.fill] : null, stop = isFill && S.fill === 'stop', minorFill = !isFill && lb % 4 === 3 && d > .5, mf = Math.floor(br() * 3);
+      const pb = lb % 8, rep = Math.floor(lb / 8), T = TON + S.key, P = dd => T + MT.st(S.mode, dd), DRM = HATS[S.drum];
+      const chorus = role === 'drop' && nb >= 20 && lb >= nb - 9 && lb < nb - 1;   // as in the source: after the riff the bass drops out for ~8 bars (pad + 16th shaker + kick), then a fill and the riff comes back
+      const bp = S.bass >= 0 && !chorus ? BP[S.bass] : null, hold = brk || chorus;
+      const chordAt = s => {
+        if (!S.cellM) return S.prog[lb % S.prog.length];
+        if (!(lb & 1)) return S.rc[0];
+        return s < 8 ? S.rc[1][0] : (lb >> 1) & 1 ? S.turn : S.rc[1][1];
+      };
+      // lead: the period's bar, varied on the way back round; sparse in the breaks and the build
+      let ev = S.phrase[pb];
+      if (rep % 2 === 1) ev = MT.vary(br, ev, MT.rp(br, ['orn', 'tail', 'same', 'thin']));
+      if (brk || role === 'build') ev = ev.filter(e => e.s % 4 === 0 || e.l >= 4).map(e => ({ ...e, l: Math.min(8, e.l * 1.5) }));
+      const leadOn = d > (brk ? .2 : .3) && (role !== 'intro' || pr > .55);
+      const LN = ev.map(e => {
+        const cr = chordAt(e.s), dg = e.s % 8 === 0 || e.l >= 6 || e.cad ? MT.fit(e.d, cr, S.sev) : e.d;
+        return { s: e.s, m: T + 24 + MT.st(S.mode, dg), len: stT(k, Math.min(16, e.s + e.l)) - stT(k, e.s), acc: e.s % 4 === 0 };
+      }).filter(n => !(isFill && n.s >= 8));
+      if (LN.length) { const hi = Math.max(...LN.map(n => n.m)), lo = Math.min(...LN.map(n => n.m)); let o = 0; while (hi + o > 74) o -= 12; while (lo + o < 55 && hi + o + 12 <= 74) o += 12; LN.forEach(n => n.m += o); }   // the whole bar moves by octaves: the contour stays, the register stays low
+      // pad chord(s) of this bar
+      const halves = S.cellM && lb & 1 ? [0, 8] : [0];
+      if ((S.padM !== 'off' || chorus) && d > .15 && !stop) {
+        const lvP = GP * (hold ? .06 : .045) * (.5 + .8 * d);
+        pL.frequency.setTargetAtTime(cc(450 + 800 * d, 450, 1300), Z(tbar - .05), .2);
+        for (const h of halves) {
+          const tc = Z(t0 + stT(k, h) - .004), vo = voicing(T, S.mode, chordAt(h), S.sev);
+          if (S.padM === 'hold' || chorus) { const tc2 = Math.max(tc, a.currentTime); pads.forEach((p, i) => { const f = mtof(vo[i]); p.frequency.setTargetAtTime(f, tc2, .035); }); if (h === 0) pG.gain.setTargetAtTime(lvP * (isFill ? .6 : 1), tc2, .3); }
+          else for (const s of S.stab) { if (s < h || s >= h + 8 || (isFill && s >= 8)) continue; const ts2 = Z(t0 + stT(k, s) - .003); if (ts2 < Math.max(ts, a.currentTime) - .01) continue;
+            pads.forEach((p, i) => { const f = mtof(vo[i]); p.frequency.setValueAtTime(f, ts2); });
+            pG.gain.setTargetAtTime(lvP * 1.5, ts2, .006); pG.gain.setTargetAtTime(0, ts2 + .035, .1); }
+        }
+      } else if (S.padM === 'hold' || chorus || stop) { const tc = Z(t0 + stT(k, 0)); if (tc >= Math.max(ts, a.currentTime) - .05) pG.gain.setTargetAtTime(0, tc, .15); }
+      for (let s = 0; s < 16; s++) {
+        const t = t0 + stT(k, s), tn = t0 + stT(k, s + 1), sl = tn - t, cr = chordAt(s), fill = isFill && s >= 8, top = lb === 0 && S.i > 0 && s === 0;
+        if (t < Math.max(ts, a.currentTime) - .01) continue;
+        let hit = false;   // the tone oscillator is busy (snare body / fill tom): no tick on the same step
+        // drums: intro = kick alone, build = half-time kick + backbeat, drop = four on the floor + backbeat + shaker, break = soft floor + 16th shaker, outro = thinning
+        const flr = [0, 4, 8, 12].includes(s), kk = role === 'build' || role === 'outro' ? (d > .6 ? flr : s === 0 || s === 8) : flr;
+        if (top) { hat(t, .13, .3); kick(t, .5, 0); snare(t, .22, SNR); hit = true; }
+        else if (!fill && d > .25 && kk && !(brk && d < .3)) kick(t, GK * (hold ? .42 : .5) * (.8 + .2 * d), hold);
+        if (!fill && !top && d > .4 && !hold && role !== 'intro' && (s === 4 || s === 12)) { snare(t, .2 * vs, SNR); hit = true; }
+        if (!fill && NX && NX.role === 'drop' && lb === nb - 2 && s % 2 === 0 && s >= 8) { snare(t, .05 + .012 * s, 'snare'); hit = true; }   // the snare starts to build one bar before the fill
+        if (fill) { for (const h of FL) if (h[0] === s) { hit = true; if (h[1] === 'k') kick(t, .5 * h[2], 0); else if (h[1] === 's') snare(t, .24 * h[2], SNR === 'rim' ? 'snare' : SNR); else if (h[1] === 't') tom(t, .42 * h[2], h[3]); else hat(t, .07 * h[2], .1); } }
+        else if (minorFill && s >= 14) { if (mf === 0) { snare(t, .14, 'snare'); hit = true; } else if (mf === 1 && s === 15) { snare(t, .16, 'snare'); hit = true; } else if (mf === 2 && s === 14) hat(t, .05, .1); }
+        if (!fill && !top) {   // shaker: 16ths in the break and the drop (the 'closed hat' of the chorus), off-beat 8ths or 8ths otherwise; accents on the beat
+          const on = d > .3 && (brk || role === 'drop' ? (DRM === 's' || hold ? true : DRM === 'o' ? s % 4 === 2 : s % 2 === 0) : role === 'build' ? d > .45 && s % 4 === 2 : role === 'outro' ? s % 4 === 2 : d > .6 && s % 4 === 2);
+          if (on) hat(t, GH * (s % 4 === 0 ? .06 : s % 2 ? .028 : .045) * (hold ? .8 : 1));
+          if (!hit && d > .45 && S.pat.includes(s) && (role === 'drop' || role === 'build') && !(s === 4 || s === 12)) tick(t, S.pcv, .05 + .04 * d);
+        }
+        // bass (fill bar: the next section's tonic on step 8 = a pivot into the new key; a 'stop' fill leaves a hole)
+        if (bp && d > .12 && !(stop && s >= 8) && !(role === 'outro' && pr > .85)) {
+          if (fill) { if (s === 8) bnote(t, into(TON + NX.key, 31, 42), 6 * sl, GB * .3 * vs, 0); else if (s === 14) bnote(t, into(TON + NX.key, 31, 42) + 12, 2 * sl, GB * .24 * vs, 0); }
+          else { const b = bp.find(x => x[0] === s); if (b) {
+            const r0 = into(P(cr), 31, 42), kd = b[1], m = kd === 'l' ? r0 - (r0 - 12 >= 28 ? 12 : 0) : kd === 'o' ? r0 + 12 : kd === 'f' ? r0 + MT.st(S.mode, cr + 4) - MT.st(S.mode, cr) : kd === 't' ? r0 + MT.st(S.mode, cr + 2) - MT.st(S.mode, cr) : kd === 'p' ? into(T, 31, 42) : r0;
+            bnote(t, m, b[2] * sl, GB * (kd === 'l' ? .36 : .31) * vs, s === 0 || s === 8); } }
+        }
+        // lead
+        if (leadOn) for (const n of LN) if (n.s === s) mnote(t, n.m, n.len * .9, GL * .16 * vs * (n.acc ? 1 : .85));
+      }
+    };
+    let nk = 0; while (nk < nBars - 1 && B[4 * (nk + 1)] <= off) nk++;
+    return function pump() {
+      const hz = a.currentTime + (MOBILE ? 8 : 30);
+      while (nk < nBars && t0 + B[4 * nk] < hz && B[4 * nk] < TOTAL) schedBar(nk++);
+    };
+  }
+  // (spacer)
+  // [[STYLE electro2]]: a warmer, less "computer" electro next to `electro` (which stays as it was). No resonant saw / FM-bell / metallic-hat timbres: Rhodes, kalimba, marimba, flute, formant voice, soft saw,
+  // rounded bass, filtered-noise percussion (rim, wood, conga, shaker), swing. Two themes per play (MT.period: motif + variations) come back in other voices / keys / modes. Pure function of (seed, bar), window.ELECTRO2_PLAN.
+  if (MUSIC === 'electro2') {
+    const SP = mulberry32(Math.floor(seedUsed * 1000) * 11 + 24680);   // plan rng (independent of `rng`, which is reseeded on every seek)
+    const cc = (x, lo, hi) => Math.min(hi, Math.max(lo, x)), spick = arr => arr[Math.floor(SP() * arr.length)], into = (m, lo, hi) => { while (m > hi) m -= 12; while (m < lo) m += 12; return m; };
+    const B = BEATS.length > 8 ? BEATS.slice() : (() => { const r = []; for (let s = 0; s < TOTAL; s += 60 / bpmAt(s / TOTAL)) r.push(s); return r; })();
+    const p0 = B[1] - B[0], pl = B[B.length - 1] - B[B.length - 2];
+    while (B[0] >= p0) B.unshift(B[0] - p0);
+    while (B[B.length - 1] < TOTAL + 6) B.push(B[B.length - 1] + pl);
+    const nBars = Math.floor((B.length - 1) / 4) - 1;
+    const stT = (k, s) => { const bi = 4 * k + (s >> 2); return B[bi] + (s & 3) * (B[bi + 1] - B[bi]) / 4; };
+    // — section plan: ~1 per 35-55 s, on 4-bar boundaries, at least 8 bars
+    const nSecT = cc(Math.round(TOTAL / (35 + SP() * 20)), 3, 10), kB = [0];
+    for (let i = 1; i < nSecT; i++) {
+      const tt = TOTAL * (i + (SP() - .5) * .3) / nSecT; let j = 0; while (j < B.length - 1 && B[j] < tt) j++;
+      const k = Math.max(Math.round(j / 16) * 4, kB[kB.length - 1] + 8); if (k > nBars - 4 || B[4 * k] > TOTAL - 8) break; kB.push(k);
+    }
+    kB.push(nBars);
+    const SEC = [], eAt = t => energy(cc(t / TOTAL, 0, 1)), n0 = kB.length - 1;
+    for (let i = 0; i < n0; i++) {
+      const tA = B[4 * kB[i]], tB = i === n0 - 1 ? TOTAL : B[4 * kB[i + 1]], e = eAt((tA + tB) / 2);
+      let role = i === 0 ? 'intro' : i === n0 - 1 ? 'outro' : e > .62 ? 'drop' : e < .3 ? 'break' : 'build';
+      if (i > 0 && i < n0 - 1) { const pv = SEC[i - 1].role; if (pv === 'intro' && role === 'break') role = 'build'; if (pv === 'break' && role === 'break') role = 'build'; if (pv === 'build' && e >= .45) role = 'drop'; }
+      SEC.push({ i, k0: kB[i], k1: kB[i + 1], tA, tB, e, role });
+    }
+    if (n0 >= 3 && !SEC.some(s => s.role === 'drop')) { let b = 1; for (let i = 1; i < n0 - 1; i++) if (SEC[i].e > SEC[b].e) b = i; SEC[b].role = 'drop'; }
+    const TH = [MT.period(mulberry32(Math.floor(SP() * 1e6))), MT.period(mulberry32(Math.floor(SP() * 1e6)))];   // theme A and theme B (8 bars each)
+    const LEADS = { drop: ['rhodes', 'softsaw', 'flute', 'rhodes'], build: ['kalimba', 'rhodes', 'flute'], break: ['vox', 'flute', 'kalimba'], intro: ['kalimba', 'flute', 'vox'], outro: ['rhodes', 'flute', 'kalimba'] };
+    const BP = [[[0, 0, 3], [3, 0, 2], [6, 0, 2], [10, 2, 2], [12, 1, 3]], [[0, 0, 4], [4, 0, 4], [8, 2, 4], [12, 1, 4]], [[0, 0, 2], [4, 0, 2], [8, 0, 2], [10, 0, 2], [12, 2, 3]], [[0, 0, 6], [6, 0, 2], [8, 1, 4], [14, 0, 2]], [[0, 0, 8], [8, 2, 8]]];
+    const PCP = [[3, 6, 11, 14], [2, 5, 10, 13], [7, 15], [1, 4, 9, 12, 14], [0, 3, 6, 9, 12], [5, 11, 13]], ARH = [[0, 3, 6, 10, 12, 14], [0, 2, 4, 6, 8, 10, 12, 14], [0, 3, 6, 9, 12], [0, 1, 3, 4, 6, 8, 9, 11, 12, 14]], VOW = [[700, 1200], [400, 800], [530, 1840], [300, 870]];
+    const homeMode = spick(['dorian', 'aeolian']);
+    let prevKey = 0, prevLead = '', prevPad = '', drops = 0;
+    for (const S of SEC) {
+      const R = S.role, OFF = { intro: [-.3, .3], build: [-.12, .3], drop: [.12, 0], break: [-.35, .1], outro: [-.05, -.4] }[R];
+      S.eOff = OFF[0]; S.eRamp = OFF[1]; S.seed = Math.floor(SP() * 1e6);
+      S.mode = S.i === 0 || R === 'outro' ? homeMode : spick(R === 'drop' ? ['aeolian', 'dorian', 'mixolydian'] : R === 'break' ? ['dorian', 'phrygian', 'aeolian'] : ['dorian', 'aeolian', 'dorian', 'mixolydian']);
+      let key = S.i === 0 ? 0 : spick([5, -2, 3, 7, -5, 2, -3].filter(x => x !== prevKey));
+      if (R === 'drop' && S.i > 1 && SP() < .35) key = cc(prevKey + spick([1, 2]), -5, 7);   // the 'lift'
+      if (R === 'outro') key = 0;
+      S.key = prevKey = key;
+      S.prog = MT.prog(SP, S.mode); S.sev = SP() < .75; S.half = R === 'drop' && S.prog.length === 4 && SP() < .3;
+      S.th = R === 'break' ? 1 : R === 'drop' ? drops++ % 2 : 0; S.phrase = TH[S.th];
+      S.lv = prevLead = spick(LEADS[R].filter(x => x !== prevLead)); S.pad = prevPad = spick(['warm', 'hollow', 'glass', 'string'].filter(x => x !== prevPad));
+      S.bv = spick(['sub', 'round', 'pluck']); S.bass = spick(R === 'intro' || R === 'break' || R === 'outro' ? [1, 4, 3] : R === 'build' ? [0, 1, 2] : [0, 2, 3, 0]);
+      S.av = spick(['kalimba', 'marimba', 'harp', 'rhodes'].filter(x => x !== S.lv)); S.arpR = spick(ARH); S.arp = spick([[0, 1, 2, 3], [0, 2, 1, 3], [3, 2, 1, 0], [0, 1, 2, 1], [0, 2, 3, 1]]);
+      S.vow = spick(VOW); S.snr = spick(['snare', 'clap', 'rim']); S.pc = spick([['conga', 'shaker'], ['wood', 'shaker'], ['rim', 'conga'], ['shaker', 'wood']]); S.pat = [spick(PCP), spick(PCP)];
+      S.drum = R === 'break' ? spick([0, 4]) : Math.floor(SP() * MT.DRUMS.length); S.swing = spick([0, .1, .18, .25]); S.hatT = spick(['hat', 'shaker']);
+      S.ctr = R === 'intro' ? 'off' : R === 'break' ? spick(['echo', 'off']) : spick(['echo', 'echo', 'off']); S.padC = 700 + SP() * 900;
+    }
+    for (const S of SEC) S.fill = MT.fill(SP, SEC[S.i + 1] ? SEC[S.i + 1].role : 'outro');
+    window.ELECTRO2_PLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1), key: x.key, mode: x.mode, prog: x.prog.join(''), theme: x.th ? 'B' : 'A', lead: x.lv, pad: x.pad, bass: x.bv, perc: x.pc.join('+'), swing: x.swing, drum: x.drum }));
+    if (Q.has('debug')) console.log('ELECTRO2 plan', JSON.stringify(window.ELECTRO2_PLAN));
+    // — graph: pads / bass / arp (ducked by the kick) and leads (not ducked) -> gentle lowpass (warmth) -> master; drums go straight to master
+    const tb = a.createGain(), duck = a.createGain(), lbus = a.createGain(), mf = a.createBiquadFilter(), dm = a.createGain();
+    mf.type = 'lowpass'; mf.Q.value = .5; mf.frequency.value = 6000; tb.gain.value = .8; lbus.gain.value = .9; dm.gain.value = .9;
+    tb.connect(duck); duck.connect(mf); lbus.connect(mf); mf.connect(master); send(mf, .2, .08); dm.connect(master); send(dm, .1);
+    const K = makeKit(tb, 0, true);
+    const LVL = { rhodes: 1, kalimba: 1.1, marimba: 1, harp: 1, flute: .9, vox: 1.6, softsaw: .6 };
+    // — melodic voices (one node chain per note, capacity-checked by K.vo)
+    const voice = (ty, t, f, v, d, dst = lbus) => {
+      v *= LVL[ty]; let g;
+      if (ty === 'rhodes') {
+        const L = cc(.4 + d * .8, .5, 1.4); if (!K.vo(t, L, 3)) return; const e = t + L + .05, cr = K.osc('sine', f, t, e), m = K.osc('sine', f, t, e), mg = a.createGain(); g = env(t, .004, v, L, dst);
+        mg.gain.setValueAtTime(f * 1.5, t); mg.gain.exponentialRampToValueAtTime(f * .1, t + L * .45); m.connect(mg); mg.connect(cr.frequency); cr.connect(g);
+        K.osc('sine', f * 7, t, t + .3).connect(env(t, .002, v * .1, .07, dst)); send(g, .12, .04);
+      } else if (ty === 'kalimba') {
+        if (!K.vo(t, .85, 2)) return; g = env(t, .002, v, .6, dst); K.osc('sine', f, t, t + .85).connect(g); K.osc('sine', f * 5.4, t, t + .2).connect(env(t, .001, v * .22, .09, dst)); send(g, .18, .06);
+      } else if (ty === 'marimba') {
+        if (!K.vo(t, .5, 2)) return; g = env(t, .002, v, .4, dst); K.osc('sine', f, t, t + .5).connect(g); K.osc('sine', f * 4, t, t + .15).connect(env(t, .001, v * .2, .06, dst)); send(g, .12);
+      } else if (ty === 'harp') {
+        if (!K.vo(t, .75, 1)) return; const lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .7; lp.frequency.setValueAtTime(clamp(f * 6, 700, 6000), t); lp.frequency.exponentialRampToValueAtTime(Math.max(f * 1.8, 300), t + .4);
+        g = env(t, .003, v, .6, dst); K.osc('triangle', f, t, t + .75).connect(lp); lp.connect(g); send(g, .15, .05);
+      } else if (ty === 'flute') {
+        const L = d + .2; if (!K.vo(t, L, 3)) return; const e = t + L + .05, lp = a.createBiquadFilter(), lf = K.osc('sine', 5.2, t, e), lg = a.createGain(), o1 = K.osc('triangle', f, t, e), o2 = K.osc('sine', f * 2, t, e), g2 = a.createGain();
+        g = a.createGain(); g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .06); g.gain.setValueAtTime(v, t + d); g.gain.linearRampToValueAtTime(.0001, t + d + .15); g2.gain.value = .22;
+        lp.type = 'lowpass'; lp.frequency.value = 3500; lg.gain.setValueAtTime(0, t); lg.gain.linearRampToValueAtTime(f * .006, t + Math.min(d * .7, .5)); lf.connect(lg); lg.connect(o1.frequency); lg.connect(o2.frequency);
+        o1.connect(lp); o2.connect(g2); g2.connect(lp); lp.connect(g); g.connect(dst);
+        const bn = noise(t, d + .2), bp = a.createBiquadFilter(), bg = a.createGain(); bp.type = 'bandpass'; bp.frequency.value = Math.min(f * 2, 5000); bp.Q.value = 2; bg.gain.setValueAtTime(.0001, t); bg.gain.linearRampToValueAtTime(v * .12, t + .04); bg.gain.linearRampToValueAtTime(.0001, t + d + .15); bn.connect(bp); bp.connect(bg); bg.connect(dst); send(g, .2, .08);
+      } else if (ty === 'vox') {
+        const L = d + .3; if (!K.vo(t, L, 2)) return; const e = t + L + .05, lp = a.createBiquadFilter(); g = a.createGain(); lp.type = 'lowpass'; lp.frequency.value = 3200;
+        g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .09); g.gain.setValueAtTime(v, t + d); g.gain.linearRampToValueAtTime(.0001, t + d + .22);
+        const o1 = K.osc('sawtooth', f, t, e, -8), o2 = K.osc('sawtooth', f, t, e, 8);
+        S_vow.forEach((fr, j) => { const bp = a.createBiquadFilter(), bg = a.createGain(); bp.type = 'bandpass'; bp.frequency.value = fr; bp.Q.value = 7; bg.gain.value = j ? .6 : 1; o1.connect(bp); o2.connect(bp); bp.connect(bg); bg.connect(lp); });
+        lp.connect(g); g.connect(dst); send(g, .3, .1);
+      } else {   // softsaw
+        const L = d + .3; if (!K.vo(t, L, 2)) return; const e = t + L + .05, lp = a.createBiquadFilter(); g = a.createGain(); lp.type = 'lowpass'; lp.Q.value = .5; lp.frequency.value = clamp(f * 4, 900, 3200);
+        g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + .03); g.gain.setValueAtTime(v, t + d); g.gain.linearRampToValueAtTime(.0001, t + d + .2);
+        K.osc('sawtooth', f, t, e, -7).connect(lp); K.osc('sawtooth', f, t, e, 7).connect(lp); lp.connect(g); g.connect(dst); send(g, .15, .05);
+      }
+    };
+    let S_vow = VOW[0];   // vowel (two formants) of the section being scheduled, set in schedBar
+    const bassNote = (ty, t, f, d, v) => {
+      if (!K.vo(t, d + .1, 2, 1)) return; const e = t + d + .1, g = a.createGain(), lp = a.createBiquadFilter(); lp.type = 'lowpass'; lp.Q.value = .6;
+      g.gain.setValueAtTime(.0001, t); g.gain.linearRampToValueAtTime(v, t + (ty === 'pluck' ? .005 : .012)); g.gain.setValueAtTime(v, t + d * (ty === 'round' ? .3 : .75)); if (ty === 'round') g.gain.exponentialRampToValueAtTime(v * .45, t + d); g.gain.linearRampToValueAtTime(.0001, t + d + .05);
+      if (ty === 'pluck') { lp.frequency.setValueAtTime(clamp(f * 8, 500, 1800), t); lp.frequency.exponentialRampToValueAtTime(Math.max(f * 1.5, 200), t + d); K.osc('triangle', f, t, e).connect(lp); }
+      else { lp.frequency.value = ty === 'sub' ? 600 : 900; K.osc('triangle', f, t, e).connect(lp); }
+      const s = a.createGain(); s.gain.value = .8; K.osc('sine', f, t, e).connect(s); s.connect(g);
+      if (ty === 'round') { const h = env(t, .004, v * .3, .2, g); K.osc('sine', f * 2, t, t + .3).connect(h); }
+      lp.connect(g); g.connect(tb); };
+    // — percussion: filtered noise + sine thumps (nothing metallic)
+    const nz = (t, d, type, f, q, v, at, dec) => { if (!K.vo(t, d, 1)) return; const n = noise(t, d), fl = a.createBiquadFilter(); fl.type = type; fl.frequency.value = f; fl.Q.value = q; n.connect(fl); fl.connect(env(t, at, v, dec, dm)); };
+    const tn = (t, f0, f1, tau, v, dec, ty = 'sine') => { const o = a.createOscillator(); o.type = ty; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t + tau); o.connect(env(t, .002, v, dec, dm)); o.start(t); o.stop(t + dec + .05); };
+    const DR = {
+      kick: (t, v) => { K.vo(t, .4, 1, 1); tn(t, 135, 46, .07, v, .34); nz(t, .03, 'lowpass', 1800, .5, v * .15, .001, .015); },
+      snare: (t, v) => { nz(t, .2, 'bandpass', 2000, .6, v, .002, .15); tn(t, 190, 140, .08, v * .5, .1, 'triangle'); },
+      clap: (t, v) => { for (let i = 0; i < 3; i++) nz(t + i * .011, .03, 'bandpass', 1500, .8, v * .7, .001, .01); nz(t + .033, .25, 'bandpass', 1400, .7, v, .001, .16); },
+      rim: (t, v) => { tn(t, 1750, 1500, .01, v * .45, .035, 'triangle'); tn(t, 480, 430, .02, v * .4, .05); nz(t, .02, 'bandpass', 3500, 1, v * .25, .001, .012); },
+      wood: (t, v, pf = 1) => { tn(t, 820 * pf, 780 * pf, .02, v * .6, .07); tn(t, 1640 * pf, 1600 * pf, .02, v * .15, .03); },
+      conga: (t, v, pf = 1) => { tn(t, 360 * pf, 250 * pf, .05, v * .7, .2); nz(t, .03, 'bandpass', 2200, 1, v * .2, .001, .015); },
+      shaker: (t, v) => nz(t, .09, 'bandpass', 5500, .6, v, .012, .05),
+      hat: (t, v) => nz(t, .07, 'highpass', 6000, .5, v, .002, .035),
+      ohat: (t, v) => nz(t, .35, 'highpass', 6000, .5, v, .004, .25),
+      tom: (t, v, pf = 1) => tn(t, 200 * pf, 120 * pf, .06, v, .28) };
+    const riser = (t, dur, v) => { if (!K.vo(t, dur + .1, 1, 1)) return; const n = noise(t, dur + .1), f = a.createBiquadFilter(), g = a.createGain(); f.type = 'lowpass'; f.Q.value = .7; f.frequency.setValueAtTime(300, t); f.frequency.exponentialRampToValueAtTime(7000, t + dur);
+      g.gain.setValueAtTime(.0001, t); g.gain.exponentialRampToValueAtTime(v, t + dur); g.gain.linearRampToValueAtTime(.0001, t + dur + .06); n.connect(f); f.connect(g); g.connect(dm); send(g, .3); };
+    const boom = (t, v) => { if (!K.vo(t, 1.6, 2, 1)) return; const n = noise(t, 1.6), f = a.createBiquadFilter(); f.type = 'lowpass'; f.frequency.setValueAtTime(4500, t); f.frequency.exponentialRampToValueAtTime(1200, t + 1.4); n.connect(f); f.connect(env(t, .004, v * .5, 1.5, dm)); tn(t, 62, 34, .9, v * 1.4, 1.1); };
+    const secAt = k => SEC.find(s => k >= s.k0 && k < s.k1) || SEC[SEC.length - 1];
+    const schedBar = k => {
+      const S = secAt(k), lb = k - S.k0, nb = S.k1 - S.k0, br = mulberry32(S.seed * 131 + lb * 17 + 5), tbar = B[4 * k], NX = SEC[S.i + 1], barLen = stT(k, 16) - stT(k, 0);
+      const pr = cc((tbar - S.tA) / Math.max(1, S.tB - S.tA), 0, 1);
+      const d = cc(Math.max(.14, energy(tbar / TOTAL) * .7 + .2 + S.eOff + S.eRamp * pr), 0, 1), vs = .45 + .7 * d, role = S.role, brk = role === 'break';
+      const isFill = lb === nb - 1 && !!NX, FL = isFill ? MT.FILLS[S.fill] : null, stop = isFill && S.fill === 'stop', minorFill = !isFill && lb % 4 === 3 && d > .5, mf2 = Math.floor(br() * 3);
+      const pb = lb % 8, rep = Math.floor(lb / 8), dr = MT.DRUMS[S.drum], bp = BP[S.bass], T = ROOT + S.key, P = dd => T + MT.st(S.mode, dd);
+      const chordAt = s => S.prog[(S.half ? lb * 2 + (s >> 3) : lb) % S.prog.length];
+      const tones = cr => (S.sev ? [0, 2, 4, 6] : [0, 2, 4, 7]).map(x => cr + x);
+      S_vow = S.vow; mf.frequency.setTargetAtTime(3800 + 5200 * d, Math.max(t0 + tbar, a.currentTime), .6);
+      let ev = S.phrase[pb];   // the theme's bar, varied on the way back round; breaks keep the long / on-beat notes only
+      if (rep % 2 === 1) ev = MT.vary(br, ev, MT.rp(br, ['orn', 'tail', 'same', 'thin']));
+      if (role === 'drop' && rep >= 1 && pb >= 4 && pb < 7 && br() < .4) ev = MT.vary(br, ev, 'oct');
+      if (brk) ev = ev.filter(e => e.s % 4 === 0 || e.l >= 4).map(e => ({ ...e, l: Math.min(8, e.l * 1.5) }));
+      const leadOn = d > (brk ? .2 : .3);
+      const LN = ev.map(e => { const cr = chordAt(e.s), dg = e.s % 8 === 0 || e.l >= 6 || e.cad ? MT.fit(e.d, cr, S.sev) : e.d; return { s: e.s, m: T + 12 + MT.st(S.mode, dg), len: stT(k, Math.min(16, e.s + e.l)) - stT(k, e.s), l: e.l, acc: e.s % 4 === 0 }; }).filter(n => !(isFill && n.s >= 8));
+      if (LN.length) { const hi = Math.max(...LN.map(n => n.m)), lo = Math.min(...LN.map(n => n.m)), o = hi > 86 ? -12 : lo < 52 && hi < 76 ? 12 : 0; LN.forEach(n => n.m += o); }
+      // pad: a 3-note voicing (3rd, 5th, 7th) per chord, an octave below the lead
+      for (const s of S.half ? [0, 8] : [0]) {
+        if (stT(k, s) + t0 < Math.max(ts, a.currentTime) - .01) continue;
+        const cr = chordAt(s), tt = tones(cr).slice(1).map(x => into(P(x) - 12, T - 4, T + 14)).sort((x, y) => x - y), len = (s ? barLen / 2 : S.half ? barLen / 2 : barLen), t = t0 + stT(k, s);
+        if (d > .08) K.pad(t, Math.max(.8, len - .5), Math.min(.9, len / 3), 1.2, tt, (brk ? .13 : .1) * (.5 + d), { pad: S.pad, br: 1, pdet: 6 }, S.padC * (.6 + d), 1, 1);
+      }
+      if (isFill && NX && NX.role === 'drop' && t0 + stT(k, 0) >= a.currentTime) riser(t0 + stT(k, 0), barLen, .12);
+      for (let s = 0; s < 16; s++) {
+        const t = t0 + stT(k, s), tn_ = t0 + stT(k, s + 1), sl = tn_ - t, cr = chordAt(s), fill = isFill && s >= 8, top = lb === 0 && S.i > 0 && s === 0, sw = s % 2 ? S.swing * sl : 0, th = t + sw + (br() - .5) * .008;
+        if (t < Math.max(ts, a.currentTime) - .01) continue;
+        const kk = v => { DR.kick(t, v); duck.gain.setValueAtTime(.5, t); duck.gain.linearRampToValueAtTime(1, t + sl * 3); };
+        const sn = v => (DR[S.snr] || DR.snare)(t, v);
+        // drums
+        if (top) { boom(t, .1); DR.snare(t, .18); kk(.36); }
+        else if (!fill && d > .38 && !brk && (d > .7 ? dr.K : dr.K.filter(x => x % 8 === 0)).includes(s)) kk(.4 * (.8 + .2 * d));
+        if (!fill && d > .45 && !brk && dr.S.includes(s)) sn(.2 * vs);
+        if (!fill && role === 'drop' && d > .75 && (s === 7 || s === 13)) DR.shaker(t, .1);
+        if (fill) { for (const h of FL) if (h[0] === s) { if (h[1] === 'k') kk(.4 * h[2]); else if (h[1] === 's') (S.snr === 'rim' ? DR.snare : sn)(t, .24 * h[2]); else if (h[1] === 't') DR.tom(t, .42 * h[2], h[3]); else DR.ohat(t, .06 * h[2]); } }
+        else if (minorFill && s >= 14) { if (mf2 === 0) DR.tom(t, .2, 1.3); else if (mf2 === 1 && s === 15) sn(.16); else if (mf2 === 2 && s === 14) DR.ohat(t, .05); }
+        if (!fill && !top) {
+          const hv = (s % 4 === 2 ? 1 : s % 2 ? .45 : .7) * (S.hatT === 'shaker' ? 1.5 : 1);
+          if (d > .55 && !brk && dr.O && dr.O.includes(s)) DR.ohat(th, .04);
+          else if (d > .3) { if (d > .7 && !brk) DR[S.hatT](th, .07 * hv); else if (dr.H.includes(s) && (!brk || s % 4 === 0)) DR[S.hatT](th, (brk ? .04 : .07) * hv); }
+          else if (brk && s % 4 === 0) DR.shaker(th, .04);
+          // percussion: two layers on their own off-beat patterns, in every section but the thinnest
+          if (d > .25) S.pc.forEach((ty, j) => { if (S.pat[j].includes(s) && (br() < (brk ? .55 : .85))) DR[ty](th, (j ? .17 : .22) * vs, ty === 'conga' || ty === 'wood' ? 1 + .25 * (s % 3) : 1); });
+        }
+        // bass (fill bar: the next section's dominant on step 8 = a pivot into the new key; a 'stop' fill leaves a hole)
+        if (d > .12 && !(stop && s >= 8)) {
+          if (fill) { const dm2 = into(ROOT + NX.key - 12 + 7, 31, 50); if (s === 8) bassNote(S.bv, t, mtof(dm2), 6 * sl, .2 * vs); else if (s === 14) bassNote(S.bv, t, mtof(dm2 + 12), 2 * sl, .17 * vs); }
+          else { const b = bp.find(x => x[0] === s); if (b) { const r0 = into(P(cr) - 12, 31, 50); bassNote(S.bv, t, mtof(b[1] === 1 ? r0 + 12 : b[1] === 2 ? r0 + MT.st(S.mode, cr + 4) - MT.st(S.mode, cr) : r0), b[2] * sl, .2 * vs); } }
+        }
+        // arpeggio (fill bar: a rising dominant 7th into the next key)
+        if (fill) { if (!stop && s % 2 === 0) voice(S.av, t, mtof(into(ROOT + NX.key + 12 + [7, 11, 14, 17][(s - 8) >> 1], 55, 96)), .05 + .02 * (s - 8), sl * 2); }
+        else if (d > .08 && S.arpR.includes(s) && !(brk && s % 4)) { const TT = tones(cr); voice(S.av, th, mtof(into(P(TT[S.arp[(s >> 1) % S.arp.length]]) + 12, T + 7, T + 26)), .09 * vs, sl * 2, tb); }
+        // lead
+        if (leadOn) for (const n of LN) if (n.s === s) voice(S.lv, t, mtof(n.m), .17 * vs * (n.acc ? 1 : .85), n.len * .9);
+        // echo of the lead 3 steps later, an octave down, in the arp voice
+        if (S.ctr === 'echo' && d > .25 && leadOn && !fill) for (const n of LN) if (n.s + 3 === s) voice(S.av, t, mtof(into(n.m - 12, 50, 76)), .08 * vs, sl * 2);
+      }
+    };
+    let nk = 0; while (nk < nBars - 1 && B[4 * (nk + 1)] <= off) nk++;
+    return function pump() {
+      const hz = a.currentTime + (MOBILE ? 8 : 30);
+      while (nk < nBars && t0 + B[4 * nk] < hz && B[4 * nk] < TOTAL) schedBar(nk++);
+    };
+  }
+  // (spacer)
+  // [[STYLE electro3]]: MINIMAL techno, soft and warm (dub-techno feel), 112-124 bpm. "A loop that breathes", not a track with drops. Written from scratch (nothing of electro / electro2).
+  // Rules: <= 4 layers (drums = kick + one hat / shaker line, bass, chord stab, motif), at most 3 at the start; events (layer in / out, motif variation, section edge) sit on a grid of 8 bars and never closer than
+  // 8 bars, a layer ENTERING at most once per 16 bars; everything else (filter, echo feedback, reverb send, hat density, stab length) moves slowly (tau = 4 bars). Sections >= 32 bars (shorter pieces: 2 sections).
+  // ONE sound palette, ONE chord loop (2 or 4 chords, 2 bars each, 7ths), ONE motif (2 or 4 bars, 3-5 notes). Groove A / B / C by seed or ?groove=. Pure function of (seed, bar), window.ELECTRO3_PLAN.
+  // PERSISTENT nodes only: kick sine, bass triangle + sine, 3 saw stab voices, 2 motif voices (sine + partial), tone osc (rim / conga), one noise source. One shared reverb, one echo.
+  if (MUSIC === 'electro3') {
+    const SP = mulberry32(Math.floor(seedUsed * 1000) * 13 + 97531);   // plan rng (independent of `rng`, which is reseeded on every seek)
+    const cc = (x, lo, hi) => Math.min(hi, Math.max(lo, x)), spick = arr => arr[Math.floor(SP() * arr.length)], into = (m, lo, hi) => { while (m > hi) m -= 12; while (m < lo) m += 12; return m; };
+    const B = BEATS.length > 8 ? BEATS.slice() : (() => { const r = []; for (let s = 0; s < TOTAL; s += 60 / bpmAt(s / TOTAL)) r.push(s); return r; })();
+    const p0 = B[1] - B[0], pl = B[B.length - 1] - B[B.length - 2];
+    while (B[0] >= p0) B.unshift(B[0] - p0);
+    while (B[B.length - 1] < TOTAL + 6) B.push(B[B.length - 1] + pl);
+    const nBars = Math.floor((B.length - 1) / 4) - 1, stT = (k, s) => { const bi = 4 * k + (s >> 2); return B[bi] + (s & 3) * (B[bi + 1] - B[bi]) / 4; };
+    let nP = 0; while (nP < nBars && B[4 * nP] < TOTAL) nP++;   // bars that start inside the piece
+    const DBG = Q.has('debug'), E3 = window.__e3 = { events: [], drums: {}, kinds: { melody: [0, 0], chord: [0, 0], bass: [0, 0] }, plan: null };
+    // — piece-level choices (same for the whole play)
+    const GQ = (Q.get('groove') || '').toUpperCase(), GR = GQ === 'A' || GQ === 'B' || GQ === 'C' ? GQ : spick(['A', 'B', 'C']);
+    const MODE = spick(['dorian', 'aeolian']), TON = 36 + spick([9, 10, 0, 2, 4, 5, 7]), MS = MT.MODES[MODE];
+    const PROG = spick({ dorian: [[0, 3], [0, 6], [0, 3, 6, 3], [0, 3, 0, 6]], aeolian: [[0, 5], [0, 6], [0, 5, 3, 6], [0, 6, 5, 6]] }[MODE]), CL = 2, LOOP = PROG.length * CL;
+    const BASSM = spick(['off', 'sub']), VOXT = spick(['kalimba', 'marimba']), MB = spick([2, 4]), LIFT = SP() < .5;
+    // — the motif: 3-5 notes on a minor-pentatonic cell (degrees 0 2 3 4 6, + the octave), spread over MB bars; variants move one note / drop one / lift one by an octave
+    const SETD = [0, 2, 3, 4, 6, 7], nn = 3 + Math.floor(SP() * 3), CAND = [0, 3, 6, 8, 11, 14];
+    const motif = (() => {
+      const pool = []; for (let b = 0; b < MB; b++) for (const c of CAND) pool.push(b * 16 + c);
+      for (let i = pool.length - 1; i > 0; i--) { const j = Math.floor(SP() * (i + 1)); [pool[i], pool[j]] = [pool[j], pool[i]]; }
+      let pos = pool.slice(0, nn).sort((x, y) => x - y).filter((x, i, A) => !i || x - A[i - 1] >= 3);
+      if (pos.length < 3) pos = [0, 8, 16 + 6];
+      let ix = spick([0, 1, 3]);
+      return pos.map((s, i) => { if (i) { const pv = ix; ix = cc(ix + spick([-2, -1, 1, 2]), 0, SETD.length - 1); if (ix === pv) ix = cc(pv + (pv ? -1 : 1), 0, SETD.length - 1); } return { s, d: SETD[ix], l: Math.min(8, (pos[i + 1] !== undefined ? pos[i + 1] : MB * 16) - s) }; });
+    })();
+    const variant = e => {
+      const r = mulberry32(Math.floor(seedUsed * 1000) * 7 + e * 131 + 5), c = motif.map(n => ({ ...n })), j = 1 + Math.floor(r() * Math.max(1, c.length - 1)), how = ['move', 'rest', 'oct'][Math.floor(r() * 3)];
+      if (how === 'rest' && c.length > 3) c.splice(j, 1);
+      else if (how === 'oct' && c.length > 1) c[Math.min(j, c.length - 1)].d = Math.min(9, c[Math.min(j, c.length - 1)].d + 7);
+      else if (c.length > 1) { const q = c[Math.min(j, c.length - 1)], i = SETD.indexOf(q.d); q.d = SETD[cc(i + (r() < .5 ? -1 : 1), 0, SETD.length - 1)]; }
+      return c;
+    };
+    const VARS = [0, 1, 2, 3, 4, 5, 6, 7].map(variant);
+    // — sections (multiples of 8 bars, >= 32; short pieces get 2) and the layer script
+    const nSec = Math.max(2, Math.min(5, Math.floor(nP / 34)));
+    const ROLES = { 2: ['intro', 'drop'], 3: ['intro', 'drop', 'outro'], 4: ['intro', 'drop', 'break', 'drop'], 5: ['intro', 'drop', 'break', 'drop', 'outro'] }[nSec];
+    const LEN = (() => {
+      if (nP < 64) { const l0 = Math.max(16, 8 * Math.round(nP * .4 / 8)); return [l0, nP - l0]; }
+      const L = ROLES.map(() => 32), order = [...ROLES.keys()].sort((x, y) => (ROLES[y] === 'drop') - (ROLES[x] === 'drop')), extra = Math.floor((nP - 32 * nSec) / 8);
+      for (let i = 0; i < extra; i++) L[order[i % nSec]] += 8;
+      L[nSec - 1] += nP - L.reduce((x, y) => x + y, 0); return L;
+    })();
+    const SEC = []; { let k = 0; ROLES.forEach((role, i) => { SEC.push({ i, role, k0: k, k1: k + LEN[i], tA: B[4 * k], tB: i === nSec - 1 ? TOTAL : B[4 * (k + LEN[i])] }); k += LEN[i]; }); }
+    const iBrk = ROLES.indexOf('break'), iOut = ROLES.indexOf('outro'), s1 = SEC[1].k0, bassIn = Math.max(8, s1 - 16), motifIn = s1;
+    const sBrk = iBrk >= 0 ? SEC[iBrk].k0 : -1, sOut = iOut >= 0 ? SEC[iOut].k0 : -1, sNext = iBrk >= 0 && SEC[iBrk + 1] ? SEC[iBrk + 1].k0 : -1;
+    const drops = SEC.filter(x => x.role === 'drop'), liftK = LIFT && drops.length > 1 ? drops[drops.length - 1].k0 : -1;   // the optional +2 semitone lift: very start of the last main section
+    const keyAt = k => liftK >= 0 && k >= liftK ? 2 : 0;
+    const secAt = k => SEC.find(s => k >= s.k0 && k < s.k1) || SEC[SEC.length - 1];
+    const lay = k => ({
+      kick: !(sBrk >= 0 && k >= sBrk && k < sNext),
+      bass: k >= bassIn && !(sBrk >= 0 && k >= sBrk && k < sBrk + 16) && !(sOut >= 0 && k >= sOut + 16),
+      motif: k >= motifIn && !(sOut >= 0 && k >= sOut),
+    });
+    // events: { bar, what }; bars are multiples of 8 (grid), so two events are never closer than 8 bars
+    const EV = [], addE = (bar, what) => { const e = EV.find(x => x.bar === bar); if (e) e.what.push(what); else EV.push({ bar, what: [what] }); };
+    addE(bassIn, 'layer enters: bass');
+    SEC.forEach(s => { if (!s.i) return; const w = ['section change -> ' + s.role + (s.k0 === liftK ? ' (+2 semitone lift)' : '')]; addE(s.k0, w[0]);
+      if (s.i === 1) addE(s.k0, 'layer enters: motif'); if (s.role === 'break') addE(s.k0, 'layers leave: kick, bass'); if (s.i === iBrk + 1 && iBrk >= 0) addE(s.k0, 'layer enters: kick'); if (s.role === 'outro') addE(s.k0, 'layer leaves: motif'); });
+    if (sBrk >= 0) addE(sBrk + 16, 'layer enters: bass');
+    if (sOut >= 0) addE(sOut + 16, 'layer leaves: bass');
+    const VAR = []; drops.forEach(s => { for (let v = s.k0 + 16; v <= s.k1 - 16; v += 24) { VAR.push(v); addE(v, 'motif variation'); } });
+    EV.sort((x, y) => x.bar - y.bar); const nVar = k => VAR.filter(v => v <= k).length;
+    E3.events = EV.map(e => ({ bar: e.bar, t: +B[4 * e.bar].toFixed(1), what: e.what.join(' + ') })); E3.sections = SEC.map(s => ({ role: s.role, bars: [s.k0, s.k1] })); E3.nP = nP;
+    window.ELECTRO3_PLAN = SEC.map(x => ({ kind: x.role, from: +x.tA.toFixed(1), to: +x.tB.toFixed(1), e: { intro: .35, drop: .6, break: .45, outro: .3 }[x.role], key: keyAt(x.k0), mode: MODE, prog: PROG.join(''), groove: GR }));
+    E3.plan = { groove: GR, mode: MODE, tonic: TON % 12, prog: PROG.join(''), motifBars: MB, motif: motif.map(n => [n.s, n.d]), bass: BASSM, voice: VOXT, lift: liftK >= 0 };
+    if (DBG) { console.log('ELECTRO3 plan', JSON.stringify(E3.plan), JSON.stringify(E3.sections)); E3.events.forEach(e => console.log(`ELECTRO3 EVENT bar ${e.bar} t=${e.t}s ${e.what}`)); }
+    // — slow modulation targets of a bar (all reached with tau = 4 bars)
+    const PHI = SP() * 6.28, PHI2 = SP() * 6.28;
+    const mod = k => {
+      const S = secAt(k), pr = k / Math.max(1, nP), w = .5 + .5 * Math.sin(k * .21 + PHI), w2 = .5 + .5 * Math.sin(k * .147 + PHI2), r = S.role, rel = (k - S.k0) / Math.max(1, S.k1 - S.k0);
+      const br = r === 'intro' ? .25 + .3 * rel : r === 'drop' ? .55 + .3 * w : r === 'break' ? .3 + .2 * w : .5 - .25 * rel;
+      return { cut: 450 + 1100 * br, fb: Math.min(.55, .34 + .16 * w2 + (r === 'break' ? .08 : 0)), rv: .1 + .06 * w2 + (r === 'break' ? .04 : 0), hd: r === 'intro' ? .35 + .65 * cc(k / Math.max(1, S.k1 * .75), 0, 1) : r === 'break' ? .6 : .75 + .25 * w, bw: w, tau: .1 + .18 * cc(pr * 1.5, 0, 1) };
+    };
+    // — persistent voices. Graph: stab + motif -> duck (the kick dips them) -> master (+ reverb bus, + echo); bass and drums -> master.
+    const END = t0 + TOTAL + 1, osc = (ty, f) => { const o = a.createOscillator(); o.type = ty; o.frequency.value = f; o.start(ts); o.stop(END); return o; };
+    const G = (v, dest) => { const g = a.createGain(); g.gain.value = v; if (dest) g.connect(dest); return g; };
+    const duck = G(1, master), dm = G(.9, master), rvS = G(.1, rev), eIn = G(1), eD = a.createDelay(1), eLP = a.createBiquadFilter(), eFb = G(.4, eD), eO = G(.55, master);
+    duck.connect(rvS); eLP.type = 'lowpass'; eLP.frequency.value = 1700; eLP.Q.value = .3; eIn.connect(eD); eD.connect(eLP); eLP.connect(eFb); eLP.connect(eO); eO.connect(rvS);
+    // bass: triangle through a lowpass + a sine sub
+    const bT = osc('triangle', 55), bS = osc('sine', 55), bL = a.createBiquadFilter(), bG = G(0, master), bSG = G(.8, bG);
+    bL.type = 'lowpass'; bL.Q.value = .5; bL.frequency.value = 400; bT.connect(bL); bL.connect(bG); bS.connect(bSG);
+    // stab: 3 soft saw voices -> one lowpass -> one gain (the envelope), echo send
+    const pL = a.createBiquadFilter(), pG = G(0, duck); pL.type = 'lowpass'; pL.Q.value = .4; pL.frequency.value = 800; pL.connect(pG); const pE = G(.65, eIn); pG.connect(pE);
+    const pads = [0, 1, 2].map(i => { const o = osc('sawtooth', 200); o.detune.value = [-7, 2, 8][i]; o.connect(pL); return o; });
+    // motif: 2 voices (sine + one partial), one fixed lowpass; kalimba = partial 5.4, marimba = 4; echo send
+    const mL = a.createBiquadFilter(), mB = G(.9, duck), PR = VOXT === 'kalimba' ? 5.4 : 4, PL = VOXT === 'kalimba' ? .22 : .2, PD = VOXT === 'kalimba' ? .09 : .06, LL = VOXT === 'kalimba' ? .9 : .6;
+    mL.type = 'lowpass'; mL.Q.value = .4; mL.frequency.value = 3200; mL.connect(mB); mB.connect(G(.4, eIn));
+    const mv = [0, 1].map(() => { const c = osc('sine', 220), p = osc('sine', 440), g = G(0, mL), pg = G(0, mL); c.connect(g); p.connect(pg); return { c, p, g: g.gain, pg: pg.gain }; });
+    // drums: sine kick, one triangle tone (rim / conga), one noise source with one bandpass (hat / shaker)
+    const kO = osc('sine', 60), kG = G(0, dm), tO = osc('triangle', 300), tG = G(0, dm);
+    kO.connect(kG); tO.connect(tG);
+    const nsrc = a.createBufferSource(); nsrc.buffer = nb; nsrc.loop = true; nsrc.start(ts, 0); nsrc.stop(END);
+    const bpH = a.createBiquadFilter(), hG = G(0, dm); bpH.type = 'bandpass'; bpH.frequency.value = GR === 'B' ? 5200 : 6500; bpH.Q.value = .55; nsrc.connect(bpH); bpH.connect(hG);
+    const Z = x => Math.max(0, x), NOW = () => a.currentTime;
+    // — note helpers (events of one AudioParam are always in time order; nothing before time 0)
+    const bnote = (t, m, len, v, long, bw) => {
+      const f = mtof(m), g = bG.gain;
+      bT.frequency.setValueAtTime(f, t); bS.frequency.setValueAtTime(f, t);
+      bL.frequency.setTargetAtTime(cc(f * (2.5 + 4 * bw), 160, 800), t, .01); bL.frequency.setTargetAtTime(Math.max(f * 1.6, 110), t + .02, long ? .6 : .09);
+      g.setTargetAtTime(v, t, long ? .03 : .006); g.setTargetAtTime(long ? v * .8 : v * .5, t + .05, .1); g.setTargetAtTime(0, t + len * (long ? .92 : .8), long ? .06 : .02);
+    };
+    let mi = 0;
+    const mnote = (t, m, d, v) => {   // d = note length in s; the two voices alternate
+      const V = mv[mi++ & 1], f = mtof(m), L = cc(LL + d * .5, .5, 1.4), tau = L / 7;
+      V.g.setTargetAtTime(0, Z(t - .007), .0015);
+      V.c.frequency.setValueAtTime(f, t); V.p.frequency.setValueAtTime(f * PR, t);
+      V.g.setValueAtTime(0, t); V.g.setTargetAtTime(v, t, .002); V.g.setTargetAtTime(0, t + .012, tau);
+      V.pg.setValueAtTime(v * PL, t); V.pg.setTargetAtTime(0, t + .001, PD * .4);
+    };
+    const kick = (t, v) => { kO.frequency.setValueAtTime(100, t); kO.frequency.setTargetAtTime(44, t + .002, .035); kG.gain.setTargetAtTime(v, t, .0015); kG.gain.setTargetAtTime(0, t + .012, .08); duck.gain.setTargetAtTime(.7, t, .004); duck.gain.setTargetAtTime(1, t + .03, .12); };
+    const tone = (t, f0, f1, tau, v, dec) => { tO.frequency.setValueAtTime(f0, t); tO.frequency.setTargetAtTime(f1, t, tau); tG.gain.setTargetAtTime(v, t, .0008); tG.gain.setTargetAtTime(0, t + .004, dec); };
+    const hat = (t, v, dec) => { hG.gain.setValueAtTime(0, t); hG.gain.setTargetAtTime(v, t, .004); hG.gain.setTargetAtTime(0, t + .012, dec); };   // soft attack: a shaker / brush, nothing metallic
+    // stab voicing: 3rd, 5th, 7th stacked close, the lowest placement whose top is <= E4
+    const voicing = (T, cr) => { for (let F = 48; F <= 58; F++) { let p = F - 1; const v = [2, 4, 6].map(x => { let m = T + MT.st(MODE, cr + x); while (m <= p) m += 12; while (m - 12 > p) m -= 12; return p = m; }); if (v[2] <= 64 || F === 58) return v; } };
+    const chk = (kind, m, key) => { if (!DBG) return; const c = E3.kinds[kind]; c[0]++; if (!MS.includes(((m - TON - key) % 12 + 12) % 12)) c[1]++; };
+    // motif register: the whole motif (and its variants) sits in one octave window, 60..79
+    const mBase = (() => { let hi = 0; for (const n of [...motif, ...VARS.flat()]) hi = Math.max(hi, MT.st(MODE, n.d)); return TON + 24 + hi > 74 ? TON + 12 : TON + 24; })();
+    // initial values of the slow parameters (a seek starts in the middle of the piece)
+    let nk = 0; while (nk < nBars - 1 && B[4 * (nk + 1)] <= off) nk++;
+    { const m0 = mod(nk); pL.frequency.value = m0.cut; eFb.gain.value = m0.fb; rvS.gain.value = m0.rv; eD.delayTime.value = cc(3 * (stT(nk, 1) - stT(nk, 0)), .05, .9); }
+    const schedBar = k => {
+      const tbar = t0 + B[4 * k], S = secAt(k), M = mod(k), LY = lay(k), key = keyAt(k), T = TON + key, P = d => T + MT.st(MODE, d), sl = stT(k, 1) - stT(k, 0), now = Math.max(ts, NOW());
+      const cr = PROG[Math.floor((k % LOOP) / CL)], tp = Math.max(Z(tbar - .05), NOW()), TAU = 16 * sl, dl = DBG ? (E3.drums[k] = { K: [], H: [], P: [] }) : null;
+      pL.frequency.setTargetAtTime(M.cut, tp, TAU); eFb.gain.setTargetAtTime(M.fb, tp, TAU); rvS.gain.setTargetAtTime(M.rv, tp, TAU); eD.delayTime.setTargetAtTime(cc(3 * sl, .05, .9), tp, 3 * TAU);
+      const root = into(P(cr), 31, 43), vo = voicing(T, cr);
+      if (DBG) { vo.forEach(m => chk('chord', m, key)); chk('bass', root, key); }
+      // stab: one dub chord a bar, on step 6; its decay lengthens slowly over the piece
+      { const ts2 = Z(t0 + stT(k, 6) - .003);
+        if (ts2 >= now - .01) { pads.forEach((p, i) => p.frequency.setValueAtTime(mtof(vo[i]), ts2)); pG.gain.setTargetAtTime(.3, ts2, .006); pG.gain.setTargetAtTime(0, ts2 + .03, M.tau); } }
+      // motif: the cell repeats every MB bars; every second pass uses the current variant (re-rolled at each 'motif variation' event)
+      if (LY.motif) {
+        const j = k % MB, pass = Math.floor((k % 8) / MB), cell = pass & 1 ? VARS[nVar(k) % VARS.length] : motif;
+        for (const n of cell) if (Math.floor(n.s / 16) === j) {
+          const s = n.s % 16, t = t0 + stT(k, s);
+          if (t < now - .01) continue;
+          const m = mBase + key + MT.st(MODE, n.d); chk('melody', m, key);
+          mnote(t, m, n.l * sl * .9, .2);
+        }
+      }
+      for (let s = 0; s < 16; s++) {
+        const t = t0 + stT(k, s);
+        if (t < now - .01) continue;
+        // drums: soft four-on-the-floor (groove C leaves the last kick out of every 4th bar) + one hat / shaker line + one percussion sound
+        if (LY.kick && s % 4 === 0 && !(GR === 'C' && s === 12 && k % 4 === 3)) { kick(t, .18); if (dl) dl.K.push(s); }
+        if (GR === 'A') { if (s % 4 === 2) { hat(t, .05 * M.hd, .025); if (dl) dl.H.push(s); } if (s === 12 && k % 2 === 1) { tone(t, 950, 860, .01, .07, .02); if (dl) dl.P.push(s); } }
+        else if (GR === 'B') { hat(t, (s % 4 === 0 ? .026 : s % 4 === 2 ? .04 : .016) * M.hd, .03); if (dl) dl.H.push(s); if (s === 3 || s === 11) { tone(t, 360, 250, .05, .07, .09); if (dl) dl.P.push(s); } }
+        else if (s % 4 === 2) { hat(t, .05 * M.hd, .07); if (dl) dl.H.push(s); }
+        // bass, locked to the kick: a root on every off-beat, or one held sub note a bar (same pattern for the whole piece)
+        if (LY.bass) { if (BASSM === 'off' ? s % 4 === 2 : s === 0) bnote(t, root, (BASSM === 'off' ? 2 : 15) * sl, BASSM === 'off' ? .07 : .042, BASSM === 'sub', M.bw); }
+      }
+    };
+    return function pump() {
+      const hz = NOW() + (MOBILE ? 8 : 30);
       while (nk < nBars && t0 + B[4 * nk] < hz && B[4 * nk] < TOTAL) schedBar(nk++);
     };
   }
@@ -3013,6 +3590,7 @@ function togglePult() {   // H (while playing): shows the pupitre until H again
 function zoneCheck(e) {   // pupitre shows while the pointer is in the bottom 10 % or over it / the Source panel
   const low = e.clientY >= innerHeight * 0.9 || !!(e.target && e.target.closest && e.target.closest('#pult,#mpult,#tune,#ctl'));
   const b = document.body.classList; if (low !== b.contains('pultZ')) { b.toggle('pultZ', low); syncPult(); }
+  if (low) showUI();   // body.ui un-hides the cursor
 }
 function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + CSS), fixed demo gauge values, no engine
   const box = $('phelp'); box.innerHTML = '';
@@ -3026,7 +3604,7 @@ function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + 
 function closeDemo() { const box = $('phelp'); box.classList.remove('on'); box.innerHTML = ''; document.body.classList.remove('help-open'); }
 // Source panel stays open while the pointer is in its box or on the Source button (+12 px bridge: the gap between them and the 8 px gaps between action buttons are not "outside")
 const nearSource = e => [$('tune'), $('settings')].some(el => { const r = el.getBoundingClientRect(), m = 12; return e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m; });
-addEventListener('pointermove', e => { if (playing || liveOn) { const tr = e.clientY < innerHeight * 0.1 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e)) setTuning(false); } });
+addEventListener('pointermove', e => { if (playing || liveOn) { const tr = e.clientY < innerHeight * 0.15 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e) && e.clientY >= innerHeight * 0.15) setTuning(false); } });
 addEventListener('pointerdown', e => { if (playing || liveOn) { showUI(); zoneCheck(e); } });
 document.documentElement.addEventListener('mouseleave', () => { document.body.classList.remove('pultZ'); syncPult(); });
 const updateFullscreen = () => {
@@ -3736,7 +4314,7 @@ $('playlast').addEventListener('click', e => {   // one click: replay the last s
 $('surprise').addEventListener('click', e => {   // one click: random music / energy (never extreme) / length, then the normal Start; images stay as they are (poster unless the user added some)
   e.stopPropagation(); if (!ready || playing || liveOn) return;
   const pick = a => a[Math.floor(Math.random() * a.length)];
-  MUSIC = pick(['ambient', 'gnossienne', 'gnossienne2', 'gnossienne3', 'gymnopedie', 'electro', 'chiptune', 'chiptune2', 'drone', 'gamelan'].filter(m => MUSICS.includes(m))); arcName = pick(['journey', 'slam', 'intense']); MIN = pick([2, 5, 10]); TOTAL = MIN * 60;
+  MUSIC = pick(['ambient', 'gnossienne', 'gnossienne2', 'gnossienne3', 'tempest', 'gymnopedie', 'electro', 'electro2', 'electro3', 'chiptune', 'chiptune2', 'midi1', 'drone', 'gamelan'].filter(m => MUSICS.includes(m))); arcName = pick(['journey', 'slam', 'intense']); MIN = pick([2, 5, 10]); TOTAL = MIN * 60;
   applyArc(); drawProfile(); markMus(); markDur(); markArcOn(); markArcHint(); markEN(); start();
 });
 $('galtoggle').addEventListener('click', e => { e.stopPropagation(); const g = $('ggal'); g.hidden = !g.hidden; e.currentTarget.setAttribute('aria-expanded', String(!g.hidden)); e.currentTarget.textContent = g.hidden ? 'Gallery ▾' : 'Gallery ▴'; });
