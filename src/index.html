@@ -10,6 +10,12 @@
   :root{--pult-h:108px}   /* real pupitre height, set from JS (ResizeObserver on #pult) */
   #toast{position:fixed;left:50%;bottom:calc(var(--pult-h) + 32px);transform:translateX(-50%);padding:10px 16px;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;opacity:0;transition:opacity .5s;pointer-events:none;z-index:7;white-space:nowrap}
   #toast.on{opacity:1}
+  #endwarn{position:fixed;right:22px;bottom:22px;z-index:6;display:none;align-items:center;gap:7px;color:#f4f1ea;font:700 15px/1 "Helvetica Neue",Arial,sans-serif;font-variant-numeric:tabular-nums;text-shadow:0 0 4px #000;pointer-events:none}
+  body.playing #endwarn.on{display:flex}
+  body.playing.ui #endwarn.on{bottom:calc(var(--pult-h) + 22px)}   /* above the pupitre while it is shown */
+  #endwarn .dot{width:11px;height:11px;border-radius:50%;background:#e0242a;box-shadow:0 0 0 2px #0009}
+  @media(prefers-reduced-motion:no-preference){#endwarn.on .dot{animation:endpulse 1.6s ease-in-out infinite}}
+  @keyframes endpulse{50%{opacity:.35}}
   #tap{position:fixed;right:14px;bottom:14px;padding:8px 13px;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;z-index:7;pointer-events:none;animation:tapp 2s ease-in-out infinite}
   #tap[hidden]{display:none}
   @keyframes tapp{50%{opacity:.55}}
@@ -43,7 +49,7 @@
   .imgs .im i:hover{background:#ff2d95}
   .imgs label{width:44px;height:44px;box-sizing:border-box;display:grid;place-items:center;border:2px dashed #f4f1ea66;border-radius:6px;font:400 22px/1 Arial,sans-serif;letter-spacing:0;cursor:pointer}
   .imgs label:hover{border-color:#ffd60a}
-  #tune .imgs{justify-content:flex-start;padding-top:4px}
+  .tpanel .imgs{justify-content:flex-start;padding-top:4px}
   .imgs .gal{position:relative;width:44px;height:44px;padding:0;border:2px solid #f4f1ea44;border-radius:6px;background:#000 center/cover;cursor:pointer}
   .imgs .gal:hover,.imgs .gal:focus-visible{border-color:#ffd60a;outline:none}
   .imgs .gal.in::after{content:"";position:absolute;right:-5px;top:-5px;width:10px;height:10px;border-radius:50%;background:#ffd60a;box-shadow:0 0 0 2px #000}
@@ -54,12 +60,11 @@
   #gate{position:fixed;inset:0;z-index:10;overflow:hidden;background:#000;color:#eeeee5;cursor:default;
     font:500 14px/1.5 "Helvetica Neue",Arial,sans-serif;transition:opacity .65s,visibility .65s}
   #gate.off{opacity:0;visibility:hidden;pointer-events:none}
-  #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none}
+  #home-art{position:absolute;inset:0;display:grid;place-items:center;pointer-events:none;transform:translateY(-60px)}
   #home-art canvas,#home-art img{width:min(960px,90vw);height:auto;max-height:76dvh;object-fit:contain;display:block}
   #home-art img{animation:home-breathe 36s ease-in-out infinite;animation-delay:5s;will-change:transform}
   .webcamrow{display:flex;justify-content:center;margin-top:6px}
-  #gate.dr #home-art{display:flex;align-items:flex-start;justify-content:center;padding-top:3vh}
-  #gate.dr #home-art img,#gate.dr #home-art canvas{max-height:34dvh}  #home-art canvas{display:none;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%)}
+  #home-art canvas{display:none;-webkit-mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%);mask-image:radial-gradient(ellipse 50% 50% at 50% 50%,#000 62%,transparent 100%)}
   @keyframes home-breathe{0%,50%,100%{transform:translate(0,0) scale(1);filter:hue-rotate(0deg)}25%{transform:translate(.5%,-.4%) scale(1.015);filter:hue-rotate(5deg)}75%{transform:translate(-.5%,.4%) scale(.985);filter:hue-rotate(-5deg)}}
   #gate.off #home-art img{animation-play-state:paused}
   #home-nav{position:absolute;top:0;left:0;right:0;display:flex;align-items:center;justify-content:space-between;gap:16px;padding:calc(24px + env(safe-area-inset-top)) max(32px,env(safe-area-inset-right)) 20px max(32px,env(safe-area-inset-left));z-index:2}
@@ -85,17 +90,18 @@
   #surprise:disabled{opacity:.4;cursor:not-allowed}
   #gate.dr #home-intro{display:none}
   #hint{position:absolute;bottom:calc(12px + env(safe-area-inset-bottom));left:20px;right:20px;text-align:center;color:#a8b1ab;font-size:11px;margin:0;pointer-events:none}
-  #home-drawer{position:absolute;top:calc(92px + env(safe-area-inset-top));right:max(32px,env(safe-area-inset-right));width:min(470px,calc(100vw - 48px));max-height:calc(100dvh - 92px - 20px - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow:auto;box-sizing:border-box;border:1px solid #a6c99b33;border-radius:18px;background:#090e0ced;box-shadow:0 20px 70px #000a;backdrop-filter:blur(18px);padding:22px;z-index:3}
+  #home-drawer{position:absolute;left:0;right:0;bottom:28px;z-index:3;display:flex;flex-direction:column;align-items:center;pointer-events:none}
+  #home-drawer::before{content:"";position:absolute;left:0;right:0;bottom:-28px;height:320px;background:linear-gradient(to top,#000 40%,#000a 70%,transparent);pointer-events:none}
+  #home-drawer .wz{position:relative;width:min(760px,calc(100vw - 48px));max-height:calc(100dvh - 28px - 40px);overflow:auto;box-sizing:border-box;padding:4px 8px;pointer-events:auto}
   #gate [hidden]{display:none!important}
   #home-drawer h2{font-size:20px;letter-spacing:-.03em;font-weight:500;margin:0 28px 5px 0}
   #home-drawer p{color:#a8b1ab;font-size:13px;margin:0 0 18px}
-  #home-close{position:absolute;right:14px;top:14px;width:32px;height:32px;border-radius:50%;color:#a8b1ab}
+  #home-close{position:absolute;right:8px;top:0;z-index:1;width:32px;height:32px;border-radius:50%;color:#a8b1ab}
   #home-close:hover{background:#ffffff10}
-  #source{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0}
+  #source{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:0}
   #source button{padding:12px 8px;background:#ffffff04;border:1px solid #ffffff16;color:#a8b1ab;border-radius:8px;cursor:pointer;font:500 12px/1.2 "Helvetica Neue",Arial,sans-serif}
   #source button[aria-pressed="true"]{background:#b7d7a81a;border-color:#b7d7a877;color:#e0edda}
   #cards{padding:0}
-  #home-play .pcols{display:grid;grid-template-columns:1fr;gap:0}
   #home-play .step{margin:0 0 16px;min-width:0}
   #home-play .step>.field{display:flex;align-items:center;gap:8px;margin:0 0 8px}
   #home-play .step>.field b{display:grid;place-items:center;width:18px;height:18px;border-radius:50%;background:#c5e1ad;color:#0a130d;font-size:11px;letter-spacing:0}
@@ -105,9 +111,25 @@
   #home-drawer #home-play .imgs .im,#home-drawer #home-play .imgs label{width:46px;height:46px}
   #home-drawer #home-play .imgs .gal{width:34px;height:34px}
   #home-drawer #home-play .gal-row{margin-top:10px;gap:6px}
-  @media(min-width:900px){#home-drawer:has(#home-play:not([hidden])){width:min(800px,calc(100vw - 64px))}#home-play .pcols{grid-template-columns:1fr 1.2fr;gap:0 26px}#home-play .pcol:last-child{padding-top:0}}
   #gate details.more{margin-top:8px}
-  #starts .go,#home-play #pstart{width:100%;padding:15px;font-size:15px}
+  #gate #wz-next,#starts .go{min-width:min(260px,70vw);padding:14px 48px;font-size:15px}
+  #starts{display:flex;flex-direction:column;align-items:center;gap:8px;align-self:center}
+  #starts .hhint{margin:0}
+  #home-drawer .wz-head{position:relative;display:flex;align-items:center;justify-content:center;min-height:32px;margin:0 0 12px;padding:0 72px}
+  #home-drawer .wz-head h2{display:flex;align-items:center;gap:8px;margin:0;font-size:18px;font-weight:500;letter-spacing:-.02em}
+  #home-drawer .wz-head h2 b{display:grid;place-items:center;width:20px;height:20px;border-radius:50%;background:#c5e1ad;color:#0a130d;font-size:12px}
+  #wz-back{position:absolute;left:0;top:0}
+  #wz1,#wz2{display:flex;flex-direction:column;align-items:stretch;gap:12px}
+  #wz-next{align-self:center}
+  #galtoggle{align-self:center}
+  #home-drawer #wz2 .imgs{margin:0;justify-content:center}
+  #home-drawer .wz-pic,#home-drawer .wz-sum{margin:0;text-align:center;font-size:13px}
+  #home-drawer .wz-pic{color:#a8b1ab}
+  #home-drawer details>summary{cursor:pointer;font-size:12px;color:#a8b1ab;padding:4px 0}#home-drawer details>summary:hover{color:#e0edda}#home-drawer details>:not(summary){margin-top:12px}
+  #home-drawer .wz-sum{color:#e0edda}
+  #home-drawer #source button{display:flex;flex-direction:column;align-items:flex-start;gap:4px;padding:12px 14px;text-align:left}
+  #home-drawer #source button b{color:#f4f1ea;font-size:14px;font-weight:600}
+  #home-drawer #source button small{font-size:11px;color:#a8b1ab;font-weight:400}
   #gate .im:focus-visible,#gate .imgs label:focus-within{outline:2px solid #c5e1ad;outline-offset:3px}
   .card{display:flex;flex-direction:column;align-items:stretch;gap:16px}
   .card p{margin:0!important}
@@ -145,20 +167,20 @@
     #home-nav .brand{font-size:9px;letter-spacing:.1em}
     #home-menu{gap:0}#home-menu button{font-size:12px;padding:10px}
     #home-art{display:flex;justify-content:center;align-items:center}#home-art img,#home-art canvas{width:125vw;max-width:none;flex:none}
-    #home-drawer{top:calc(78px + env(safe-area-inset-top));right:12px;width:calc(100vw - 24px);max-height:calc(100dvh - 124px - env(safe-area-inset-top) - env(safe-area-inset-bottom));padding:22px}
+    #home-drawer .wz{width:calc(100vw - 24px)}#source{gap:6px}#home-drawer #source button{padding:10px 6px;gap:2px}#home-drawer #source button b{font-size:12px}#home-drawer #source button small{font-size:10px}
 
     #hint{font-size:10px}
   }
   @media(max-height:500px){#home-intro p{display:none}#hint{display:none}#home-intro{bottom:calc(16px + env(safe-area-inset-bottom))}#surprise{padding:12px 24px}
-    #home-drawer{top:52px;right:max(12px,env(safe-area-inset-right));width:min(900px,calc(100vw - 24px));max-height:calc(100dvh - 60px);padding:9px 16px}#home-drawer h2{display:none}
-    #home-play .pcols{grid-template-columns:1fr 1.25fr;gap:0 18px}#home-play .step{margin:0 0 10px}#home-play .step>.field{margin-bottom:5px}#home-drawer #home-play .imgs .im,#home-drawer #home-play .imgs label{width:40px;height:40px}
-    #source button{padding:8px 4px}#home-play .card{gap:6px}#home-play .sub{margin:6px 0 4px!important}#home-play .card small{margin-top:3px}#home-play .card button:not(.go){padding:6px 11px}#home-play #galtoggle{margin-top:6px!important}#home-drawer #home-play .gal-row{margin-top:6px}#home-play #pstart,#starts .go{padding:11px}}
+    #home-drawer .wz{width:min(900px,calc(100vw - 24px));max-height:calc(100dvh - 40px)}
+    #home-play .step{margin:0 0 10px}#home-play .step>.field{margin-bottom:5px}#home-drawer #home-play .imgs .im,#home-drawer #home-play .imgs label{width:40px;height:40px}
+    #source button{padding:8px 4px}#home-play .card{gap:6px}#home-play .sub{margin:6px 0 4px!important}#home-play .card small{margin-top:3px}#home-play .card button:not(.go){padding:6px 11px}#home-play #galtoggle{margin-top:6px!important}#home-drawer #home-play .gal-row{margin-top:6px}#gate #wz-next,#starts .go{padding:11px 36px}}
 
   /* ---- pupitre (B4): level, Energy, 9 effects, 6 moods, transport + keys, in 4 rows at the bottom ---- */
   .pult{position:fixed;left:50%;transform:translateX(-50%);width:min(1248px,calc(100vw - 32px));bottom:12px;display:flex;flex-direction:column;padding:5px 8px;border:1px solid #5d5d74;border-radius:10px;background:#0b0b12e8;color:#f4f1ea;font:500 11.5px/1.2 "Helvetica Neue",Arial,sans-serif;letter-spacing:0;text-transform:none;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5;box-sizing:border-box}
   #pult{display:none}
   body.playing #pult,body.live #pult{display:flex}
-  body.ui #pult,body.tuning #pult,body.pinned #pult{opacity:1;pointer-events:auto}
+  body.pshow #pult{opacity:1;pointer-events:auto}
   .pmain{display:flex;justify-content:space-between;gap:8px;height:72px}
   .pucol{display:grid;grid-template-rows:repeat(3,24px);align-items:center;min-width:0}
   .pc1{width:342px;flex:none}
@@ -235,14 +257,20 @@
   body.lv0 #pult{display:none}
   #mpult{display:none;width:max-content;max-width:calc(100vw - 24px);gap:5px;padding:6px 10px;box-sizing:border-box}
   body.lv0.playing #mpult,body.lv0.live #mpult{display:flex}
-  body.ui #mpult,body.tuning #mpult,body.pinned #mpult{opacity:1;pointer-events:auto}
+  body.pshow #mpult{opacity:1;pointer-events:auto}
   #mpult .mrow{display:flex;align-items:center;gap:14px;white-space:nowrap}
   #mpult #mpp{width:26px;height:26px;border-radius:50%;border:1px solid #f4f1ea88;background:none;color:#f4f1ea;cursor:pointer;font-size:10px;padding:0;flex:none}
+  #mpult #mesc{display:none;height:26px;border-radius:13px;border:1px solid #f4f1ea88;background:none;color:#f4f1ea;cursor:pointer;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;padding:0 10px;flex:none}
+  body.live #mpult .mnolive{display:none}   /* T87: mic mode has no timeline and no Pause; Esc stops instead */
+  body.live #mpult #mesc{display:inline-block}
   #mbar{position:relative;flex:none;width:340px;height:28px;cursor:pointer;touch-action:none;border-bottom:2px solid #f4f1ea55}
   #mbar canvas{position:absolute;inset:0;width:100%;height:100%}
   #mhead{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
   #mtm{font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.06em;min-width:84px}
+  #mpult #vol{display:none;width:70px;flex:none}
+  body.lv0.playing:not(.filesrc) #mpult #vol{display:inline-block}   /* generated music only: a local file has no volume here (.filesrc, set in begin); volume is back in auto (it lives in #ctl for assisted/manual, moved by setLevel) */
   #mpult .mhint{display:none}   /* T80: the ±10 s text is hidden; Shift+Left/Right still seek */
+  body.lv0 #mpult .mseek{display:none}   /* T-4: Auto only: the ⇧←→ keycap is hidden; assisted/manual keep it. Shift+Left/Right still seek */
   #phelp .pult input{pointer-events:none}
   #phx{position:fixed;top:14px;right:14px;width:34px;height:34px;border:1px solid #f4f1ea88;border-radius:50%;background:#000b;color:#f4f1ea;font:600 16px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer}
 /* T48: two small Energy buttons on the right edge, touch devices only */
@@ -253,7 +281,7 @@
   #ctl{position:fixed;left:0;right:0;bottom:0;display:none;align-items:center;gap:16px;padding:26px 28px 18px;background:linear-gradient(transparent,#000a);color:#f4f1ea;
     font:700 12px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.12em;opacity:0;pointer-events:none;transition:opacity .3s;z-index:5}
   body.playing #ctl{display:flex}
-  body.ui #ctl{opacity:1;pointer-events:auto}
+  body.pshow #ctl{opacity:1;pointer-events:auto}
   #pp,#stopb{width:34px;height:34px;border-radius:50%;border:1px solid #f4f1ea88;background:none;color:#f4f1ea;cursor:pointer;font-size:12px}
   #bar{position:relative;flex:1;height:40px;cursor:pointer;touch-action:none;border-bottom:2px solid #f4f1ea55}
   #bar canvas{position:absolute;inset:0;width:100%;height:100%}
@@ -265,38 +293,52 @@
   #lbar i{display:block;height:100%;width:0;background:#ffd60a}
   #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:6px 10px;cursor:pointer}
   #wrap{touch-action:none}
-  #tune{position:fixed;right:max(20px,env(safe-area-inset-right));top:calc(72px + env(safe-area-inset-top));display:none;flex-direction:column;gap:9px;width:210px;max-height:calc(100dvh - 112px - var(--pult-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
+  .tpanel{position:fixed;right:max(20px,env(safe-area-inset-right));top:calc(72px + env(safe-area-inset-top));display:none;flex-direction:column;gap:9px;width:300px;max-width:calc(100vw - 40px);max-height:calc(100dvh - 112px - var(--pult-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
     font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .3s;z-index:6}
-  body.playing #tune:not([hidden]),body.live #tune:not([hidden]){display:flex}
-  #tune[hidden]{display:none}
-  body.tuning #tune{opacity:1;pointer-events:auto}
+  body.playing .tpanel:not([hidden]),body.live .tpanel:not([hidden]){display:flex}
+  .tpanel[hidden]{display:none}
+  body.tuning .tpanel{opacity:1;pointer-events:auto}
   #actions{position:fixed;right:max(20px,env(safe-area-inset-right));top:calc(16px + env(safe-area-inset-top));display:flex;gap:8px;z-index:8;pointer-events:none}
   #actions button{min-height:44px;padding:10px 14px;border:1px solid #f4f1ea88;border-radius:99px;background:#000a;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;cursor:pointer;pointer-events:auto}
   #settings{display:none;visibility:hidden}
   body.playing #settings,body.live #settings{display:block}
-  body.ui #settings,body.tuning #settings,#settings:focus-visible{visibility:visible}
-  body.playing:not(.ui):not(.tuning) #settings,body.live:not(.ui):not(.tuning) #settings{visibility:hidden}
-  body.playing:not(.ui):not(.tuning) #fullscreen,body.live:not(.ui):not(.tuning) #fullscreen{visibility:hidden}
-body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #shareplay{visibility:hidden}  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
+  body.showc #settings{display:none}
+  body.side-ui #settings,body.tuning #settings,#settings:focus-visible{visibility:visible}
+  body.playing:not(.side-ui):not(.tuning) #settings,body.live:not(.side-ui):not(.tuning) #settings{visibility:hidden}
+  body.playing:not(.side-ui):not(.tuning) #fullscreen,body.live:not(.side-ui):not(.tuning) #fullscreen{visibility:hidden}
+body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.tuning) #shareplay{visibility:hidden}
+  body.playing:not(.side-ui):not(.tuning):not(.recording) #rec,body.playing:not(.side-ui):not(.tuning) #recpick,body.live:not(.side-ui):not(.tuning) #rec{visibility:hidden}  body.live #rec{display:none}  #recpick{display:flex;gap:8px}  #recpick[hidden]{display:none}  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
   body.playing #actions #xclose,body.live #actions #xclose{display:block}
-  body.ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
-  #tune label{display:flex;flex-direction:column;gap:5px}
-  body:not(.mic) #tune .micOnly{display:none}
+  body.side-ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
+  .tpanel label{display:flex;flex-direction:column;gap:5px}
+  body:not(.mic) .tpanel .micOnly{display:none}
   #mlev{position:relative;width:110px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
   #mlev i{position:absolute;left:0;top:0;bottom:0;width:0;background:#2cff8a;transition:background .2s}
   #mtxt{font-size:10px;letter-spacing:.1em;min-width:120px}
-  #tune small{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none;opacity:.6;line-height:1.3}
-  #tune .help{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none;opacity:.6;line-height:1.4}
-  #tune input{width:100%;accent-color:#ffd60a;margin:0}
-  #tune button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:1px solid #f4f1ea66;border-radius:99px;padding:7px 10px;cursor:pointer}
-  #tune button:hover{border-color:#ffd60a}
-  #tune .tmodes{display:grid;grid-template-columns:1fr 1fr;gap:6px}
-  #tune .tmodes button{padding:6px 0}
-  #tune .tr4{grid-template-columns:1.6fr 1fr 1fr 1.4fr}
-  #tune .tr3{grid-template-columns:repeat(3,1fr)}
-  #tune button.on{background:#f4f1ea;color:#05030c}
-  #tune .prow{display:flex;align-items:center;gap:6px}
-  #tune .prow button{flex:1;padding:6px 0}
+  .tpanel small{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none;opacity:.6;line-height:1.3}
+  .tpanel input{width:100%;accent-color:#ffd60a;margin:0}
+  .tpanel button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:1px solid #f4f1ea66;border-radius:99px;padding:7px 10px;cursor:pointer}
+  .tpanel button:hover{border-color:#ffd60a}
+  .tpanel button.on{background:#f4f1ea;color:#05030c}
+  .tpanel [hidden]{display:none!important}
+  .tpanel .th{margin:0;font-size:10px;font-weight:700;letter-spacing:.15em;color:#a8b1ab}
+  .tpanel .tsec{display:flex;flex-direction:column;gap:7px;border-top:1px solid #ffffff1c;padding-top:9px}
+  .tpanel .tsec:first-child{border-top:0;padding-top:0}
+  .tpanel .tcards{display:grid;grid-template-columns:1fr 1fr;gap:6px}
+  .tpanel .tcard{border:1px solid #f4f1ea33;border-radius:10px;padding:8px 10px;font-size:11px;font-weight:400;letter-spacing:.02em;text-transform:none;color:#c5cdc6;cursor:pointer}
+  .tpanel .tcard b{display:block;color:#f4f1ea;font-size:12px;font-weight:700}
+  .tpanel .tcard.on{border-color:#ffd60a;background:#ffd60a18}
+  .tpanel .tcur{display:none;font-size:10px;color:#ffd60a}
+  .tpanel .tcard.on .tcur{display:block}
+  .tpanel .tcard.pend{border-color:#ffd60a;border-style:dashed}
+  .tpanel .tbusy{display:none;font-size:10px;color:#ffd60a}
+  .tpanel .tcard.busy .tbusy{display:block}
+  .tpanel .tnowfile{margin:0;font-size:10px;font-weight:400;letter-spacing:.02em;text-transform:none;color:#f4f1ea;overflow-wrap:anywhere}
+  .tpanel .trow{display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+  .tpanel .tgfx{gap:6px}
+  .tpanel .tfoot{display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid #ffffff1c;padding-top:9px}
+  .tpanel .tlink{border:0;border-radius:0;padding:0;color:#9aa39d;font-size:10px}
+  .tpanel .tlink:hover{color:#ffd60a}
   @media (max-width:600px),(max-height:600px){
     #ctl{flex-wrap:wrap;gap:10px;padding:16px max(12px,env(safe-area-inset-right)) calc(12px + env(safe-area-inset-bottom)) max(12px,env(safe-area-inset-left))}
     #bar{min-width:100px}#tm{font-size:10px;letter-spacing:0}#vol{width:70px}
@@ -317,7 +359,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
     body.mic #lbar,body:not(.mic) #mlev{display:none}
     #lstop{padding:7px 8px;font-size:10px;visibility:hidden;pointer-events:none}
     body.ui #lstop{visibility:visible;pointer-events:auto}
-    #tune{top:calc(48px + env(safe-area-inset-top));padding:10px;gap:7px}
+    .tpanel{top:calc(48px + env(safe-area-inset-top));padding:10px;gap:7px}
   }
 </style>
 </head>
@@ -336,39 +378,32 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
   <div id="home-intro"><p>Sound into colour. A trip at your own pace.</p>
     <div id="home-cta"><button id="surprise" disabled aria-label="Surprise me: start a random trip now">▶ Surprise me</button><button id="playlast" disabled aria-label="Play: start with your last setup">▶ Play</button><button id="home-start" aria-controls="home-play" aria-expanded="false" aria-label="Customize your trip">Customize</button></div></div>
   <section id="home-drawer" aria-label="Setup" hidden>
+    <div class="wz">
     <button id="home-close" aria-label="Close menu">✕</button>
     <div id="home-play" hidden>
-      <h2>Set up your trip</h2>
-      <div class="pcols">
-      <div class="pcol">
-      <section class="step" aria-labelledby="s3"><span class="field" id="s3"><b>1</b> Picture</span>
-        <div class="imgs" id="gimgs" aria-label="Your images"></div>
-        <button class="chip" id="galtoggle" type="button" aria-expanded="false" aria-controls="ggal" aria-label="Show or hide the picture gallery" style="margin-top:10px">Gallery ▾</button>
-        <div class="imgs gal-row" id="ggal" hidden title="Gallery: click to add (max 5), click again to show"></div>
-        <div class="urlrow"><input id="imgurl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Or paste an image link (https://…)" aria-label="Image link"><button class="chip" id="imgurlgo" type="button">Load</button><button class="chip" id="imgcopy" type="button" hidden>Copy link</button></div>
-<div class="urlrow webcamrow"><button class="chip" id="webcamgo" type="button">Webcam</button></div>
-        <small class="urlmsg" id="imgurlmsg" role="status"></small></section>
-      </div>
-      <div class="pcol">
-      <section class="step" aria-labelledby="s1"><span class="field" id="s1"><b>2</b> Sound source</span>
+      <div class="wz-head"><button class="chip" id="wz-back" type="button" hidden>‹ Back</button><h2><b id="wz-num">1</b><span id="wz-tt">Choose the sound</span></h2></div>
+      <div id="wz1">
         <div id="source" role="group" aria-label="Sound source">
-          <button data-source="gen" aria-pressed="false" aria-controls="c-gen" aria-label="Generated music">Generated</button>
-          <button data-source="local" aria-pressed="false" aria-controls="c-local" aria-label="Local audio file">Local file</button>
-          <button data-source="stream" aria-pressed="false" aria-controls="c-stream" aria-label="Browser tab audio (stream)">Browser tab</button>
-          <button data-source="live" aria-pressed="false" aria-controls="c-live" aria-label="Microphone">Microphone</button>
-        </div></section>
-      <section class="step" id="st2" hidden aria-labelledby="s2"><span class="field" id="s2"><b>3</b> <span id="s2t">Music and energy</span></span>
-      <div class="enbrow"><span class="field sub" id="f-en">Energy</span><div class="enb" id="enh" role="group" aria-labelledby="f-en" title="How wild the picture is, for every source (keys Z / X while playing). Look only: the music does not change."><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div></div>
+          <button data-source="gen" aria-pressed="false" aria-controls="c-gen" aria-label="Generated music"><b>Generated music</b><small>Nothing to bring</small></button>
+          <button data-source="local" aria-pressed="false" aria-controls="c-local" aria-label="Local audio file"><b>Audio file</b><small>Your own track</small></button>
+          <button data-source="stream" aria-pressed="false" aria-controls="c-stream" aria-label="Browser tab audio (stream)"><b>Browser tab</b><small>YouTube, Spotify…</small></button>
+          <button data-source="live" aria-pressed="false" aria-controls="c-live" aria-label="Microphone"><b>Microphone</b><small>The sound of the room</small></button>
+        </div>
+      <section class="step" id="st2" hidden aria-labelledby="s2"><span class="field" id="s2"><span id="s2t">Music and energy</span></span>
       <div id="cards">
         <div class="card" id="c-gen" hidden>
-          <div><span class="field sub" id="f-mus">Music</span><div id="mus" role="group" aria-labelledby="f-mus"><button data-music="ambient">ambient</button><button data-music="gnossienne">gnos</button><button data-music="gymnopedie">gymno</button><button data-music="electro">electro</button><button data-music="chiptune">chiptune</button><button data-music="drone">drone</button><button data-music="gamelan">gamelan</button></div></div>
-          <div><span class="field sub" id="f-arc">Shape</span><div id="opts" role="group" aria-labelledby="f-arc"><button data-arc="journey">journey</button><button data-arc="slam">slam</button><button data-arc="intense">intense</button><button data-arc="extreme">non-stop</button></div>
-            <small id="arc-hint">calm build → big finish</small></div>
-          <div><span class="field sub" id="f-dur">Length</span><div id="dur" role="group" aria-labelledby="f-dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div></div>
+          <div><span class="field sub" id="f-mus">Style</span><div id="mus" role="group" aria-labelledby="f-mus"><button data-music="ambient">Ambient</button><button data-music="gnossienne">Gnossienne</button><button data-music="gymnopedie">Gymnopedie</button><button data-music="electro">Electro</button><button data-music="chiptune">Chiptune</button><button data-music="drone">Drone</button><button data-music="gamelan">Gamelan</button></div></div>
+          <details id="more">
+            <summary id="len-sum">Length: 5 min, more options</summary>
+            <div><span class="field sub" id="f-arc">Shape</span><div id="opts" role="group" aria-labelledby="f-arc"><button data-arc="journey">Journey</button><button data-arc="slam">Slam</button><button data-arc="intense">Intense</button><button data-arc="extreme">Non-stop</button></div>
+              <small id="arc-hint">calm build → big finish</small></div>
+            <div><span class="field sub" id="f-dur">Length</span><div id="dur" role="group" aria-labelledby="f-dur"><button data-min="1">1 min</button><button data-min="2">2 min</button><button data-min="5">5 min</button><button data-min="10">10 min</button><button data-min="15">15 min</button></div></div>
+          </details>
         </div>
         <div class="card" id="c-local" hidden>
           <label id="lpick" tabindex="0" role="button">Choose an audio file<input type="file" accept="audio/*" hidden></label>
           <label id="nextpick" tabindex="0" role="button">Next track (optional)<input type="file" accept="audio/*" hidden></label>
+          <small>Plays the next file when this one ends</small>
           <div id="nextrow"><span id="nextname"></span><button id="nextclear" type="button" aria-label="Clear next track" title="Clear" style="display:none">✕</button></div>
           <i class="warn" id="localnote" role="status"></i>
         </div>
@@ -380,13 +415,25 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
           <p>Let music in the room guide the picture through your microphone. The input level shows while it plays.</p>
         </div>
       </div></section>
+        <button class="go" id="wz-next" type="button">Next →</button>
+      </div>
+      <div id="wz2" hidden>
+        <div class="imgs" id="gimgs" aria-label="Your images"></div>
+        <p class="wz-pic">1943 poster by default</p>
+        <details id="more-pic">
+          <summary>More ways to add a picture</summary>
+          <button class="chip" id="galtoggle" type="button" aria-expanded="false" aria-controls="ggal" aria-label="Show or hide the picture gallery" style="margin-top:10px">Gallery ▾</button>
+          <div class="imgs gal-row" id="ggal" hidden title="Gallery: click to add (max 5), click again to show"></div>
+          <div class="urlrow"><input id="imgurl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Or paste an image link (https://…)" aria-label="Image link"><button class="chip" id="imgurlgo" type="button">Load</button><button class="chip" id="imgcopy" type="button" hidden>Copy link</button></div>
+          <div class="urlrow webcamrow"><button class="chip" id="webcamgo" type="button">Webcam</button></div>
+          <small class="urlmsg" id="imgurlmsg" role="status"></small>
+        </details>
+        <p class="wz-sum" id="wz-sum" role="status"></p>
       <div id="starts">
         <button class="go" id="playgen" hidden disabled aria-label="Start with generated music">▶ Start</button>
         <button class="go" id="playlocal" disabled hidden aria-label="Start with the chosen audio file">▶ Start</button>
         <button class="go" id="tabmode" hidden aria-label="Choose a browser tab and start">▶ Start</button>
         <button class="go" id="micmode" hidden aria-label="Use the microphone and start">▶ Start</button>
-        <small class="hhint">Press <b>H</b> for the keyboard commands</small>
-      </div>
       </div>
       </div>
     </div>
@@ -398,26 +445,46 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
       <div class="rsets"><button class="chip" data-reset="settings" title="Put every tweak (sliders, tiles, colour, transition…) back to its default. Keeps presets and images.">Reset settings</button><button class="chip" data-reset="memory" title="Forget everything saved in this browser (tweaks, presets 1-8, quality, music choice, bookmarks) and reload">Reset memory</button></div>
       <p id="qnote" role="status"></p>
     </div>
+    </div>
   </section>
   <p id="hint" role="status">Loading…</p>
 </main>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
-<div id="actions"><button class="action" id="settings" aria-controls="tune" aria-expanded="false">Settings</button><button class="action" id="shareplay" type="button" aria-label="Copy a link that reproduces this trip">Share</button><button class="action" id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button class="action" id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
-<div id="tune" hidden>
-  <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
-  <div class="help">Mouse: move = centre · click = ripple · drag = turn · wheel = zoom out / in · T cycles tile mode · 1-8 presets (Shift 1-8 save) · [ ] images · Shift+Arrows seek</div>
-  <div>Images<div class="imgs" id="timgs"></div><button class="chip" id="twebcam" type="button" style="margin-top:6px">Webcam</button></div>
-  <div>Gallery<div class="imgs gal-row" id="tgal"></div></div>
-  <div class="tmodes tr4" id="ais" title="Change image by itself (key ;): every 30 / 60 s of the piece, or on some scene changes (about 2 in 5, seeded). Needs 2+ images."><button data-ai="0">Auto image: off</button><button data-ai="30">30 s</button><button data-ai="60">60 s</button><button data-ai="-1">Some scenes</button></div>
-  
-   <button id="u-q" title="Graphics quality: lower it if the animation stutters (Low is much lighter)">Quality: high</button><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button>
-  <div class="prow">Load<button data-load="1">1</button><button data-load="2">2</button><button data-load="3">3</button><button data-load="4">4</button><button data-load="5">5</button><button data-load="6">6</button><button data-load="7">7</button><button data-load="8">8</button></div>
-  <div class="prow">Save<button data-save="1">1</button><button data-save="2">2</button><button data-save="3">3</button><button data-save="4">4</button><button data-save="5">5</button><button data-save="6">6</button><button data-save="7">7</button><button data-save="8">8</button></div>
-  <div class="rsets"><button class="chip" data-reset="settings" title="Put every tweak (sliders, tiles, colour, transition…) back to its default. Keeps presets and images.">Reset settings</button><button class="chip" data-reset="memory" title="Forget everything saved in this browser (tweaks, presets 1-8, quality, music choice, bookmarks) and reload">Reset memory</button></div>
+<div id="actions"><button class="action" id="settings" aria-controls="tune" aria-expanded="false" aria-label="Source">Source</button><button class="action" id="shareplay" type="button" aria-label="Copy a link that reproduces this trip">Share</button><button class="action" id="rec" type="button" aria-label="Record a short clip" title="Record a 15, 30 or 60 s clip">Record</button><span id="recpick" hidden><button class="action" type="button" data-s="15">15 s</button><button class="action" type="button" data-s="30">30 s</button><button class="action" type="button" data-s="60">60 s</button></span><button class="action" id="recshare" type="button" hidden>Share clip</button><button class="action" id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button class="action" id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
+<div class="tpanel" id="tune" hidden>
+  <section class="tsec" aria-labelledby="tsnd">
+    <h3 class="th" id="tsnd">Sound</h3>
+    <div class="tcards" role="group" aria-label="Sound source">
+      <div class="tcard" data-src="gen" role="button" tabindex="0"><b>Generated</b><span class="tcur">playing now</span></div>
+      <div class="tcard" data-src="file" role="button" tabindex="0"><b>Audio file</b><span class="tcur">playing now</span><span class="tbusy">Analysing...</span></div>
+      <div class="tcard" data-src="tab" role="button" tabindex="0"><b>Browser tab</b><span class="tcur">playing now</span></div>
+      <div class="tcard" data-src="mic" role="button" tabindex="0"><b>Microphone</b><span class="tcur">playing now</span></div>
+    </div>
+    <div class="trow" id="tapply" hidden><small>Changing source restarts the animation (about 1 s of silence). Energy, Calm and pictures are kept.</small><button id="tapplybtn" type="button">Apply</button></div>
+    <input type="file" id="tfpick" accept="audio/*" hidden>
+    <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
+    <div id="tfile">
+      <p class="tnowfile" id="tnowfile"></p>
+      <div class="trow"><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button></div>
+    </div>
+  </section>
+  <section class="tsec" aria-labelledby="tpic">
+    <h3 class="th" id="tpic">Picture</h3>
+    <div class="imgs" id="timgs"></div>
+    <div class="imgs gal-row" id="tgal"></div>
+    <button class="chip" id="twebcam" type="button" style="margin-top:6px">Webcam</button>
+  </section>
+  <div class="trow tgfx" id="tgfx" hidden><button data-q="low">Low</button><button data-q="medium">Medium</button><button data-q="high">High</button></div>
+  <div class="tfoot">
+    <button class="tlink" id="tgfxbtn" type="button" aria-expanded="false" aria-controls="tgfx">Graphics</button>
+    <button class="tlink" data-reset="settings" title="Put every tweak (sliders, tiles, colour, transition…) back to its default. Keeps presets and images.">Reset settings</button>
+    <button class="tlink" data-reset="memory" title="Forget everything saved in this browser (tweaks, presets 1-8, quality, music choice, bookmarks) and reload">Reset memory</button>
+  </div>
 </div>
 <div id="thumbs"></div>
 <div id="toast"></div>
+<div id="endwarn" aria-hidden="true"><span class="dot"></span><span class="n"></span></div>
 <div id="tap" hidden>▶ tap for sound</div>
 <div id="code"></div>
 <div id="fxpanel"></div>
@@ -434,9 +501,10 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
     <kbd class="pk u0" data-code="KeyM" title="Control level (key M)">M</kbd><div id="mplvl" class="plvl" title="Control level"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div>
   </div>
   <div class="mrow">
-    <button id="mpp" title="Space">❚❚</button><kbd class="pk gT u0">Space</kbd>
-    <div id="mbar"><canvas id="mprof" width="1200" height="40"></canvas><div id="mhead"></div></div><span id="mtm">0:00</span>
-    <span><kbd class="pk gT">⇧←→</kbd><span class="mhint">±10 s</span></span>
+    <button id="mpp" class="mnolive" title="Space">❚❚</button><kbd class="pk gT u0 mnolive">Space</kbd>
+    <div id="mbar" class="mnolive"><canvas id="mprof" width="1200" height="40"></canvas><div id="mhead"></div></div><span id="mtm">0:00</span>
+    <span class="mnolive mseek"><kbd class="pk gT">⇧←→</kbd><span class="mhint">±10 s</span></span>
+    <button id="mesc" title="Esc: stop">Esc</button>
   </div>
 </div>
 <div id="pult" class="pult">
@@ -844,7 +912,7 @@ function makeTargets() {
   }
   gl.bindFramebuffer(gl.FRAMEBUFFER, null); cur = 0;
 }
-let ASPECT = 1; let cellPrev = 0, cellLaunch = 0, cellGrid = 4;   // strobe grid per-launch size (N x N, N in 3..10)
+let ASPECT = 1; let cellPrev = 0, cellGrid = 4;   // strobe grid: size of the current launch (N x N, N in 3..10), drawn at each launch
 const GALLERY = __GALLERY__;   // [{id, title, src}] inlined by build.mjs; a picture is decoded only when its thumb is clicked (galPick)
 function loadImg(src, ok, fail, maxPx) {
   const bad = () => { if (fail) fail(); else hint.textContent = 'Could not load that image'; };
@@ -1256,12 +1324,21 @@ function uForE(e) {
   for (let i = 1; i < T.length; i++) if (T[i] > g) return (i - 1 + (g - T[i - 1]) / Math.max(1e-6, T[i] - T[i - 1])) / 50;
   return .88;
 }
-// intro glitch amount 0..1 (display pass only): generated mode, from gs = min(10 s, 8 % of the piece) to 15 %, rising slowly; the last third of that window fades it out. Pure function of t.
+// T52: after the intro, sparse glitch bursts (display pass only): each 12 s cell has a 35 % chance of a 1-2.5 s burst at a seeded spot, amplitude .3-.55 (the shader's slot rule keeps it sparse). Pure function of t and PH.
+const gHash = (n, s) => { const x = Math.sin(n * 12.9898 + s * 78.233) * 43758.5453; return x - Math.floor(x); };
+const glitchBurst = t => {
+  const cell = Math.floor(t / 12);
+  if (gHash(cell, PH) > .35) return 0;
+  const dur = 1 + 1.5 * gHash(cell, PH + 1), t0 = cell * 12 + gHash(cell, PH + 2) * (12 - dur);
+  return t >= t0 && t < t0 + dur ? .3 + .25 * gHash(cell, PH + 3) : 0;
+};
+// intro glitch amount 0..1 (display pass only): generated mode, from gs = min(10 s, 8 % of the piece) to 22 %, rising slowly; the last third of that window fades it out; after that, glitchBurst(). Pure function of t.
 const glitchAmt = t => {
   if (Q.has('glitch')) return clamp(+Q.get('glitch') || 0);   // test override ?glitch=0..1
   if (LIVE || LOC || CTRL) return 0;
   const gs = Math.min(10, .08 * TOTAL), ge = .22 * TOTAL;
-  if (t <= gs || t >= ge) return 0;
+  if (t <= gs) return 0;
+  if (t >= ge) return SHOW ? 0 : glitchBurst(t);   // bursts not in ?showcase (its plain-image baseline)
   return .8 * Math.pow(smooth(gs, ge, t), .7) * (1 - smooth(ge - (ge - gs) / 3, ge, t));   // peak .8, earlier rise (^.7): visible from ~20 s, never a strobe
 };
 function timelines(hc = hcOn()) {
@@ -1441,6 +1518,7 @@ function setLevel(l, save = true, quiet = false) {
   else if (l !== 2) { MAN_BASE = null; }
   CL = l; CTRL = l === 2; resetFx();   document.querySelectorAll('#lvl button,#plvl button,#mplvl button').forEach(b => b.classList.toggle('on', +b.dataset.cl === l));
   for (let i = 0; i < 3; i++) document.body.classList.toggle('lv' + i, i === l);
+  if (l === 0) $('mesc').before($('vol')); else $('ctl').appendChild($('vol'));   // one #vol element: auto pupitre (#mpult) or the transport (#ctl)
   markEN();
   if (!quiet) { const enHint = document.body.classList.contains('touchdev') ? 'right edge ▲ ▼' : 'Z X'; toast('Control: ' + LVL[l] + ['  ·  engine only; you set Energy (' + enHint + ') and the images', '  ·  engine + effect keys (H) that fade out by themselves', '  ·  quiet base + only what you toggle (H = keys)'][l], 3500); }}
 // live-coding overlay (L: off / overlay / crazy): a terminal that "types" the real values of the frame's final params P. It only reads P.
@@ -1702,9 +1780,10 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // Calm master slider (T64): one final multiplier toward the neutral poster. Applied to both auto and user paths, before showcase/ctrl so their deltas sit on top of the calmed base.
   if (SHOW) showcaseParams(P, t); else if (CL) ctrlParams(P, t, dt);
   // strobe-grid launch tracking: each rising edge (0 -> on) draws a new grid size
-  if (P.cells > .5 && cellPrev <= .5) { cellLaunch++; const Ns = [3, 4, 5, 6, 7, 8, 9, 10]; cellGrid = Ns[Math.floor(hsh(cellLaunch, 80) * 8)]; }
+  // the size is drawn from the song second of the launch (seeded), so a seek to the same moment gives the same grid; fades keep it
+  if (P.cells > 0 && cellPrev <= 0) { const Ns = [3, 4, 5, 6, 7, 8, 9, 10]; cellGrid = Ns[Math.floor(hsh(Math.floor(t), 80) * 8)]; }
   cellPrev = P.cells;
-  P.grid = P.cells > .5 ? cellGrid : 4;
+  P.grid = cellGrid;
   // Calm master slider (T64): one final multiplier toward the neutral poster, after every other term (incl. user keys).
   const cf = UE.calm;
   if (cf !== 1) {    for (const k of ['warp', 'kal', 'breath', 'melt', 'ab', 'pulse', 'stretch', 'tun', 'tile', 'kali', 'julia', 'pal']) if (typeof P[k] === 'number') P[k] *= cf;
@@ -2478,12 +2557,12 @@ function integrateTo(off) {
 }
 const setPP = () => { $('pp').textContent = $('mpp').textContent = paused ? '▶' : '❚❚'; };
 function begin(off, fresh) {   // (re)start sound + state at song time `off`; the picture is a pure function of time so it just follows
-  clearInterval(pumpId); if (ac) ac.close().catch(() => {});
+  clearInterval(pumpId); if (ac) ac.close().catch(() => {}); document.body.classList.toggle('filesrc', !!LOC);   // a local file: no #vol in the auto pupitre (CSS)
   ac = new (window.AudioContext || window.webkitAudioContext)(MOBILE ? { latencyHint: 'playback' } : undefined); ac.resume();
   off = clamp(off, 0, Math.max(0, TOTAL - 3));
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
-  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; cellLaunch = 0; cellGrid = 4; integrateTo(off); paused = false; setPP();
+  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; cellGrid = 4; integrateTo(off); paused = false; setPP();
   pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); if (STYLES[MUSIC]) drawProfile(); pump(); pumpId = setInterval(pump, 1000);
 }
 let SUSP = null;
@@ -2512,8 +2591,56 @@ function dbgTick() {   // ?debug=1: fps/frame ms + audio underrun stats (playout
   } else s += '\n(no playoutStats)';
   dbgEl.textContent = s;
 }
+let endN = 0;   // seconds shown on #endwarn (0 = hidden); see endWarn()
+function endWarn(t) {   // red dot + countdown 30, 20, 10 s before the end (generated + local). Derived from TOTAL - t, so a seek just recomputes it
+  const r = TOTAL - t; let n = 0;
+  if (r > 0 && r <= 30 && !liveOn && !SHOW) for (const m of [30, 20, 10]) if (r <= m && r > m - 5) n = Math.ceil(r);
+  if (n === endN) return; endN = n;   // the DOM is touched only when the shown number changes
+  const el = $('endwarn'); el.classList.toggle('on', n > 0); if (n) el.lastElementChild.textContent = n;
+}
+// Clip recording (T79): the canvas + the master output (volNode, tapped, speakers unchanged). One clip at a time; webcam footage is recorded too.
+let REC = null, CLIP = null;   // REC = the clip being recorded; CLIP = the last finished clip
+const REC_MIME = window.MediaRecorder ? ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || '' : '';
+function recStart(sec) {
+  if (REC || !playing || liveOn || !REC_MIME) return;
+  const tap = ac.createMediaStreamDestination(), stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...tap.stream.getAudioTracks()]);
+  const rec = new MediaRecorder(stream, { mimeType: REC_MIME }), chunks = [];
+  rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
+  rec.onstop = () => recDone(chunks, rec.mimeType, sec);
+  REC = { ac, tap, out: null, rec, sec, t0: performance.now(), txt: '', timer: setTimeout(recStop, sec * 1000) };
+  if (volNode) { volNode.connect(tap); REC.out = volNode; }
+  CLIP = null; $('recshare').hidden = true; $('recpick').hidden = true;
+  rec.start(1000); document.body.classList.add('recording'); toast('Recording ' + sec + ' s', 2000);
+}
+function recStop(msg) {   // stop now (timer, button, Stop, or the piece changed); the recorder's onstop saves the clip
+  const r = REC; if (!r) return;
+  REC = null; clearTimeout(r.timer); if (r.out) r.out.disconnect(r.tap);
+  document.body.classList.remove('recording'); $('rec').textContent = 'Record';
+  if (msg) toast(msg, 4000);
+  if (r.rec.state !== 'inactive') r.rec.stop();
+}
+function recTick() {   // once per frame while recording: keep the tap on the current master, end the clip if the piece restarted or a webcam was added
+  if (ac !== REC.ac) return recStop('Clip ended: the piece restarted');
+  if (volNode && REC.out !== volNode) { volNode.connect(REC.tap); REC.out = volNode; }
+  const txt = '■ ' + Math.max(0, Math.ceil(REC.sec - (performance.now() - REC.t0) / 1000)) + ' s';
+  if (txt !== REC.txt) { REC.txt = txt; $('rec').textContent = txt; }
+}
+function recDone(chunks, type, sec) {
+  if (!chunks.length) { toast('Nothing recorded', 3000); return; }
+  CLIP = new File(chunks, 'bicycle-day-' + seedUsed + '-' + sec + 's.' + (type.includes('mp4') ? 'mp4' : 'webm'), { type });
+  if (navigator.canShare && navigator.canShare({ files: [CLIP] })) { $('recshare').hidden = false; toast('Clip ready · tap Share clip', 4000); }   // Web Share needs a tap, so it is a button
+  else saveClip();
+}
+function saveClip() {   // download the last clip
+  const a = document.createElement('a'), url = URL.createObjectURL(CLIP);
+  a.href = url; a.download = CLIP.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); toast('Saved ' + CLIP.name, 3000);
+}
+$('rec').addEventListener('click', () => { if (REC) recStop(); else $('recpick').hidden = !$('recpick').hidden; });
+document.querySelectorAll('#recpick button').forEach(b => b.addEventListener('click', () => recStart(+b.dataset.s)));
+$('recshare').addEventListener('click', () => { if (CLIP) navigator.share({ files: [CLIP], title: 'Bicycle Day' }).then(() => toast('Shared', 1500), err => { if (err && err.name !== 'AbortError') saveClip(); }); });
 function loop() {
   if (!playing) return;
+  if (REC) recTick();
   const t = SUSP !== null ? (performance.now() - SUSP) / 1000 : Math.max(0, ac.currentTime - t0 - lat), dt = clamp(t - lastT, 0, .1); lastT = t;   // SUSP: audio blocked by autoplay policy (?img= autostart): the picture runs on the wall clock until the first tap
   let bass = 0, mid = 0, hi = 0;
   if (LOC) { localView(Math.min(t, TOTAL)); bass = LIVE.bn; mid = LIVE.mn; hi = LIVE.hn; }   // local file: features come from the precomputed timeline
@@ -2525,31 +2652,49 @@ function loop() {
   const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
   if (DBG) dbgTick();
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
-  if (document.body.classList.contains('ui') && !dragging) { $('tm').textContent = $('mtm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = $('mhead').style.left = (tc / TOTAL * 100) + '%'; }
+  if ((document.body.classList.contains('ui') || document.body.classList.contains('pshow')) && !dragging) { $('tm').textContent = $('mtm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = $('mhead').style.left = (tc / TOTAL * 100) + '%'; }
+  endWarn(tc);
+  if (t >= TOTAL + .3 && !LOC && !SHOW && !liveOn) { toast('New piece'); if (SUSP !== null) SUSP = performance.now(); begin(0, true); requestAnimationFrame(loop); return; }   // SUSP (autoplay blocked): restart the wall clock too, else t stays past the end and restarts every frame   // generated: next piece, same settings (new seed); fullscreen and USER.* stay
   if (LOC && NEXT && (NEXTGO || t >= TOTAL + .3)) {   // a queued next track: play it when this one ends (or on "Play next now")
     if (NEXTDATA) { goNext(); requestAnimationFrame(loop); return; }
     if (NEXTFAIL) { toast('Next track could not be read'); clearNext(); }
     else { if (!NEXTGO) toast('Loading next track…', 60000); NEXTGO = true; if (t >= TOTAL + .3) { requestAnimationFrame(loop); return; } }   // still decoding: hold the last picture, silent
   }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui', 'pinned'); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
   requestAnimationFrame(loop);
 }
 // Transport follows pointer activity; settings only open by explicit click.
+let PEND = null, SWAPPING = false;   // Source panel: the card picked but not applied yet; a switch or a file decode in progress (declared before setTuning, which runs early)
+// Pupitre shown = H (pultH) or pointer in the bottom zone (pultZ) or Source panel open (tuning)
+const syncPult = () => { const b = document.body.classList; b.toggle('pshow', b.contains('pultH') || b.contains('pultZ') || b.contains('tuning')); };
 const setTuning = open => {
-  $('tune').hidden = !open; document.body.classList.toggle('tuning', open);
-  $('settings').setAttribute('aria-expanded', String(open)); $('settings').textContent = open ? 'Close settings' : 'Settings';
+  if (!open) PEND = null;
+  $('tune').hidden = !open; document.body.classList.toggle('tuning', open); syncSource();
+  $('settings').setAttribute('aria-expanded', String(open)); $('settings').textContent = open ? 'Close source' : 'Source'; $('settings').setAttribute('aria-label', open ? 'Close source' : 'Source');
+  syncPult();
+};
+// Source panel: the card of the sound now playing (mic > tab > audio file > generated), and the Audio file options (Now: file name)
+const curSrc = () => document.body.classList.contains('mic') ? 'mic' : liveOn ? 'tab' : LOC ? 'file' : 'gen';
+const syncSource = () => {
+  const cur = curSrc();
+  document.querySelectorAll('#tune .tcard').forEach(c => { c.classList.toggle('on', c.dataset.src === cur); c.classList.toggle('pend', c.dataset.src === PEND); });
+  $('tfile').hidden = !LOC; $('tnowfile').textContent = LOC ? 'Now: ' + LOCNAME : ''; $('tapply').hidden = !PEND;
 };
 $('settings').addEventListener('click', () => { setTuning($('tune').hidden); showUI(); });
 const showUI = () => {
   document.body.classList.add('ui'); clearTimeout(hideT);
   hideT = setTimeout(() => {
     const hovered = matchMedia('(hover:hover)').matches && [$('pult'), $('mpult'), $('actions'), $('live'), $('tune')].some(el => el.matches(':hover'));
-    if (dragging || hovered || document.body.classList.contains('pinned')) showUI(); else document.body.classList.remove('ui', 'side-ui');
+    if (dragging || hovered) showUI(); else document.body.classList.remove('ui');
   }, 2500);
 };
-function togglePin() {   // H (while playing): pins the pupitre (no auto-hide) until H again
-  const on = document.body.classList.toggle('pinned'); if (on) showUI();
-  toast(on ? 'Controls pinned (H again to release)' : 'Controls released', 1600);
+function togglePult() {   // H (while playing): shows the pupitre until H again
+  const on = document.body.classList.toggle('pultH'); syncPult();
+  toast(on ? 'Controls shown (H to hide)' : 'Controls hidden', 1600);
+}
+function zoneCheck(e) {   // pupitre shows while the pointer is in the bottom 10 % or over it / the Source panel
+  const low = e.clientY >= innerHeight * 0.9 || !!(e.target && e.target.closest && e.target.closest('#pult,#mpult,#tune,#ctl'));
+  const b = document.body.classList; if (low !== b.contains('pultZ')) { b.toggle('pultZ', low); syncPult(); }
 }
 function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + CSS), fixed demo gauge values, no engine
   const box = $('phelp'); box.innerHTML = '';
@@ -2561,8 +2706,11 @@ function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + 
   box.classList.add('on'); document.body.classList.add('help-open');
 }
 function closeDemo() { const box = $('phelp'); box.classList.remove('on'); box.innerHTML = ''; document.body.classList.remove('help-open'); }
-addEventListener('pointermove', e => { if (playing || liveOn) { if (e.clientX > innerWidth - 120) document.body.classList.add('side-ui'); showUI(); } });
-addEventListener('pointerdown', () => { if (playing || liveOn) showUI(); });
+// Source panel stays open while the pointer is in its box or on the Source button (+12 px bridge: the gap between them and the 8 px gaps between action buttons are not "outside")
+const nearSource = e => [$('tune'), $('settings')].some(el => { const r = el.getBoundingClientRect(), m = 12; return e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m; });
+addEventListener('pointermove', e => { if (playing || liveOn) { const tr = e.clientY < innerHeight * 0.1 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e)) setTuning(false); } });
+addEventListener('pointerdown', e => { if (playing || liveOn) { showUI(); zoneCheck(e); } });
+document.documentElement.addEventListener('mouseleave', () => { document.body.classList.remove('pultZ'); syncPult(); });
 const updateFullscreen = () => {
   const active = !!document.fullscreenElement; $('fullscreen').textContent = active ? 'Exit fullscreen' : 'Fullscreen';
   $('fullscreen').setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
@@ -2582,8 +2730,8 @@ const toggleFullscreen = async () => {
 };
 $('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
-  if (!playing) return; playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui', 'pinned'); homeGate(true); hint.textContent = 'Stopped · seed ' + seedUsed;
+  if (!playing) return; recStop(); playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+  leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); homeGate(true); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), mbar = $('mbar'), frac = (e, b = bar) => clamp((e.clientX - b.getBoundingClientRect().left) / b.clientWidth);
@@ -2606,12 +2754,13 @@ const fxStart = i => clamp(i, 0, FX.length - 1) * SHOW.seg;   // showcase: seek 
 bar.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; seekTo(SHOW ? fxStart(Math.floor(frac(e) * FX.length)) : frac(e) * TOTAL); });
 mbar.addEventListener('pointerup', e => { if (!dragging) return; dragging = false; seekTo(SHOW ? fxStart(Math.floor(frac(e, mbar) * FX.length)) : frac(e, mbar) * TOTAL); });
 $('pp').addEventListener('click', togglePause); $('mpp').addEventListener('click', togglePause);
+$('mesc').addEventListener('click', e => { e.stopPropagation(); if (liveOn) stopLive(); else stopPlay(); });   // T87: same action as the Esc key (mic mode)
 $('vol').addEventListener('input', e => { if (volNode) volNode.gain.value = +e.target.value; });
 $('stopb').addEventListener('click', stopPlay);
 $('xclose').addEventListener('click', () => { if (liveOn) stopLive(); else stopPlay(); });   // same as Esc
 const trTxt = () => USER.trans ? ' → ' + USER.trans + ' s' : '';
 const AIS = [0, 30, 60, -1], aiTxt = v => v === 0 ? 'off' : v < 0 ? 'some scenes (~2 in 5)' : v + ' s';
-const markAI = () => { document.querySelectorAll('#ais button').forEach(b => b.classList.toggle('on', +b.dataset.ai === USER.auto)); const pai = $('pai'); if (pai) pai.textContent = USER.auto === 0 ? 'off' : USER.auto < 0 ? 'scenes' : USER.auto + ' s'; };
+const markAI = () => { const pai = $('pai'); if (pai) pai.textContent = USER.auto === 0 ? 'off' : USER.auto < 0 ? 'scenes' : USER.auto + ' s'; };
 function setAuto(v, quiet) { USER.auto = v; AI.acc = 0; markAI(); autosave(); if (!quiet) toast('Auto image: ' + aiTxt(v) + (IM.length < 2 ? '  (add a second image first)' : ''), 1800); }
 const TRS = [0, 1, 3, 5, 10];
 const markTR = () => { $('u-trans').value = USER.trans; };
@@ -2631,7 +2780,7 @@ addEventListener('keydown', e => {
   if (e.code === 'Escape' && $('phelp').classList.contains('on')) { closeDemo(); return; }
   if (!playing && !liveOn) return;
   // (in fullscreen the browser uses the FIRST Esc to leave fullscreen and never shows it to the page; the next Esc stops)
-  if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { togglePin(); return; }
+  if (e.code === 'KeyH' && !e.ctrlKey && !e.metaKey && !e.altKey) { togglePult(); return; }
   if (e.code === 'Escape') { if (liveOn) stopLive(); else stopPlay(); return; }
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
   if (e.code === 'KeyB' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // Shift+B: mark this moment ("bad")
@@ -2729,7 +2878,6 @@ document.body.classList.add('lv' + CL); setInterval(pultTick, 100);
 });
 const styleDefault = () => { try { return !LIVE && !LOC && !SHOW && !CTRL ? 3 : 0; } catch (e) { return 3; } };   // the engine's choice: auto (Kali / Julia per scene) for generated pieces, off for live / local
 const styleNow = () => USER.style ?? styleDefault();   // try: called once at load before LIVE/LOC exist (TDZ)
-$('ais').addEventListener('click', e => { const b = e.target.closest('button'); if (b) setAuto(+b.dataset.ai, true); });
 $('u-trans').addEventListener('input', e => setTrans(+e.target.value, true));   // slider = USER.trans (assisted / manual; disabled in auto)
 $('u-trans').addEventListener('change', e => e.target.blur());   // keep the keyboard free
 $('u-hold').addEventListener('input', e => { USER.hold = +e.target.value; markHold(); autosave(); });
@@ -2738,12 +2886,13 @@ if ($('u-calm')) { $('u-calm').addEventListener('input', e => { setCalm(+e.targe
 $('m-calm').addEventListener('input', e => { setCalm(+e.target.value); }); $('m-calm').addEventListener('change', e => e.target.blur());
 
 { const sp = Q.get('style'); if (sp) USER.style = { kali: 1, julia: 2, auto: 3 }[sp] ?? 0; }   // ?style= (tests): applies in assisted / manual; auto = the engine's choice
-const markQ = () => { document.querySelectorAll('#qual button').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); $('u-q').textContent = 'Quality: ' + quality; };
+const markQ = () => { document.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); };
 function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
 $('helpbtn').addEventListener('click', e => { e.stopPropagation(); openDemo(); });
 $('phelp').addEventListener('click', e => { if (!e.target.closest('.pult')) closeDemo(); });   // click outside the demo (or ✕) closes it
 $('qual').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
-$('u-q').addEventListener('click', () => { const k = Object.keys(QUAL); setQuality(k[(k.indexOf(quality) + 1) % 3]); });
+$('tgfxbtn').addEventListener('click', () => { const open = $('tgfx').hidden; $('tgfx').hidden = !open; $('tgfxbtn').setAttribute('aria-expanded', String(open)); });
+$('tgfx').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
 const setTileMode = m => { USER.force = m; };
 const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['auto', 'trans', 'hold', 'calm', 'energy', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style'], SLID = { kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
@@ -2789,13 +2938,8 @@ function takeSnapshot(t) {
 }
 let saveT = 0; const autosave = () => { clearTimeout(saveT); saveT = setTimeout(() => lsSet('last', snapTweaks()), 300); };   // the panel remembers where you left it
 $('tune').addEventListener('input', autosave); $('tune').addEventListener('click', autosave);
-$('tune').addEventListener('click', e => {
-  const b = e.target.closest('button'); if (!b) return;
-  if (b.dataset.save) { lsSet('slot' + b.dataset.save, snapTweaks()); toast('Saved to preset ' + b.dataset.save, 1500); }
-  else if (b.dataset.load) { const o = lsGet('slot' + b.dataset.load); if (o) { applyTweaks(o); autosave(); toast('Preset ' + b.dataset.load, 1500); } else toast('Preset ' + b.dataset.load + ' is empty — use Save', 2000); }
-});
 const TWEAK0 = snapTweaks();   // the defaults, captured before the saved values load (Reset settings)
-{ const o = lsGet('last'); if (o) applyTweaks(o); }
+{ const o = lsGet('last'); if (o) applyTweaks(o); USER.calm = 100; }   // calm always starts at 100%: a calm saved on the last visit does not carry over (?calm= below, presets and share links still set it)
 if (Q.has('energy')) { USER.energy = clamp(Math.round(+Q.get('energy') || 0), 0, 4); } else if (Q.has('fx')) USER.energy = clamp(Math.round(2 + 2 * ((+Q.get('fx')) - 1)), 0, 4); else if (Q.get('hc') === '1') USER.energy = 4;   // ?energy=0..4 (tests); the old ?fx= and ?hc=1 map onto it
 if (USER.energy < 4) EN.last = USER.energy; markEN();
 if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();
@@ -2846,7 +2990,7 @@ function shareBase() { return location.origin === 'null' || location.protocol ==
 function shareEncode() {   // returns a URL string, or null if a local (non-shareable) image is present
   const imgEntries = [];
   for (const e of IM) {
-    if (e && e.cam) { toast('Webcam cannot be shared', 3000); return null; }
+    if (e && e.cam) continue;   // webcam is not in the link (the receiver has no camera); the other images are shared
     if (e && e.remote) imgEntries.push(e.remote);
     else {
       const gi = (GALLERY || []).findIndex(g => g && e && e.gid === g.id);
@@ -2918,13 +3062,16 @@ document.getElementById('opts').addEventListener('click', e => {
   e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
   arcName = b.dataset.arc; applyArc(); drawProfile(); markArcOn(); markArcHint();
 });
+$('opts').addEventListener('pointerover', e => { const b = e.target.closest('button'); if (b) $('arc-hint').textContent = ARC_HINT[b.dataset.arc]; });   // hover/focus previews that Shape's hint
+$('opts').addEventListener('focusin', e => { const b = e.target.closest('button'); if (b) $('arc-hint').textContent = ARC_HINT[b.dataset.arc]; });
+$('opts').addEventListener('pointerleave', markArcHint); $('opts').addEventListener('focusout', markArcHint);
 const musBtns = [...document.querySelectorAll('#mus button')], markMus = () => { musBtns.forEach(b => b.classList.toggle('on', b.dataset.music === MUSIC)); $('opts').style.opacity = ARC.piano ? .35 : 1; };
 markMus();
 $('mus').addEventListener('click', e => {
   e.stopPropagation(); const b = e.target.closest('button'); if (!b || SHOW) return;
   MUSIC = b.dataset.music; lsSet('music', MUSIC); applyArc(); drawProfile(); markMus();
 });
-const durBtns = [...document.querySelectorAll('#dur button')], markDur = () => durBtns.forEach(b => b.classList.toggle('on', +b.dataset.min === MIN));
+const durBtns = [...document.querySelectorAll('#dur button')], markDur = () => { durBtns.forEach(b => b.classList.toggle('on', +b.dataset.min === MIN)); $('len-sum').textContent = `Length: ${MIN} min, more options`; };
 markDur();
 $('dur').addEventListener('click', e => {
   e.stopPropagation(); const b = e.target.closest('button'); if (!b) return;
@@ -2944,8 +3091,7 @@ const bandsFor = k => {   // bin ranges for the 3 analysis bands + 10 log-spaced
 // detector settings (tuned on real tracks with tools/sweep.py; see tools/refs.json)
 const DET = { sfTau: 1, ssTau: 12, gapThr: .16, gapDur: 1.5, dwell: 4, dropGap: 2.5, dropDwell: 18, slamBass: .3, slamLv: .05, warm: 25, minFloor: 1.2, minK: 1.6, minDur: 1.5, minDwell: 12, dropMinGap: 0, dropMinProf: 0, bigFloor: 99, bigK: 3, bigDur: 1 };
 const newLive = () => ({ u: .07, pulse: 0, ref: { b: 1e-6, m: 1e-6, h: 1e-6 }, lv: 0, ls: 0, bf: 0, bsl: 0, bassPrev: 0, bassFast: 0, bassLong: 0, bassSlow: 0, tension: 0, boost: 0, sinceDrop: 99, scenes: 0, kinds: [1], sf: [0, 0, 0], ss: [0, 0, 0], secT: 0, sinceScene: 0, minors: 0, pT: 0, bigT: 0, pf: null, ps: null, sinceMinor: 0, age: 0, state: 'listening…', I: 0, bn: 0, mn: 0, hn: 0 });   // fresh analysis state (also used by tools/replay.mjs)
-async function startLive(mic = Q.get('live') === 'mic') {
-  if (!ready || playing || liveOn) return;
+async function getLiveStream(mic) {   // getUserMedia (mic) / getDisplayMedia (tab) → an audio stream, or null (the reason goes to #hint). Call it from a click (needs the user gesture)
   const audioC = { echoCancellation: false, noiseSuppression: false, autoGainControl: false };   // keep the music untouched
   let stream;
   try {
@@ -2957,26 +3103,33 @@ async function startLive(mic = Q.get('live') === 'mic') {
       try { ctl && ctl.setFocusBehavior('no-focus-change'); } catch (e) {}   // stay on this window instead of jumping to the shared tab
       stream = await p;
     }
-  } catch (e) { hint.textContent = e.name === 'NotAllowedError' ? 'Cancelled — click again and pick a tab' : e.message; return; }
+  } catch (e) { hint.textContent = e.name === 'NotAllowedError' ? 'Cancelled — click again and pick a tab' : e.message; return null; }
   if (!stream.getAudioTracks().length) {
     stream.getTracks().forEach(t => t.stop());
-    hint.textContent = 'No audio received — in the dialog pick a TAB (not a window) and tick “Share tab audio”'; return;
+    hint.textContent = 'No audio received — in the dialog pick a TAB (not a window) and tick “Share tab audio”'; return null;
   }
   stream.getVideoTracks().forEach(t => { t.enabled = false; });   // we only want the sound
+  return stream;
+}
+async function startLive(mic = Q.get('live') === 'mic') {
+  if (!ready || playing || liveOn) return;
+  const stream = await getLiveStream(mic); if (!stream) return;
+  liveUp(stream, mic); homeGate(false); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
+  requestAnimationFrame(liveLoop);
+}
+function liveUp(stream, mic) {   // the analysis side of Live: AudioContext + analyser on the stream (no output), 'journey' arc, a new seed
   if (ac) ac.close().catch(() => {});
   ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
   const src = ac.createMediaStreamSource(stream);
   analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .3;   // analyser only: no output
   micGain = ac.createGain(); micGain.gain.value = Math.pow(10, MICDB / 20); src.connect(micGain); micGain.connect(analyser); TD = new Float32Array(analyser.fftSize);
-  document.body.classList.toggle('mic', !!mic);
+  document.body.classList.toggle('mic', !!mic); document.body.classList.add('live');
   LF = new Float32Array(analyser.frequencyBinCount); const k = ac.sampleRate / analyser.fftSize;
   LB = bandsFor(k);
   setArc('journey'); newSeed(); rotA = 0; bi = 0; bassE = 0; hue = hueBase;
   LIVE = newLive();
   liveStream = stream; liveOn = true; liveT0 = ac.currentTime; lastT = 0; lastScene = 0; trT0 = -99; AI.scene = null; AI.acc = 0;
   stream.getTracks().forEach(t => t.addEventListener('ended', stopLive));   // the user clicked Chrome's "Stop sharing"
-  homeGate(false); document.body.classList.add('live'); toast('Esc or ■ stop to leave  ·  F fullscreen', 4000);
-  requestAnimationFrame(liveLoop);
 }
 function liveStep(dt) {   // causal features from the current spectrum → intensity, tension, drop, state
   const L = LIVE, ease = tau => 1 - Math.exp(-dt / tau);
@@ -3050,7 +3203,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui', 'pinned'); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
+  resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); lsSet('setup', { src: 'tab' }); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); lsSet('setup', { src: 'mic' }); startLive(true); });
@@ -3059,10 +3212,62 @@ $('micmode').addEventListener('click', e => { e.stopPropagation(); lsSet('setup'
   if (!ok) { $('tabmode').disabled = true; $('streamwarn').textContent = /Firefox/.test(ua) ? 'Not supported in Firefox (no tab audio). Use Chrome / Edge, or Live.' : 'Needs Chrome or Edge on a computer. Use Live instead.'; }
 }
 $('lstop').addEventListener('click', e => { e.stopPropagation(); stopLive(); });
+/* ════════════════════════ SOURCE PANEL: swap the sound while playing (a new start: arc, seed, slow-start ramp; Energy, Calm, sliders and pictures kept) ════════════════════════ */
+function switchSource(kind, stream) {   // kind: 'gen' | 'file' (localData decoded) | 'tab' | 'mic' (stream from getLiveStream). No homeGate / exitFullscreen here
+  if (!playing && !liveOn) { if (stream) stream.getTracks().forEach(t => t.stop()); return; }   // (stopped while the permission dialog was open)
+  const wasLive = liveOn, wasPlaying = playing;
+  if (wasLive) {   // old source: Live (stopLive() without its homeGate / exitFullscreen)
+    liveOn = false; LIVE = null;
+    if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
+    if (ac) ac.close().catch(() => {}); ac = null; analyser = null; micGain = null; METER.db = -90;
+    resetFx(); applyArc();
+  } else {   // old source: Generated / Audio file (stopPlay() without its homeGate / exitFullscreen)
+    playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+    leaveLocal(); leaveCtrl();
+  }
+  PEND = null;
+  if (kind === 'tab' || kind === 'mic') {
+    document.body.classList.remove('playing'); liveUp(stream, kind === 'mic');
+    lsSet('setup', { src: kind === 'mic' ? 'mic' : 'tab' });
+    if (!wasLive) requestAnimationFrame(liveLoop);   // (a running liveLoop picks up the new source by itself)
+  } else {
+    document.body.classList.remove('live', 'mic'); playing = true; document.body.classList.add('playing');
+    if (kind === 'file') { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); syncNext(); lsSet('setup', { src: 'local' }); }
+    else { TOTAL = MIN * 60; lsSet('setup', { src: 'gen', music: MUSIC, arc: arcName, min: MIN }); if (CTRL) enterCtrl(); }   // manual + generated: the 'waves' base, as in start()
+    begin(0, true);
+    if (!wasPlaying) requestAnimationFrame(loop);   // (a running loop picks up the new source by itself)
+  }
+  syncSource();
+}
+function pickCard(src) {   // a card click: Audio file opens the picker (switch once decoded); the others wait for Apply (tab / mic need a click for the permission)
+  if (SWAPPING || (src === 'tab' && $('tabmode').disabled)) return;
+  if (src === curSrc()) { PEND = null; syncSource(); return; }   // the card already playing does nothing (drops any pending pick)
+  if (src === 'file') { PEND = null; syncSource(); $('tfpick').value = ''; $('tfpick').click(); return; }
+  PEND = src; syncSource();
+}
+document.querySelector('#tune .tcards').addEventListener('click', e => { const c = e.target.closest('.tcard'); if (c) pickCard(c.dataset.src); });
+document.querySelector('#tune .tcards').addEventListener('keydown', e => { const c = e.target.closest('.tcard'); if (c && e.key === 'Enter') { e.preventDefault(); e.stopPropagation(); pickCard(c.dataset.src); } });
+$('tapplybtn').addEventListener('click', async e => {   // Apply: tab / mic take the permission click here, and the old source stops only once the stream is in hand
+  e.stopPropagation(); if (!PEND || SWAPPING) return;
+  const src = PEND; SWAPPING = true;
+  try {
+    if (src === 'tab' || src === 'mic') {
+      const s = await getLiveStream(src === 'mic');
+      if (!s) { toast(hint.textContent, 4000); return; }   // cancelled: the old music keeps playing
+      switchSource(src, s);
+    } else switchSource(src);
+  } finally { SWAPPING = false; }
+});
+$('tfpick').addEventListener('change', async () => {   // Audio file: decode + analyse first, switch only when the timeline is ready
+  const f = $('tfpick').files[0]; if (!f || SWAPPING) return;
+  const card = document.querySelector('#tune .tcard[data-src="file"]'); SWAPPING = true; card.classList.add('busy');
+  try { await loadLocal(f); if (localData) switchSource('file'); else toast($('localnote').textContent, 4000); }
+  finally { SWAPPING = false; card.classList.remove('busy'); }
+});
 /* ════════════════════════ LOCAL MODE: play an audio file; the whole file is analysed first (offline, so it can look ahead) ════════════════════════
    Same features and section/drop detector as liveStep(), but zero-phase smoothing and back-dated scene starts. The result is a timeline sampled at the audio clock
    time t (localView), written into the LIVE-shaped object so render() runs its live look path unchanged: the picture stays a pure function of t. */
-let LOC = null, localData = null, FFT = null, NEXT = null, NEXTDATA = null, NEXTGO = false, NEXTFAIL = false;   // NEXT = chosen File; NEXTDATA = its analysed timeline (kept apart from LOC until it plays)
+let LOC = null, LOCNAME = '', localData = null, FFT = null, NEXT = null, NEXTDATA = null, NEXTGO = false, NEXTFAIL = false;   // NEXT = chosen File; NEXTDATA = its analysed timeline (kept apart from LOC until it plays)
 const LST = ['', 'drop', 'build', 'groove', 'breakdown', 'calm'];
 const zp = (a, tau, fps) => { const k = 1 - Math.exp(-1 / (tau * fps)), o = new Float32Array(a.length); let y = a[0]; for (let i = 0; i < a.length; i++) { y += (a[i] - y) * k; o[i] = y; } for (let i = a.length - 1; i >= 0; i--) { y += (o[i] - y) * k; o[i] = y; } return o; };   // forward + backward EMA = no lag
 function fft(re, im) {   // in-place radix-2
@@ -3153,7 +3358,7 @@ function playLocal(a, t0, off) {   // the decoded file through the speakers; ret
   const src = a.createBufferSource(), outG = a.createGain(); src.buffer = LOC.buf; outG.gain.value = +$('vol').value; volNode = outG; src.connect(outG); outG.connect(a.destination); src.start(t0 + off, off);
   return () => {};
 }
-function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; TOTAL = MIN * 60; applyArc(); drawProfile(); syncNext(); }
+function leaveLocal() { if (!LOC) return; LOC = null; LIVE = null; document.body.classList.remove('filesrc'); TOTAL = MIN * 60; applyArc(); drawProfile(); syncNext(); }
 async function decodeLocal(src, progress = () => {}) {   // File or URL → decoded + analysed timeline. No UI side effects, so it can run in the background
   const ab = await (src instanceof Blob ? src : await (await fetch(src)).blob()).arrayBuffer();
   const buf = await new OfflineAudioContext(2, 1, 44100).decodeAudioData(ab);
@@ -3164,6 +3369,7 @@ async function loadLocal(src) {   // File or URL → decode → analyse; enables
   const note = $('localnote'), go = $('playlocal'); go.disabled = true; localData = null; note.style.color = '';
   try {
     note.textContent = 'Decoding…';
+    LOCNAME = src.name || String(src).split('/').pop().split('?')[0];
     localData = await decodeLocal(src, p => { note.textContent = 'Analysing… ' + Math.round(p * 100) + '%'; });
     note.textContent = `Ready · ${fmt(localData.dur)} · ${localData.sceneT.length + 1} scenes`; go.disabled = false;
   } catch (e) { note.textContent = 'Cannot read this file as audio (' + (e.message || e.name) + ')'; note.style.color = '#ff6b6b'; console.log('local:', e); }
@@ -3174,7 +3380,7 @@ function startLocal() {
 }
 const nfile = document.querySelector('#nextpick input');
 $('nextpick').addEventListener('click', e => e.stopPropagation());
-function syncNext() { $('nextnow').style.display = LOC && NEXT ? '' : 'none'; $('tnext').style.display = LOC ? '' : 'none'; $('tnext').textContent = NEXT ? 'Next: ' + NEXT.name : 'Next track…'; }   // "Play next now": Local mode with a next track chosen
+function syncNext() { $('nextnow').style.display = LOC && NEXT ? '' : 'none'; $('tnext').style.display = LOC ? '' : 'none'; $('tnext').textContent = NEXT ? 'Next: ' + NEXT.name : 'Next track…'; syncSource(); }   // "Play next now": Local mode with a next track chosen
 function clearNext() { NEXT = null; NEXTDATA = null; NEXTGO = false; NEXTFAIL = false; nfile.value = ''; $('nextname').textContent = ''; $('nextclear').style.display = 'none'; syncNext(); }
 function prepNext(f) {   // decode + analyse the chosen next file in the background (the result waits in NEXTDATA)
   NEXTDATA = null; NEXTFAIL = false;
@@ -3261,57 +3467,28 @@ addEventListener('pointerdown', e => { maybeRevealEnedge(e, e.pointerType === 't
 addEventListener('touchstart', e => { if (e.touches && e.touches[0]) { maybeRevealEnedge(e, true); } }, true);
 setLevel(Q.has('level') ? (() => { const v = Q.get('level'); if (v === '0' || v === 'auto') return 0; if (v === '1' || v === 'assisted') return 1; if (v === '2' || v === 'manual') return 2; const i = ['auto', 'assisted', 'manual'].indexOf(v); return i < 0 ? 0 : i; })() : CTRL_URL ? 2 : 0, false, true);   // always starts in Auto (the level is not remembered between visits); a URL level is not saved either   // accepts both numeric and word levels for tests
 // Home uses only a CSS logo animation: no audio clock, render history or user image state.
-let homeStartLastRect = null;
-function readHomeStartRect() {
-  const b = $('home-start');
-  const r = b ? b.getBoundingClientRect() : null;
-  if (r && r.width > 0 && r.height > 0) {
-    homeStartLastRect = { cx: r.left + r.width / 2, top: r.top, bottom: r.bottom };
-  }
-  return homeStartLastRect;
+// Home: the setup is one docked block (#home-drawer). Step 1 = sound, step 2 = picture + Start.
+function wizGo(n) {   // n = 1 sound, 2 picture
+  $('wz1').hidden = n !== 1; $('wz2').hidden = n !== 2; $('wz-back').hidden = n === 1;
+  $('wz-num').textContent = n; $('wz-tt').textContent = n === 1 ? 'Choose the sound' : 'Choose a picture · changeable later';
+  if (n === 2) wizSummary();
 }
-function homePlayPosition(drawer) {
-  const r = readHomeStartRect();
-  // fallback (current top-right place) when no measured anchor or no room above
-  drawer.style.top = ''; drawer.style.left = ''; drawer.style.right = ''; drawer.style.bottom = ''; drawer.style.transform = ''; drawer.style.maxHeight = '';
-  if (!r) return;
-  // force layout to measure the drawer's current (responsive) size
-  const d = drawer.getBoundingClientRect();
-  const gap = 12;
-  const spaceAbove = r.top - gap;
-  if (spaceAbove < d.height + 8) return;   // not enough room -> keep CSS default
-  const half = d.width / 2;
-  const vw = window.innerWidth;
-  const cx = Math.min(Math.max(r.cx, half + 8), vw - half - 8);
-  // cap the height to the space above the Customize button so tall content scrolls
-  // inside the panel instead of being cut off below the viewport
-  // anchor the panel's BOTTOM just above the button, so a taller panel grows upward
-  // (and scrolls inside its maxHeight) instead of being pushed past the screen bottom
-  // keep the panel from covering the logo: never use more than ~40% of the viewport height
-  drawer.style.maxHeight = Math.max(160, Math.min(spaceAbove - 8, window.innerHeight * 0.40)) + 'px';
-  drawer.style.top = 'auto';
-  drawer.style.left = cx + 'px';
-  drawer.style.right = 'auto';
-  drawer.style.bottom = Math.max(8, window.innerHeight - r.top + gap) + 'px';
-  drawer.style.transform = 'translateX(-50%)';
+function wizSummary() {   // the one line above Start: what will play
+  const cur = document.querySelector('#source [aria-pressed="true"]'), s = cur ? cur.dataset.source : 'gen';
+  const cap = w => w.charAt(0).toUpperCase() + w.slice(1);
+  $('wz-sum').textContent = s === 'gen' ? `Generated music · ${cap(MUSIC)} · ${MIN} min` : s === 'local' ? `Audio file · ${localData ? 'ready' : 'none chosen yet'}` : s === 'stream' ? 'Browser tab' : 'Microphone';
 }
 function homePanel(name, focus = false) {
   const drawer = $('home-drawer');
-  if (name === 'play') readHomeStartRect();
   drawer.hidden = !name;
   ['play', 'settings'].forEach(n => {
     $('home-' + n).hidden = n !== name;
     const nb = document.querySelector('[data-home="' + n + '"]'); if (nb) nb.setAttribute('aria-expanded', String(n === name));   // (Play has no nav button any more: the CTA buttons open it)
   });
   $('home-start').setAttribute('aria-expanded', String(name === 'play')); gate.classList.toggle('dr', !!name);
-  if (name === 'play') {
-    homePlayPosition(drawer);
-  } else {
-    drawer.style.top = ''; drawer.style.left = ''; drawer.style.right = ''; drawer.style.bottom = ''; drawer.style.transform = ''; drawer.style.maxHeight = '';
-  }
+  if (name === 'play') wizGo(1);   // Customize always opens step 1
   if (focus && name) $('home-close').focus();
 }
-addEventListener('resize', () => { readHomeStartRect(); const dr = $('home-drawer'); if (dr && !dr.hidden && $('home-play') && !$('home-play').hidden) homePlayPosition(dr); });
 function homeGate(open) {
   gate.classList.toggle('off', !open); gate.inert = !open;
   if (!open) homePanel(null);
@@ -3325,15 +3502,19 @@ $('home-close').addEventListener('click', () => {
   const active = document.querySelector('[data-home][aria-expanded="true"]'); homePanel(null); active && active.focus();
 });
 $('home-brand').addEventListener('click', () => homePanel(null));
-$('source').addEventListener('click', e => {
-  const b = e.target.closest('[data-source]'); if (!b) return;
+function pickSource(src) {   // step 1: source card (ids and handlers unchanged)
   document.querySelectorAll('[data-source]').forEach(c => {
-    const selected = c === b; c.setAttribute('aria-pressed', String(selected)); $('c-' + c.dataset.source).hidden = !selected;
+    const selected = c.dataset.source === src; c.setAttribute('aria-pressed', String(selected)); $('c-' + c.dataset.source).hidden = !selected;
   });
-  $('playgen').hidden = b.dataset.source !== 'gen'; $('playlocal').hidden = b.dataset.source !== 'local'; $('tabmode').hidden = b.dataset.source !== 'stream'; $('micmode').hidden = b.dataset.source !== 'live';
-  $('st2').hidden = false;   // step 2 (the options of the chosen source) only appears once a source is chosen
-  $('s2t').textContent = { gen: 'Music and energy', local: 'Audio file', stream: 'Browser tab', live: 'Microphone' }[b.dataset.source];
-});
+  $('playgen').hidden = src !== 'gen'; $('playlocal').hidden = src !== 'local'; $('tabmode').hidden = src !== 'stream'; $('micmode').hidden = src !== 'live';
+  $('st2').hidden = false;   // the options of the chosen source (step 1)
+  $('s2t').textContent = { gen: 'Music', local: 'Audio file', stream: 'Browser tab', live: 'Microphone' }[src];
+}
+$('source').addEventListener('click', e => { const b = e.target.closest('[data-source]'); if (b) pickSource(b.dataset.source); });
+$('wz-next').addEventListener('click', e => { e.stopPropagation(); wizGo(2); });
+$('wz-back').addEventListener('click', e => { e.stopPropagation(); wizGo(1); });
+if (!Q.get('arc')) { arcName = 'journey'; applyArc(); markArcOn(); markArcHint(); }   // Shape starts on Journey (Surprise me stays random); ?arc= wins
+pickSource('gen'); wizGo(1);   // Generated is pre-selected, so Next works at once
 gate.addEventListener('click', e => { if (e.target === gate || e.target === $('home-intro')) homePanel(null); });
 gate.addEventListener('keydown', e => {
   if (e.code === 'Escape' && $('phelp').classList.contains('on')) { e.stopPropagation(); closeDemo(); }
@@ -3371,9 +3552,9 @@ addEventListener('load', () => {
   } else if (IMGQ) loadPoster(IMGQ, onReady, () => { IMGFAIL = true; loadPoster(GALLERY[0].src, onReady); });
   else loadPoster(GALLERY[0].src, onReady);   // default picture = the 1943 poster (the logo is only the home screen)
 });
-// ?img=<url>: no start screen; random generative curve (unless ?arc=), play at once; if the browser keeps audio suspended, show a tap pill
+// ?img=<url>: no start screen; Journey curve (unless ?arc=), play at once; if the browser keeps audio suspended, show a tap pill
 function autoStart() {
-  if (!Q.get('arc')) { arcName = ['journey', 'waves', 'slam', 'intense'][Math.floor(Math.random() * 4)]; applyArc(); drawProfile(); }
+  if (!Q.get('arc')) { arcName = 'journey'; applyArc(); drawProfile(); }
   start();
   const tParam = Q.get('t'); if (tParam !== null && playing) { try { seekTo(parseFloat(tParam)); } catch (e) {} }
   if (!playing) return;
