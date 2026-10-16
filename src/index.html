@@ -434,7 +434,7 @@ body.playing:not(.ui):not(.tuning) #shareplay,body.live:not(.ui):not(.tuning) #s
     <kbd class="pk u0" data-code="KeyM" title="Control level (key M)">M</kbd><div id="mplvl" class="plvl" title="Control level"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div>
   </div>
   <div class="mrow">
-    <button id="mpp" title="Space">❚❚</button><kbd class="pk gT">Space</kbd>
+    <button id="mpp" title="Space">❚❚</button><kbd class="pk gT u0">Space</kbd>
     <div id="mbar"><canvas id="mprof" width="1200" height="40"></canvas><div id="mhead"></div></div><span id="mtm">0:00</span>
     <span><kbd class="pk gT">⇧←→</kbd><span class="mhint">±10 s</span></span>
   </div>
@@ -2906,7 +2906,7 @@ function drawProfile() {   // the arc's intensity curve, drawn behind the seek b
   if (SHOW) { x.font = '14px sans-serif'; x.lineWidth = 2;   // showcase: one tick + number per effect, coloured like the pupitre classes
     const clsColor = c => c === 'gE' ? '#5cf08a' : c === 'gM' ? '#ff6fae' : c === 'gX' ? '#ffc94d' : c === 'gI' ? '#4fe0ff' : c === 'gT' ? '#7db4ff' : c === 'gN' ? '#7fb09a' : '#c9c9d6';
     FX.forEach((f, i) => { const X = i / FX.length * w, col = clsColor(f.cls); x.strokeStyle = col; x.fillStyle = col; x.beginPath(); x.moveTo(X, 0); x.lineTo(X, h); x.stroke(); x.fillText(i + 1, X + 3, 14); }); }
-  $('mprof').getContext('2d').drawImage(c, 0, 0);   // T78: the minimal pupitre shows the same curve
+  const m = $('mprof').getContext('2d'); m.clearRect(0, 0, m.canvas.width, m.canvas.height); m.drawImage(c, 0, 0);   // T78: the minimal pupitre shows the same curve (cleared first: each call stacked a copy)
 }
 const updateHint = () => { if (ready) hint.textContent = ''; };
 const chips = [...document.querySelectorAll('#opts button')];

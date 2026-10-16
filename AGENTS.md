@@ -1,5 +1,7 @@
 # Bicycle Day — Agent Guide
 
+**Before any ticket** (`.tickets/open.md`), read [WORKFLOW.md](WORKFLOW.md). Only the orchestrator moves or closes tickets, after the commit.
+
 **Status, decisions and calibration results: kept outside this repo (private notes); the architecture and invariants below are self-contained.**
 
 ## Project Overview

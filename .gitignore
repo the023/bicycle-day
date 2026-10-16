@@ -11,3 +11,5 @@ dump.py
 TICKETS.md
 assets/local/
 .tickets/
+# agent workflow (local)
+WORKFLOW.md
