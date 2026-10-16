@@ -287,11 +287,13 @@
   #bar canvas{position:absolute;inset:0;width:100%;height:100%}
   #head{position:absolute;top:0;bottom:-2px;width:2px;background:#ffd60a;box-shadow:0 0 8px #ffd60a}
   #vol{width:90px;accent-color:#ffd60a}
-  #live{position:fixed;left:24px;top:20px;display:none;align-items:center;gap:14px;color:#f4f1ea;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;z-index:6;opacity:.85;text-shadow:0 0 6px #000}
+  #live{position:fixed;left:24px;top:20px;display:none;align-items:center;gap:10px;color:#f4f1ea;font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.2em;text-transform:uppercase;z-index:6;opacity:0;pointer-events:none;transition:opacity .3s;text-shadow:0 0 6px #000}
   body.live #live{display:flex}
-  #lbar{width:140px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
+  body.liveZ #live,#live:hover{opacity:.85;pointer-events:auto}
+  @media (hover:none),(pointer:coarse){#live{opacity:.85;pointer-events:auto}}
+  #lbar{width:90px;height:5px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
   #lbar i{display:block;height:100%;width:0;background:#ffd60a}
-  #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:6px 10px;cursor:pointer}
+  #lstop{font:inherit;letter-spacing:inherit;color:inherit;background:none;border:1px solid #f4f1ea88;border-radius:99px;padding:5px 9px;cursor:pointer}
   #wrap{touch-action:none}
   .tpanel{position:fixed;right:max(20px,env(safe-area-inset-right));top:calc(72px + env(safe-area-inset-top));display:none;flex-direction:column;gap:9px;width:300px;max-width:calc(100vw - 40px);max-height:calc(100dvh - 112px - var(--pult-h) - env(safe-area-inset-top) - env(safe-area-inset-bottom));overflow-y:auto;padding:14px;border-radius:14px;background:#000a;color:#f4f1ea;
     font:700 10px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;opacity:0;pointer-events:none;transition:opacity .3s;z-index:6}
@@ -311,10 +313,14 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   body.playing #actions #xclose,body.live #actions #xclose{display:block}
   body.side-ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
   .tpanel label{display:flex;flex-direction:column;gap:5px}
-  body:not(.mic) .tpanel .micOnly{display:none}
-  #mlev{position:relative;width:110px;height:6px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
+  body:not(.mic):not(.live) .tpanel .micOnly{display:none}
+  #mrow{display:flex;align-items:center;gap:10px}
+  #mrow input{flex:1;min-width:0;margin:0}
+  #mauto{flex:none;padding:5px 9px;border:1px solid #f4f1ea88;border-radius:99px;cursor:pointer;font-size:10px;line-height:1;letter-spacing:.08em;color:#9aa39d;user-select:none}
+  #mauto.on{color:#0b0b0b;background:#ffd60a;border-color:#ffd60a}
+  #mlev{position:relative;width:70px;height:5px;background:#f4f1ea33;border-radius:3px;overflow:hidden}
   #mlev i{position:absolute;left:0;top:0;bottom:0;width:0;background:#2cff8a;transition:background .2s}
-  #mtxt{font-size:10px;letter-spacing:.1em;min-width:120px}
+  #mtxt{font-size:10px;letter-spacing:.1em;min-width:90px}
   .tpanel small{font-weight:400;font-size:10px;letter-spacing:.02em;text-transform:none;opacity:.6;line-height:1.3}
   .tpanel input{width:100%;accent-color:#ffd60a;margin:0}
   .tpanel button{font:inherit;letter-spacing:inherit;text-transform:inherit;color:inherit;background:none;border:1px solid #f4f1ea66;border-radius:99px;padding:7px 10px;cursor:pointer}
@@ -344,7 +350,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
     #bar{min-width:100px}#tm{font-size:10px;letter-spacing:0}#vol{width:70px}
     #pp,#stopb{width:44px;height:44px}
     #live{left:max(12px,env(safe-area-inset-left));right:12px;top:calc(72px + env(safe-area-inset-top));flex-wrap:wrap;gap:8px}
-    #lbar{width:70px}#mtxt{min-width:0}
+    #lbar{width:60px}#mtxt{min-width:0}
     #toast{box-sizing:border-box;max-width:calc(100vw - 24px);white-space:normal;text-align:center;line-height:1.5;letter-spacing:.04em}
   }
   @media (max-width:600px),(max-height:600px),(hover:none),(pointer:coarse){
@@ -353,7 +359,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
     #actions #xclose{min-width:40px;min-height:40px;width:40px;padding:0!important}
     body.ui #settings{visibility:visible}
     #pp,#stopb{width:32px;height:32px}
-    #live{left:max(10px,env(safe-area-inset-left));right:auto;top:calc(8px + env(safe-area-inset-top));gap:6px;opacity:1}
+    #live{left:max(10px,env(safe-area-inset-left));right:auto;top:calc(8px + env(safe-area-inset-top));gap:6px}
     #live #lstate,#live #mtxt{display:none}
     #lbar,#mlev{width:56px;height:3px}
     body.mic #lbar,body:not(.mic) #mlev{display:none}
@@ -463,7 +469,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
     </div>
     <div class="trow" id="tapply" hidden><small>Changing source restarts the animation (about 1 s of silence). Energy, Calm and pictures are kept.</small><button id="tapplybtn" type="button">Apply</button></div>
     <input type="file" id="tfpick" accept="audio/*" hidden>
-    <label class="micOnly" title="Software gain applied to the microphone before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping.">Mic sensitivity <b id="mgv">0 dB</b><small>boosts a weak microphone (watch the level meter, top left)</small><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></label>
+    <label class="micOnly" title="Software gain applied to the live input (microphone or tab audio) before analysis. Raise it if the meter stays low; lower the system input volume if it says clipping. Auto keeps the level near -20 dB.">Input sensitivity <b id="mgv">0 dB</b><small>boosts a weak input (watch the level meter, top left)</small><div id="mrow"><span id="mauto" role="button" tabindex="0" title="Auto input level: keeps the level near -20 dB. Moving the slider turns it off.">AUTO</span><input type="range" id="u-mg" min="-12" max="24" step="1" value="0"></div></label>
     <div id="tfile">
       <p class="tnowfile" id="tnowfile"></p>
       <div class="trow"><button id="tnext" style="display:none" title="Choose the next audio file while this one plays">Next track…</button><input id="tnextfile" type="file" accept="audio/*" hidden><button id="nextnow" style="display:none" title="Stop this file and play the next track now">Play next now</button></div>
@@ -1383,7 +1389,7 @@ function resize() {   // keep the canvas a 16:9 box, centred, as large as the wi
 /* ════════════════════════ director: turns the score into per-frame parameters ════════════════════════ */
 // microphone input: software gain (dB), level meter state
 const METER = { db: -90 };
-let micGain = null, TD = null, MICDB = 0, clipT = 0;
+let micGain = null, TD = null, MICDB = 0, clipT = 0, MICAUTO = true;
 // user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
 // Energy (0 calm .. 4 extreme): the ONE user setting of the picture in auto. [arc offset (old Intensity x .25), global amount (old Effects), extreme blend (old Extreme / hk)]
 const EN = { off: [-.25, -.12, 0, .12, .25], amp: [.55, .8, 1, 1.15, 1.25], hc: [0, 0, 0, 0, 1], names: ['calm', 'soft', 'normal', 'strong', 'extreme'], last: 2 };
@@ -3603,10 +3609,11 @@ function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + 
 }
 function closeDemo() { const box = $('phelp'); box.classList.remove('on'); box.innerHTML = ''; document.body.classList.remove('help-open'); }
 // Source panel stays open while the pointer is in its box or on the Source button (+12 px bridge: the gap between them and the 8 px gaps between action buttons are not "outside")
+const liveZone = e => { const z = e.clientX < innerWidth * .2 && e.clientY < innerHeight * .2; if (z !== document.body.classList.contains('liveZ')) document.body.classList.toggle('liveZ', z); };
 const nearSource = e => [$('tune'), $('settings')].some(el => { const r = el.getBoundingClientRect(), m = 12; return e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m; });
-addEventListener('pointermove', e => { if (playing || liveOn) { const tr = e.clientY < innerHeight * 0.15 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e) && e.clientY >= innerHeight * 0.15) setTuning(false); } });
+addEventListener('pointermove', e => { if (playing || liveOn) { liveZone(e); const tr = e.clientY < innerHeight * 0.15 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e) && e.clientY >= innerHeight * 0.15) setTuning(false); } });
 addEventListener('pointerdown', e => { if (playing || liveOn) { showUI(); zoneCheck(e); } });
-document.documentElement.addEventListener('mouseleave', () => { document.body.classList.remove('pultZ'); syncPult(); });
+document.documentElement.addEventListener('mouseleave', () => { document.body.classList.remove('pultZ', 'liveZ'); syncPult(); });
 const updateFullscreen = () => {
   const active = !!document.fullscreenElement; $('fullscreen').textContent = active ? 'Exit fullscreen' : 'Fullscreen';
   $('fullscreen').setAttribute('aria-label', active ? 'Exit fullscreen' : 'Enter fullscreen');
@@ -3802,8 +3809,13 @@ setPexp(lsGet('pexp') !== false, false);   // T84: open by default; a closed sta
   if (!Q.has('code') && lsGet('codev') !== 2) { m = m === 1 ? 2 : m === 2 ? 3 : m; lsSet('codev', 2); lsSet('code', m); }   // T38: saved 1 (overlay) -> 2, 2 (crazy) -> 3; once only
   CODE.mode = CODE.user = m >= 1 && m <= 3 ? Math.round(m) : 0; codeLook(); }   // (an old saved 'true' = overlay)
 { const v = lsGet('micdb'); if (typeof v === 'number') MICDB = clamp(v, -12, 24); $('u-mg').value = MICDB; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; }
+{ const v = lsGet('micauto'); if (typeof v === 'boolean') MICAUTO = v; }
+const setMicAuto = on => { MICAUTO = on; lsSet('micauto', on); $('mauto').classList.toggle('on', on); $('mauto').setAttribute('aria-pressed', on); };
+setMicAuto(MICAUTO);
+$('mauto').addEventListener('click', e => { e.preventDefault(); setMicAuto(!MICAUTO); });
+$('mauto').addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); setMicAuto(!MICAUTO); } });
 $('u-mg').addEventListener('input', e => {
-  MICDB = +e.target.value; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; lsSet('micdb', MICDB);
+  setMicAuto(false); MICDB = +e.target.value; $('mgv').textContent = (MICDB > 0 ? '+' : '') + MICDB + ' dB'; lsSet('micdb', MICDB);
   if (micGain) micGain.gain.setTargetAtTime(Math.pow(10, MICDB / 20), ac.currentTime, .05);
 });
 $('u-mg').addEventListener('change', e => e.target.blur());
@@ -4090,6 +4102,13 @@ function liveLoop() {
   analyser.getFloatTimeDomainData(TD);   // input meter: RMS in dBFS (smoothed) and clipping
   let sq = 0, pk = 0; for (let i = 0; i < TD.length; i++) { const v = TD[i]; sq += v * v; if (Math.abs(v) > pk) pk = Math.abs(v); }
   const db = 10 * Math.log10(sq / TD.length + 1e-12); METER.db += (db - METER.db) * (1 - Math.exp(-dt / .25)); if (pk >= .98) clipT = t;
+  if (MICAUTO && micGain) {   // auto input level: slow up when quiet, fast down on clipping, nothing on near-silence
+    const d = METER.db; let g = MICDB;
+    if (t - clipT < 1.5) g -= 8 * dt;
+    else if (d > -60) { const e = -20 - d; if (e > 2) g += Math.min(e, 10) * .15 * dt; else if (e < -2) g += Math.max(e, -10) * .5 * dt; }
+    g = clamp(g, -12, 24);
+    if (g !== MICDB) { MICDB = g; micGain.gain.setTargetAtTime(Math.pow(10, g / 20), ac.currentTime, .1); const k = Math.round(g); $('u-mg').value = k; $('mgv').textContent = (k > 0 ? '+' : '') + k + ' dB'; }
+  }
   { const d = METER.db, clip = t - clipT < 1.5, st = clip ? ['clipping — lower the input volume', '#ff4d4d'] : d < -55 ? ['no signal / too quiet', '#ff4d4d'] : d < -40 ? ['low — raise sensitivity', '#ffb020'] : d < -8 ? ['good', '#2cff8a'] : ['loud', '#ffb020'];
     const m = $('mlev').firstElementChild; m.style.width = clamp((d + 60) / 60) * 100 + '%'; m.style.background = st[1]; $('mtxt').textContent = Math.round(d) + ' dB · ' + st[0]; $('mtxt').style.color = st[1]; $('mlev').title = $('mtxt').textContent; }
   if (Q.has('debug') && Math.floor(t) !== Math.floor(t - dt)) console.log(`LIVE t=${t.toFixed(0)} lv=${LIVE.lv.toFixed(2)} ls=${LIVE.ls.toFixed(2)} bn=${LIVE.bn.toFixed(2)} scene=${LIVE.scenes}/${LIVE.kinds[LIVE.scenes]} gap=${(Math.abs(LIVE.sf[0] - LIVE.ss[0]) + Math.abs(LIVE.sf[1] - LIVE.ss[1])).toFixed(2)} tension=${LIVE.tension.toFixed(2)} boost=${LIVE.boost.toFixed(2)} I=${LIVE.I.toFixed(2)} state=${LIVE.state}`);
@@ -4099,7 +4118,7 @@ function stopLive() {
   if (!liveOn) return; liveOn = false; LIVE = null;
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
   if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
+  resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui', 'pultH', 'pultZ', 'pshow', 'liveZ'); syncPult(); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); lsSet('setup', { src: 'tab' }); startLive(Q.get('live') === 'mic'); });
 $('micmode').addEventListener('click', e => { e.stopPropagation(); lsSet('setup', { src: 'mic' }); startLive(true); });
