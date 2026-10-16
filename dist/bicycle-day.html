@@ -2601,10 +2601,11 @@ function endWarn(t) {   // red dot + countdown 30, 20, 10 s before the end (gene
 // Clip recording (T79): the canvas + the master output (volNode, tapped, speakers unchanged). One clip at a time; webcam footage is recorded too.
 let REC = null, CLIP = null;   // REC = the clip being recorded; CLIP = the last finished clip
 const REC_MIME = window.MediaRecorder ? ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || '' : '';
+const REC_BPS = 12e6, REC_ABPS = 192e3;   // clip bitrates (video / audio); the browser default is far lower
 function recStart(sec) {
   if (REC || !playing || liveOn || !REC_MIME) return;
   const tap = ac.createMediaStreamDestination(), stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...tap.stream.getAudioTracks()]);
-  const rec = new MediaRecorder(stream, { mimeType: REC_MIME }), chunks = [];
+  const rec = new MediaRecorder(stream, { mimeType: REC_MIME, videoBitsPerSecond: REC_BPS, audioBitsPerSecond: REC_ABPS }), chunks = [];
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
   rec.onstop = () => recDone(chunks, rec.mimeType, sec);
   REC = { ac, tap, out: null, rec, sec, t0: performance.now(), txt: '', timer: setTimeout(recStop, sec * 1000) };
