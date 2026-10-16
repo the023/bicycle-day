@@ -3013,6 +3013,7 @@ function togglePult() {   // H (while playing): shows the pupitre until H again
 function zoneCheck(e) {   // pupitre shows while the pointer is in the bottom 10 % or over it / the Source panel
   const low = e.clientY >= innerHeight * 0.9 || !!(e.target && e.target.closest && e.target.closest('#pult,#mpult,#tune,#ctl'));
   const b = document.body.classList; if (low !== b.contains('pultZ')) { b.toggle('pultZ', low); syncPult(); }
+  if (low) showUI();   // body.ui un-hides the cursor
 }
 function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + CSS), fixed demo gauge values, no engine
   const box = $('phelp'); box.innerHTML = '';
@@ -3026,7 +3027,7 @@ function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + 
 function closeDemo() { const box = $('phelp'); box.classList.remove('on'); box.innerHTML = ''; document.body.classList.remove('help-open'); }
 // Source panel stays open while the pointer is in its box or on the Source button (+12 px bridge: the gap between them and the 8 px gaps between action buttons are not "outside")
 const nearSource = e => [$('tune'), $('settings')].some(el => { const r = el.getBoundingClientRect(), m = 12; return e.clientX >= r.left - m && e.clientX <= r.right + m && e.clientY >= r.top - m && e.clientY <= r.bottom + m; });
-addEventListener('pointermove', e => { if (playing || liveOn) { const tr = e.clientY < innerHeight * 0.1 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e)) setTuning(false); } });
+addEventListener('pointermove', e => { if (playing || liveOn) { const tr = e.clientY < innerHeight * 0.15 || !!e.target.closest('#actions,#tune'); document.body.classList.toggle('side-ui', tr); if (tr) showUI(); zoneCheck(e); if (document.body.classList.contains('tuning') && !e.buttons && !nearSource(e) && e.clientY >= innerHeight * 0.15) setTuning(false); } });
 addEventListener('pointerdown', e => { if (playing || liveOn) { showUI(); zoneCheck(e); } });
 document.documentElement.addEventListener('mouseleave', () => { document.body.classList.remove('pultZ'); syncPult(); });
 const updateFullscreen = () => {
