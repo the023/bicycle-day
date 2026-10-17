@@ -1,22 +1,46 @@
-"""End-to-end smoke test in headless Chromium (software GL): home screen, live mode on a fake microphone, tweak panel, presets, generative start.
-usage: python3 tools/smoke.py     (needs playwright; generates /tmp/sections.wav if missing). Prints USER state and any console errors."""
-import os, subprocess, sys
+"""Smoke test in headless Chromium (software GL, quality=low). Target: under 10 s in total.
+1. home: the page loads and sits 2 s on the home screen with no console / page error
+2. real path: Customize > Generated music > Next > pick a gallery picture > Start; it plays, the picture is added, no error
+3. presets on the digit row (Shift+1 saves, 1 recalls) and the autosave survives a reload
+usage: python3 tools/smoke.py     (needs playwright)
+       SMOKE_HEADED=1 python3 tools/smoke.py     watch it: visible browser, slowed down (SMOKE_SLOW=ms per action, default 600)"""
+import os, sys, time
 from playwright.sync_api import sync_playwright
-root = os.path.dirname(os.path.dirname(os.path.abspath(__file__))); wav = '/tmp/sections.wav'
-if not os.path.exists(wav): subprocess.run([sys.executable, os.path.join(root, 'tools/make_sections_wav.py'), wav], check=True)
+root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 base = 'file://' + root + '/dist/bicycle-day.html'
-args = ['--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', f'--use-file-for-fake-audio-capture={wav}', '--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required']
+args = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required']
+t0 = time.time(); fails = []
+def check(name, ok, detail=''):
+    print(('PASS ' if ok else 'FAIL ') + name + (('  (' + str(detail) + ')') if detail != '' else '')); ok or fails.append(name)
 with sync_playwright() as p:
-    b = p.chromium.launch(args=args); pg = b.new_context(viewport={'width': 1280, 'height': 720}).new_page(); errs = []
+    HEADED = os.environ.get('SMOKE_HEADED') == '1'
+    b = p.chromium.launch(args=args, headless=not HEADED, slow_mo=int(os.environ.get('SMOKE_SLOW', 600)) if HEADED else 0); pg = b.new_context(viewport={'width': 1280, 'height': 720}).new_page(); errs = []
     pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None); pg.on('pageerror', lambda e: errs.append('PAGEERR ' + str(e)))
-    pg.goto(base + '?quality=high'); pg.wait_for_timeout(1500); pg.screenshot(path='/tmp/smoke_gate.png')
-    pg.click('#micmode'); pg.wait_for_timeout(4000); pg.mouse.move(900, 200); pg.wait_for_timeout(1200)
-    pg.fill('#u-kal', '0.4'); pg.dispatch_event('#u-kal', 'input'); pg.click('#u-col'); pg.click("[data-save='1']")
-    pg.fill('#u-kal', '1.2'); pg.dispatch_event('#u-kal', 'input'); pg.click("[data-load='1']")
-    pg.click("[data-tm='1']"); pg.click("[data-sm='3']"); pg.mouse.click(400, 300); pg.mouse.wheel(0, -300); pg.keyboard.press('Digit3')
-    pg.wait_for_timeout(4000); pg.screenshot(path='/tmp/smoke_live.png')
-    print('after load: kal', pg.evaluate('USER.kal'), 'col', pg.evaluate('USER.col'), 'tile mode', pg.evaluate('USER.force'), 'style', pg.evaluate('USER.style'), '| live:', pg.evaluate('liveOn'))
-    pg.keyboard.press('Escape'); pg.wait_for_timeout(500); pg.reload(); pg.wait_for_timeout(1500)
-    print('restored after reload: kal', pg.evaluate('USER.kal'), 'col', pg.evaluate('USER.col'))
-    pg.click('#playgen'); pg.wait_for_timeout(4000); print('generative playing:', pg.evaluate('playing'))
-    print('ERRORS:', errs[:6] or 'none'); b.close()
+    pg.goto(base + '?quality=low&res=.1'); pg.wait_for_timeout(1000)
+    check('home: no error', not errs, errs[:3])
+    try:
+        pg.wait_for_function("!document.getElementById('playlast').disabled || !document.getElementById('surprise').disabled", timeout=8000)
+        pg.click('#home-start'); pg.click('[data-source="gen"]'); pg.click('#wz-next')
+        pg.click('#more-pic summary'); pg.click('#galtoggle')
+        n0 = pg.evaluate('IM.length'); pg.click('#ggal > *:nth-child(2)'); pg.wait_for_timeout(500)
+        n1 = pg.evaluate('IM.length')
+        pg.click('#playgen'); pg.wait_for_function('playing', timeout=8000); pg.wait_for_function('lastT >= 2.5', timeout=30000)
+        check('wizard: Generated > picture > Start plays', pg.evaluate('playing'))
+        check('wizard: picture added', n1 > n0, '%d -> %d' % (n0, n1))
+    except Exception as e:
+        check('wizard flow', False, str(e).splitlines()[0][:160])
+    check('no error while playing', not errs, errs[:3])
+    # presets (digit row) survive a reload
+    def setkal(v): pg.evaluate("v => { const e = document.getElementById('u-kal'); e.value = v; e.dispatchEvent(new Event('input', { bubbles: true })); }", v)
+    try:
+        setkal(0.4); pg.evaluate("fireKey('Digit1', 'keydown', true)")
+        setkal(1.2); pg.evaluate("fireKey('Digit1')")
+        check('preset recall', pg.evaluate('USER.kal') == 0.4, pg.evaluate('USER.kal'))
+        pg.keyboard.press('Escape'); pg.wait_for_timeout(300); pg.reload(); pg.wait_for_function('ready === true', timeout=30000)
+        check('preset restored after reload', pg.evaluate('USER.kal') == 0.4, pg.evaluate('USER.kal'))
+    except Exception as e:
+        check('presets', False, str(e).splitlines()[0][:160])
+    check('no error at the end', not errs, errs[:3]); b.close()
+el = time.time() - t0
+print('time: %.1f s' % el); el > 10 and print('WARNING: over the 10 s target')
+print('SMOKE', 'FAIL: ' + ', '.join(fails) if fails else 'PASS'); sys.exit(1 if fails else 0)
