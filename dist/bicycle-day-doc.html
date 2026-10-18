@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bicycle Day — how it works</title>
+<style>
+  html,body{margin:0;background:#000;color:#f4f1ea;font:14px/1.45 "Helvetica Neue",Arial,sans-serif}
+  main{max-width:1180px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:.02em}
+  h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#ffd60a;margin:38px 0 12px;font-weight:700}
+  p.lead{margin:0;color:#f4f1ea99}
+  code{font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#9fd8ff}
+  /* flow */
+  .flow{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:stretch}
+  .box{position:relative;flex:1 1 230px;max-width:280px;background:#ffffff0d;border:1px solid #ffffff26;border-radius:10px;padding:10px 12px}
+  .box:not(:last-child)::after{content:"\2192";position:absolute;right:-22px;top:50%;transform:translateY(-50%);color:#ffd60a;font-size:18px}
+  .box b{display:block;font-size:13px;margin-bottom:3px}
+  .box span{display:block;color:#f4f1ea99;font-size:12.5px}
+  .box code{display:block;margin-top:5px}
+  .box.p{border-color:#ffd60a;background:#ffd60a14}
+  .box.sh{border-color:#6fd38a}
+  /* cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .card{background:#ffffff0d;border:1px solid #ffffff26;border-radius:10px;padding:12px 14px}
+  .card h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .key{font:700 11px/1 ui-monospace,Menlo,monospace;background:#f4f1ea;color:#000;border-radius:4px;padding:3px 6px}
+  .tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;border-radius:99px;padding:2px 7px;border:1px solid #ffffff44;color:#f4f1ea99;margin-left:auto}
+  .tag.mood{border-color:#ff9f0a;color:#ff9f0a}
+  .card .see{color:#f4f1eacc;margin:4px 0 8px}
+  .card dl{margin:0;display:grid;grid-template-columns:78px 1fr;gap:3px 8px;font-size:12px}
+  .card dt{color:#f4f1ea77}.card dd{margin:0;word-break:break-word}
+  .inv{background:#ffffff0d;border:1px solid #ff9f0a66;border-radius:10px;padding:6px 20px 6px 36px}
+  .inv li{margin:8px 0}
+  .small{color:#f4f1ea77;font-size:12px;margin-top:10px}
+</style></head><body><main>
+<h1>Bicycle Day — how it works</h1>
+<p class="lead">One image, warped by a shader. Sound and picture share one clock. Tables below are read from the app source at build time.</p>
+
+<h2>Signal flow</h2>
+<div class="flow">
+  <div class="box"><b>1 · Sources</b><span>Generated music (seeded), a Local file, Live tab audio, or the microphone.</span><code>buildAudio() · playLocal() · startLive()</code></div>
+  <div class="box"><b>2 · Features</b><span>Intensity, energy, events (kicks, builds, drops, scenes) from the arc or from the audio.</span><code>score(u) · energy(u) · liveStep() · analyseLocal()</code></div>
+  <div class="box"><b>3 · Layers</b><span>Arc, surges, moods, scenes, minor punches and zoom pulses add up into the engine's own look.</span><code>surgeAt · moodAt · sceneAt · minorAt · zoomPulseAt</code></div>
+  <div class="box p"><b>4 · P</b><span>One params object for the frame: every field has a neutral value and a range (PF).</span><code>render(t, dt, …)</code></div>
+  <div class="box"><b>5 · User layer</b><span>Energy, control level (auto / assisted / manual), keys and sliders change P.</span><code>UE.* · ctrlParams(P, t, dt)</code></div>
+  <div class="box"><b>6 · clampP</b><span>Forces every field into its PF range, once per frame.</span><code>clampP(P)</code></div>
+  <div class="box sh"><b>7 · Shaders</b><span>Pass 1 warps, mirrors and feeds back into a buffer. Pass 2 adds aberration, vignette, grain, moods.</span><code>FS_SCENE (feedback) → FS_SHOW (display)</code></div>
+  <div class="box sh"><b>8 · Screen</b><span>The canvas you see.</span><code>render() → gl.drawArrays</code></div>
+</div>
+
+<h2>Effects</h2>
+<div class="cards" id="cards"></div>
+<h2>Other engine effects (showcase / automatic only, no key)</h2>
+<div class="cards" id="cards2"></div>
+
+<h2>Invariants</h2>
+<ul class="inv">
+  <li>The picture is a pure function of the audio clock time <code>t</code>. Drifting state (<code>hue</code>, <code>rotA</code>) is re-derived on seek (<code>integrateTo</code>).</li>
+  <li>Pass 1 (FS_SCENE) is a <b>feedback loop</b>: anything added there builds up frame after frame. One-shot flashes belong in the <b>display pass</b> (FS_SHOW).</li>
+  <li><b>Strobe</b> is allowed on purpose, but only in the display pass, never in the feedback loop.</li>
+  <li>User keys and sliders are live input: with a control level above auto the picture is no longer a pure function of <code>t</code>.</li>
+</ul>
+<p class="small" id="foot"></p>
+</main>
+<script>
+const PF = {
+  t:        { neutral: 0,   min: -1e6, max: 1e8 },
+  warp:     { neutral: 0,   min: -1,   max: 20, sc: 1, quiet: .06 },
+  kal:      { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  fold:     { neutral: 6,   min: 1,    max: 64, sc: 1, quiet: 6 },
+  fb:       { neutral: 0,   min: -1,   max: 3,  sc: 1, quiet: 0 },
+  fbHue:    { neutral: 0,   min: -2,   max: 3 },
+  hue:      { neutral: 0,   min: -1e7, max: 1e7, sc: 1 },
+  pal:      { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  side:     { neutral: 0,   min: -2,   max: 3,  sc: 1, quiet: 0 },
+  breath:   { neutral: 0,   min: -1,   max: 50, sc: 1, quiet: .6 },
+  melt:     { neutral: 0,   min: -1,   max: 10, sc: 1, quiet: 0 },
+  zoom:     { neutral: 1,   min: .15,  max: 2,  sc: 1 },   // the same limits render() has always applied
+  rot:      { neutral: 0,   min: -1e7, max: 1e7, sc: 1 },
+  ab:       { neutral: 0,   min: -1,   max: 20, sc: 1, quiet: .05 },
+  pulse:    { neutral: 0,   min: -1,   max: 10, sc: 1 },
+  bright:   { neutral: 1,   min: -1,   max: 10, sc: 1, quiet: 1 },
+  anchor:   { neutral: 0,   min: -2,   max: 3,  sc: 1, quiet: 0 },
+  tilt:     { neutral: [0, 0], min: -5, max: 5, sc: 1 },
+  srcZ:     { neutral: 1,   min: .01,  max: 20, sc: 1 },
+  srcRot:   { neutral: 0,   min: -100, max: 100, sc: 1 },
+  palC:     { neutral: [1.3, 1.3, 1.3], min: -10, max: 10, sc: 1 },   // = PALS[0].c
+  palD:     { neutral: [0, .33, .67],   min: -10, max: 10, sc: 1 },   // = PALS[0].d
+  ha:       { neutral: 1,   min: -1,   max: 3,  sc: 1 },
+  stretch:  { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  tun:      { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  mono:     { neutral: 0,   min: -1,   max: 3,  sc: 1, quiet: 0 },
+  tile:     { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  tileN:    { neutral: 12,  min: 1,    max: 200, quiet: 12 },
+  tileMode: { neutral: 0,   min: 0,    max: 8,  quiet: 0 },
+  surge:    { neutral: 0,   min: -1,   max: 5 },
+  kali:     { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  julia:    { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  dark:     { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  blaze:    { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  strobe:   { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  rate:     { neutral: 8,   min: 0,    max: 60, sc: 1, quiet: 8 },
+  cells:    { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  grid:     { neutral: 4,   min: 1,    max: 64 },
+  glitch:   { neutral: 0,   min: -1,   max: 5 },
+};
+const ENGINE = {
+  v: 0,
+  zoom: { min: .15, max: 2.0,                 // limits of a pulse's factor (applied after the seeded draw, so the draw order never changes)
+    durOut: [4, 20], durIn: [1, 10], gap: [30, 70], first: [30, 60],   // pulse length out / in, gap between pulses, start of the first (s)
+    pOut: .67, pFar: .25,                      // chance of a zoom-out; chance that an out is a far one
+    fIn: [1.6, 2.0], fOut: [.25, .5], fFar: [.15, .25],   // factor ranges in / out / far out (drawn, then clamped to min..max)
+    ramp: 3, swing: .35 },                     // longest ease in/out of a pulse (s); slow breathing exp(swing*sin) of the zoom
+  kal: { max: .6, maxHc: 1, dip: .65,          // kaleidoscope cap (auto / Extreme), how far it regularly lets the source breathe back
+    base: .35, baseHc: .8, surge: 1,           // amount = ... * (base + surge * surge level)
+    foldMin: 3, foldWob: 1.5,                  // fold count floor; fold wobble amplitude
+    spinBase: .02, spinKal: .06, spinWob: .03 },   // slow auto rotation: base + kal * arc kal + wob
+  warp: { base: .4, surge: 1.3, wob: .3, mid: .35, punch: .5, hc: 1.3 },   // wr = warp * (1 + wob) * (1 + mid) * (1 + punch * scene punch) * (base + surge * sg) * (1 -> hc in Extreme)
+  tile: { win: [.15, .35, .65, .85], gate: [.22, .42], kalCut: .6, nonLead: .4, punch: .7, minor: .35, fbCut: .75, sizes: [8, 12, 16, 25], modes: 3 },   // window in/out of the scene, arc gate, strength cuts, trails thinning
+  glitch: { cell: 12, chance: .35, durMin: 1, durVar: 1.5, amp: .3, ampVar: .25 },   // sparse bursts after the intro: a cell of `cell` s has a `chance` of one burst of durMin + durVar * (0..1) s with amplitude amp + ampVar * (0..1)
+  strobe: { rate: [5, 11], dur: [6, 14], amount: 1 },   // strobe mood: flashes per second, stretch length (s), strength (multiplies P.strobe)
+  tun: { first: [70, 110], firstRamp: [10, 40], dur: [9, 16], gap: [70, 160], easeIn: 2.5, easeOut: 3 },   // generated tunnel stretches (s)
+};
+const EFFECTS = [
+  { code: 'KeyQ', key: 'Q', cap: 'Q', label: 'warp', name: 'warp', fx: 'warp', mode: 't', rin: .6, rout: .6, field: 'warp', ref: 2, lv: 'warp', amt: 1, mood: false, snap: 'wp', desc: 'The picture bends and ripples as if seen through moving water.' },
+  { code: 'KeyW', key: 'W', cap: 'W', label: 'kaleidoscope', name: 'kaleido', fx: 'kaleidoscope: 6 folds', mode: 't', rin: .7, rout: .7, field: 'kal', ref: 1, lv: 'kal', amt: 1, mood: false, snap: 'kal', max: 1.5, desc: 'The picture is mirrored into a rotating star of identical wedges.' },
+  { code: 'KeyE', key: 'E', cap: 'E', label: 'trails', name: 'trails', fx: 'feedback trails', mode: 't', rin: .8, rout: .8, field: 'fb', ref: .9, lv: 'fb', amt: 1, mood: false, snap: 'fb', max: 1.1, desc: 'Moving parts leave glowing, slowly fading trails behind them.' },
+  { code: 'KeyR', key: 'R', cap: 'R', label: 'melt', name: 'melt', fx: 'melt', mode: 't', rin: .8, rout: .8, field: 'melt', ref: 1.3, lv: 'melt', amt: 1, mood: false, snap: 'mt', desc: 'The picture drips and flows downward like warm wax.' },
+  { code: 'KeyY', key: 'Y', cap: 'Y', label: 'tiles', name: 'tiles', fx: 'tiles: checker', mode: 't', rin: .5, rout: .5, field: 'tile', ref: 1, lv: 'tile', amt: 1, mood: false, snap: 'tile', max: 2, desc: 'The picture breaks into a grid of tiles that shift, wave or shatter.' },
+  { code: 'KeyU', key: 'U', cap: 'U', label: 'Kali', name: 'Kali', fx: 'style: Kali', mode: 't', rin: .7, rout: .7, field: 'kali', ref: 1, lv: 'kali', amt: 1, mood: false, snap: 'ka', desc: 'The picture is folded again and again into a sharp fractal lattice.' },
+  { code: 'KeyI', key: 'I', cap: 'I', label: 'Julia', name: 'Julia', fx: 'style: Julia', mode: 't', rin: .7, rout: .7, field: 'julia', ref: 1, lv: 'julia', amt: 1, mood: false, snap: 'ju', desc: 'The picture is pulled into soft swirling spirals like a Julia fractal.' },
+  { code: 'KeyO', key: 'O', cap: 'O', label: 'tunnel', name: 'tunnel', fx: 'tunnel', mode: 't', rin: .8, rout: .8, field: 'tun', ref: 1, lv: 'tun', amt: 1, mood: false, snap: 'tn', desc: 'The picture repeats inwards forever, as if you fly down a tunnel.' },
+  { code: 'KeyP', key: 'P', cap: 'P', label: 'stretch', name: 'stretch', fx: 'source stretch', mode: 't', rin: .8, rout: .8, field: 'stretch', ref: 1, lv: 'stretch', amt: 1, mood: false, snap: 'st', desc: 'The picture is smeared outward from one point into long streaks.' },
+  { code: 'KeyA', key: 'A', cap: 'A', label: 'dark', name: 'dark', fx: 'mood: dark', mode: 't', rin: .6, rout: .6, field: 'dark', ref: 1, lv: null, amt: 0, mood: true, desc: 'The screen fades toward black while the picture glows faintly.' },
+  { code: 'KeyS', key: 'S', cap: 'S', label: 'black and white', name: 'b&w', fx: 'mood: black and white', mode: 't', rin: .6, rout: .6, field: 'mono', ref: 1, lv: null, amt: 0, mood: true, desc: 'All colour drains out and the picture turns black and white.' },
+  { code: 'KeyD', key: 'D', cap: 'D', label: 'blaze', name: 'blaze', fx: 'mood: blaze', mode: 't', rin: .5, rout: .8, field: 'blaze', ref: 1, lv: null, amt: 0, mood: true, desc: 'The picture burns out toward bright white light.' },
+  { code: 'KeyG', key: 'G', cap: 'G', label: 'strobe (hold)', name: 'strobe', fx: 'mood: strobe', mode: 'h', rin: 0, rout: 0, field: 'strobe', ref: 1, lv: null, amt: 0, mood: true, desc: 'The whole screen flashes white and dark several times a second while held.' },
+  { code: 'KeyJ', key: 'J', cap: 'J', label: 'strobe grid (hold)', name: 'grid', fx: 'strobe grid', mode: 'h', rin: 0, rout: 0, field: 'cells', ref: 1, lv: null, amt: 0, mood: true, desc: 'A grid of cells flashes one after another while held.' },
+  { code: 'Enter', key: 'Enter', cap: 'Ent', label: 'surge (hold)', name: 'surge', fx: 'surge (swell)', mode: 'h', rin: .5, rout: 1.2, field: 'surge', ref: 1, lv: null, amt: 0, mood: true, desc: 'Warp, kaleidoscope, melt and colour swell together while held.' },
+];
+const FX = [
+  { name: 'warp', cls: 'gE', desc: 'The picture bends and ripples as if seen through moving water.', fields: ['warp'], set: (p, k) => { p.warp = 1.4 * k; } },
+  { name: 'kaleidoscope: 6 folds', cls: 'gE', desc: 'The picture is mirrored into a six-pointed rotating star.', fields: ['kal', 'fold'], set: (p, k) => { p.kal = .95 * k; p.fold = 6; } },
+  { name: 'kaleidoscope: 12 folds', cls: 'gN', desc: 'The same star with twelve narrower wedges.', fields: ['kal', 'fold'], set: (p, k) => { p.kal = .95 * k; p.fold = 12; } },
+  { name: 'feedback trails', cls: 'gE', desc: 'Moving parts leave glowing, fading trails and the picture slowly turns.', fields: ['fb', 'warp', 'rot'], set: (p, k) => { p.fb = .85 * k; p.warp = .6 * k; p.rot = .6 * k; } },
+  { name: 'hue cycling', cls: 'gX', desc: 'All colours slowly rotate around the colour wheel.', fields: ['hue'], set: (p, k) => { p.hue = p.t * .9 * k; } },
+  { name: 'palette: rainbow', cls: 'gX', desc: 'The picture is recoloured in smooth rainbow bands.', fields: ['pal'], set: (p, k) => { p.pal = k; } },
+  { name: 'palette: ember', cls: 'gX', desc: 'The picture is recoloured in warm orange and red.', fields: ['pal', 'palC', 'palD', 'ha'], set: (p, k) => { p.pal = k; p.palC = PALS[2].c; p.palD = PALS[2].d; p.ha = .3; } },
+  { name: 'palette: violet', cls: 'gX', desc: 'The picture is recoloured in violet and blue.', fields: ['pal', 'palC', 'palD', 'ha'], set: (p, k) => { p.pal = k; p.palC = PALS[5].c; p.palD = PALS[5].d; p.ha = .3; } },
+  { name: 'melt', cls: 'gE', desc: 'The picture drips and flows downward like warm wax.', fields: ['melt'], set: (p, k) => { p.melt = 1.3 * k; } },
+  { name: 'zoom in', cls: 'gN', desc: 'The picture slowly grows to twice its size.', fields: ['zoom'], set: (p, k) => { p.zoom = Math.exp(Math.LN2 * k); } },   // T74: reaches ×2 at full effect (ln2)
+  { name: 'zoom out (tiled)', cls: 'gN', desc: 'The picture shrinks and repeats around itself in a tiled field.', fields: ['zoom'], set: (p, k) => { p.zoom = Math.exp(-Math.LN2 * 2 * k); } },   // T74: reaches ×4 out at full effect (0.25, ln4)
+  { name: 'rotate', cls: 'gN', desc: 'The whole picture turns around its centre.', fields: ['rot'], set: (p, k) => { p.rot = 2.2 * k; } },
+  { name: 'aberration', cls: 'gN', desc: 'The colours split apart at the edges like a bad lens.', fields: ['ab'], set: (p, k) => { p.ab = 2.4 * k; } },
+  { name: 'breath', cls: 'gN', desc: 'The picture swells and relaxes like slow breathing.', fields: ['breath'], set: (p, k) => { p.breath = 7 * k; } },
+  { name: 'heartbeat pulse', cls: 'gN', desc: 'The picture throbs briefly with each heartbeat.', fields: ['pulse'], set: (p, k) => { p.pulse = k * Math.pow(Math.max(0, Math.sin(p.t * 5)), 4); } },
+  { name: 'camera tilt', cls: 'gN', desc: 'The picture sways as if the camera is tilting.', fields: ['tilt'], set: (p, k) => { p.tilt = [.5 * k * Math.sin(p.t * .7), .5 * k * Math.cos(p.t * .55)]; } },
+  { name: 'tiles: checker', cls: 'gE', desc: 'The picture breaks into a checkerboard of tiles that slide.', fields: ['tile', 'tileN', 'tileMode'], set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 0; } },
+  { name: 'tiles: wave', cls: 'gN', desc: 'The tiles move in a rolling wave.', fields: ['tile', 'tileN', 'tileMode'], set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 1; } },
+  { name: 'tiles: shatter', cls: 'gN', desc: 'The tiles burst apart like broken glass.', fields: ['tile', 'tileN', 'tileMode'], set: (p, k) => { p.tile = k; p.tileN = 12; p.tileMode = 2; } },
+  { name: 'style: Kali', cls: 'gE', desc: 'The picture is folded again and again into a sharp fractal lattice.', fields: ['kali'], set: (p, k) => { p.kali = .8 * k; } },
+  { name: 'style: Julia', cls: 'gE', desc: 'The picture is pulled into soft swirling spirals.', fields: ['julia'], set: (p, k) => { p.julia = .8 * k; } },
+  { name: 'tunnel', cls: 'gE', desc: 'The picture repeats inwards forever, as if flying down a tunnel.', fields: ['tun'], set: (p, k) => { p.tun = k; } },
+  { name: 'source stretch', cls: 'gE', desc: 'The picture is smeared outward from one point into long streaks.', fields: ['stretch', 'anchor', 'side'], set: (p, k) => { p.stretch = k; p.anchor = .8; p.side = 0; } },
+  { name: 'surge (swell)', cls: 'gM', desc: 'Warp, kaleidoscope, melt, aberration and colour swell together.', fields: ['warp', 'kal', 'melt', 'ab', 'pal'], set: (p, k) => { p.warp = 1.2 * k; p.kal = .5 * k; p.melt = .9 * k; p.ab = 1.2 * k; p.pal = .4 * k; } },
+  { name: 'mood: dark', cls: 'gM', desc: 'The screen fades toward black while the picture glows faintly.', fields: ['dark'], set: (p, k) => { p.dark = k; } },
+  { name: 'mood: black and white', cls: 'gM', desc: 'All colour drains out and the picture turns black and white.', fields: ['mono'], set: (p, k) => { p.mono = k; } },
+  { name: 'mood: blaze', cls: 'gM', desc: 'The picture burns out toward bright white light.', fields: ['blaze'], set: (p, k) => { p.blaze = k; } },
+  { name: 'mood: strobe', cls: 'gM', desc: 'The whole screen flashes white and dark several times a second.', fields: ['strobe', 'rate'], set: (p, k) => { p.strobe = k; p.rate = 7; } },
+  { name: 'strobe grid', cls: 'gM', desc: 'A grid of cells flashes one after another.', fields: ['cells'], set: (p, k) => { p.cells = k; } },
+  { name: 'glitch', cls: 'gN', desc: 'Slices of the picture shift sideways and tear for a moment.', fields: ['glitch'], set: (p, k) => { p.glitch = .8 * k; } },
+];
+const TUNE_G = f => { for (const k of f) { if (k === 'fb') return null; if (k === 'zoom') return 'zoom'; if (k === 'kal' || k === 'fold') return 'kal'; if (k === 'warp') return 'warp'; if (k.startsWith('tile')) return 'tile'; if (k === 'tun') return 'tun'; if (k === 'glitch') return 'glitch'; if (k === 'rot') return 'rot'; if (k === 'strobe') return 'strobe'; } return null; };
+</script>
+<script>
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = v => Array.isArray(v) ? '[' + v.map(fmt).join(', ') + ']' : typeof v === 'number' ? String(+v.toPrecision(4)) : String(v);
+// Which sources drive an engine group (read from render() and 08-director.js; "—" = not checked).
+const SRC = {
+  zoom: 'Generated: seeded zoom pulses (zoomPulseAt). Live / Local: scene punches and tension, no pulses.',
+  kal: 'All: arc kaleidoscope amount, surges, scene looks.',
+  warp: 'All: arc warp, surges, scene punches, mid band.',
+  tile: 'Generated: a window every scene. Live / Local: bursts on drops.',
+  tun: 'Generated: seeded stretches (tunnelAt). Live / Local: drops and strong builds.',
+};
+const fx = n => FX.find(f => f.name === n);
+function card(name, key, mood, mode, desc, fields, extra) {
+  const g = fields ? TUNE_G(fields) : null;
+  const pf = (fields || []).map(k => PF[k] ? `<code>${esc(k)}</code> ${fmt(PF[k].min)} … ${fmt(PF[k].max)} (neutral ${fmt(PF[k].neutral)})` : `<code>${esc(k)}</code>`).join('<br>') || '—';
+  const eng = g && ENGINE[g] ? `<code>ENGINE.${g}</code> ` + Object.entries(ENGINE[g]).map(([k, v]) => `${esc(k)} ${esc(fmt(v))}`).join(', ') : '—';
+  return `<div class="card"><h3>${key ? `<span class="key">${esc(key)}</span>` : ''}${esc(name)}<span class="tag${mood ? ' mood' : ''}">${mood ? 'mood' : 'effect'}</span></h3>
+    <div class="see">${esc(desc || '—')}</div><dl>
+    <dt>P fields</dt><dd>${pf}</dd>
+    <dt>Engine bounds</dt><dd>${eng}</dd>
+    <dt>Sources</dt><dd>${esc((g && SRC[g]) || '—')}</dd>
+    <dt>Key</dt><dd>${key ? esc(key) + (mode === 'h' ? ' (hold)' : ' (toggle)') : 'none'}</dd></dl></div>`;
+}
+const used = new Set();
+document.getElementById('cards').innerHTML = EFFECTS.map(r => {
+  const f = fx(r.fx); used.add(r.fx);
+  return card(r.label, r.key, r.mood, r.mode, r.desc || (f && f.desc), f ? f.fields : (r.field ? [r.field] : []));
+}).join('');
+document.getElementById('cards2').innerHTML = FX.filter(f => !used.has(f.name)).map(f => card(f.name, '', /^(mood|strobe)/.test(f.name), '', f.desc, f.fields)).join('');
+document.getElementById('foot').textContent = EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
+</script></body></html>

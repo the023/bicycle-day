@@ -1,7 +1,8 @@
-// Builds dist/bicycle-day.html: src/index.html with the logo (home screen + default picture) and the image gallery inlined as data URIs.
+// Builds dist/bicycle-day.html: src/index.html + src/js/*.js (via tools/assemble.mjs) with the logo (home screen + default picture) and the image gallery inlined as data URIs.
 // (The images must be inlined: WebGL refuses to use an image loaded from file:// as a texture.)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import vm from 'node:vm';
+import { appHtml } from './tools/assemble.mjs';
 
 // gallery manifest: [file in assets/gallery/, title shown in the app]; order = order in the app
 const GALLERY = [
@@ -19,7 +20,7 @@ const gallery = GALLERY.map(([file, title]) => {
   return { id: file.replace(/\.jpg$/, ''), title, src: `data:image/jpeg;base64,${bytes.toString('base64')}` };
 });
 
-const html = readFileSync('src/index.html', 'utf8');
+const html = appHtml();
 const homeLogo = readFileSync('assets/bicycle-day-logo-home.webp').toString('base64');
 if (!html.includes('__HOME_LOGO__')) throw new Error('src/index.html has no __HOME_LOGO__ placeholder');
 if (!html.includes('__GALLERY__')) throw new Error('src/index.html has no __GALLERY__ placeholder');
@@ -33,3 +34,17 @@ for (const m of out.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(m[1
 mkdirSync('dist', { recursive: true });
 writeFileSync('dist/bicycle-day.html', out);
 console.log(`dist/bicycle-day.html  ${(out.length / 1024).toFixed(0)} KB`);
+
+// T112: dist/bicycle-day-doc.html = src/doc.html with the effect tables cut verbatim out of the app sources (no copy by hand).
+// PF, ENGINE, EFFECTS, FX are pure data (FX set() bodies only touch PALS when called), TUNE_G is the FX -> ENGINE group rule of the tuning panel.
+const cut = (src, start, end, what) => {
+  const i = src.indexOf(start); if (i < 0) throw new Error(`doc build: "${start}" not found (${what})`);
+  const j = end === '\n' ? src.indexOf('\n', i) : src.indexOf(end, i); if (j < 0) throw new Error(`doc build: end of ${what} not found`);
+  return src.slice(i, j + (end === '\n' ? 0 : end.length));
+};
+const eff = readFileSync('src/js/08z-effects.js', 'utf8'), fxs = readFileSync('src/js/09-fx.js', 'utf8');
+const docData = [cut(eff, 'const PF = {', '\n};', 'PF'), cut(eff, 'const ENGINE = {', '\n};', 'ENGINE'), cut(eff, 'const EFFECTS = [', '\n];', 'EFFECTS'), cut(fxs, 'const FX = [', '\n];', 'FX'), cut(fxs, 'const TUNE_G = ', '\n', 'TUNE_G')].join('\n');
+const doc = readFileSync('src/doc.html', 'utf8').replace('__DOC_DATA__', () => docData);
+for (const m of doc.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(m[1], { filename: 'doc-inline-script' });
+writeFileSync('dist/bicycle-day-doc.html', doc);
+console.log(`dist/bicycle-day-doc.html  ${(doc.length / 1024).toFixed(0)} KB`);

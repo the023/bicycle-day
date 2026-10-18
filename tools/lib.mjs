@@ -1,6 +1,7 @@
 // Shared by replay.mjs / sweep.mjs: run a spectrogram through the app's REAL liveStep(), and score the result against tools/refs.json
 import fs from 'node:fs';
-const html = fs.readFileSync(process.env.APP_HTML || new URL('../src/index.html', import.meta.url), 'utf8');
+import { appHtml } from './assemble.mjs';
+const html = process.env.APP_HTML ? fs.readFileSync(process.env.APP_HTML, 'utf8') : appHtml();
 const grab = (a, b) => { const i = html.indexOf(a), j = html.indexOf(b, i); if (i < 0 || j < 0) throw new Error('cannot find ' + a); return html.slice(i, j); };
 export const NB = 330, FPS = 60, SR = 44100;
 const body = `const clamp=(x,a=0,b=1)=>Math.min(b,Math.max(a,x)), lerp=(a,b,t)=>a+(b-a)*t;

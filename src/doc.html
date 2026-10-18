@@ -1,0 +1,96 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Bicycle Day — how it works</title>
+<style>
+  html,body{margin:0;background:#000;color:#f4f1ea;font:14px/1.45 "Helvetica Neue",Arial,sans-serif}
+  main{max-width:1180px;margin:0 auto;padding:28px 24px 60px}
+  h1{font-size:26px;margin:0 0 4px;letter-spacing:.02em}
+  h2{font-size:13px;letter-spacing:.16em;text-transform:uppercase;color:#ffd60a;margin:38px 0 12px;font-weight:700}
+  p.lead{margin:0;color:#f4f1ea99}
+  code{font:12px/1.3 ui-monospace,Menlo,Consolas,monospace;color:#9fd8ff}
+  /* flow */
+  .flow{display:flex;flex-wrap:wrap;gap:10px 26px;align-items:stretch}
+  .box{position:relative;flex:1 1 230px;max-width:280px;background:#ffffff0d;border:1px solid #ffffff26;border-radius:10px;padding:10px 12px}
+  .box:not(:last-child)::after{content:"\2192";position:absolute;right:-22px;top:50%;transform:translateY(-50%);color:#ffd60a;font-size:18px}
+  .box b{display:block;font-size:13px;margin-bottom:3px}
+  .box span{display:block;color:#f4f1ea99;font-size:12.5px}
+  .box code{display:block;margin-top:5px}
+  .box.p{border-color:#ffd60a;background:#ffd60a14}
+  .box.sh{border-color:#6fd38a}
+  /* cards */
+  .cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:12px}
+  .card{background:#ffffff0d;border:1px solid #ffffff26;border-radius:10px;padding:12px 14px}
+  .card h3{margin:0 0 2px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .key{font:700 11px/1 ui-monospace,Menlo,monospace;background:#f4f1ea;color:#000;border-radius:4px;padding:3px 6px}
+  .tag{font-size:10px;letter-spacing:.1em;text-transform:uppercase;border-radius:99px;padding:2px 7px;border:1px solid #ffffff44;color:#f4f1ea99;margin-left:auto}
+  .tag.mood{border-color:#ff9f0a;color:#ff9f0a}
+  .card .see{color:#f4f1eacc;margin:4px 0 8px}
+  .card dl{margin:0;display:grid;grid-template-columns:78px 1fr;gap:3px 8px;font-size:12px}
+  .card dt{color:#f4f1ea77}.card dd{margin:0;word-break:break-word}
+  .inv{background:#ffffff0d;border:1px solid #ff9f0a66;border-radius:10px;padding:6px 20px 6px 36px}
+  .inv li{margin:8px 0}
+  .small{color:#f4f1ea77;font-size:12px;margin-top:10px}
+</style></head><body><main>
+<h1>Bicycle Day — how it works</h1>
+<p class="lead">One image, warped by a shader. Sound and picture share one clock. Tables below are read from the app source at build time.</p>
+
+<h2>Signal flow</h2>
+<div class="flow">
+  <div class="box"><b>1 · Sources</b><span>Generated music (seeded), a Local file, Live tab audio, or the microphone.</span><code>buildAudio() · playLocal() · startLive()</code></div>
+  <div class="box"><b>2 · Features</b><span>Intensity, energy, events (kicks, builds, drops, scenes) from the arc or from the audio.</span><code>score(u) · energy(u) · liveStep() · analyseLocal()</code></div>
+  <div class="box"><b>3 · Layers</b><span>Arc, surges, moods, scenes, minor punches and zoom pulses add up into the engine's own look.</span><code>surgeAt · moodAt · sceneAt · minorAt · zoomPulseAt</code></div>
+  <div class="box p"><b>4 · P</b><span>One params object for the frame: every field has a neutral value and a range (PF).</span><code>render(t, dt, …)</code></div>
+  <div class="box"><b>5 · User layer</b><span>Energy, control level (auto / assisted / manual), keys and sliders change P.</span><code>UE.* · ctrlParams(P, t, dt)</code></div>
+  <div class="box"><b>6 · clampP</b><span>Forces every field into its PF range, once per frame.</span><code>clampP(P)</code></div>
+  <div class="box sh"><b>7 · Shaders</b><span>Pass 1 warps, mirrors and feeds back into a buffer. Pass 2 adds aberration, vignette, grain, moods.</span><code>FS_SCENE (feedback) → FS_SHOW (display)</code></div>
+  <div class="box sh"><b>8 · Screen</b><span>The canvas you see.</span><code>render() → gl.drawArrays</code></div>
+</div>
+
+<h2>Effects</h2>
+<div class="cards" id="cards"></div>
+<h2>Other engine effects (showcase / automatic only, no key)</h2>
+<div class="cards" id="cards2"></div>
+
+<h2>Invariants</h2>
+<ul class="inv">
+  <li>The picture is a pure function of the audio clock time <code>t</code>. Drifting state (<code>hue</code>, <code>rotA</code>) is re-derived on seek (<code>integrateTo</code>).</li>
+  <li>Pass 1 (FS_SCENE) is a <b>feedback loop</b>: anything added there builds up frame after frame. One-shot flashes belong in the <b>display pass</b> (FS_SHOW).</li>
+  <li><b>Strobe</b> is allowed on purpose, but only in the display pass, never in the feedback loop.</li>
+  <li>User keys and sliders are live input: with a control level above auto the picture is no longer a pure function of <code>t</code>.</li>
+</ul>
+<p class="small" id="foot"></p>
+</main>
+<script>
+__DOC_DATA__
+</script>
+<script>
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const fmt = v => Array.isArray(v) ? '[' + v.map(fmt).join(', ') + ']' : typeof v === 'number' ? String(+v.toPrecision(4)) : String(v);
+// Which sources drive an engine group (read from render() and 08-director.js; "—" = not checked).
+const SRC = {
+  zoom: 'Generated: seeded zoom pulses (zoomPulseAt). Live / Local: scene punches and tension, no pulses.',
+  kal: 'All: arc kaleidoscope amount, surges, scene looks.',
+  warp: 'All: arc warp, surges, scene punches, mid band.',
+  tile: 'Generated: a window every scene. Live / Local: bursts on drops.',
+  tun: 'Generated: seeded stretches (tunnelAt). Live / Local: drops and strong builds.',
+};
+const fx = n => FX.find(f => f.name === n);
+function card(name, key, mood, mode, desc, fields, extra) {
+  const g = fields ? TUNE_G(fields) : null;
+  const pf = (fields || []).map(k => PF[k] ? `<code>${esc(k)}</code> ${fmt(PF[k].min)} … ${fmt(PF[k].max)} (neutral ${fmt(PF[k].neutral)})` : `<code>${esc(k)}</code>`).join('<br>') || '—';
+  const eng = g && ENGINE[g] ? `<code>ENGINE.${g}</code> ` + Object.entries(ENGINE[g]).map(([k, v]) => `${esc(k)} ${esc(fmt(v))}`).join(', ') : '—';
+  return `<div class="card"><h3>${key ? `<span class="key">${esc(key)}</span>` : ''}${esc(name)}<span class="tag${mood ? ' mood' : ''}">${mood ? 'mood' : 'effect'}</span></h3>
+    <div class="see">${esc(desc || '—')}</div><dl>
+    <dt>P fields</dt><dd>${pf}</dd>
+    <dt>Engine bounds</dt><dd>${eng}</dd>
+    <dt>Sources</dt><dd>${esc((g && SRC[g]) || '—')}</dd>
+    <dt>Key</dt><dd>${key ? esc(key) + (mode === 'h' ? ' (hold)' : ' (toggle)') : 'none'}</dd></dl></div>`;
+}
+const used = new Set();
+document.getElementById('cards').innerHTML = EFFECTS.map(r => {
+  const f = fx(r.fx); used.add(r.fx);
+  return card(r.label, r.key, r.mood, r.mode, r.desc || (f && f.desc), f ? f.fields : (r.field ? [r.field] : []));
+}).join('');
+document.getElementById('cards2').innerHTML = FX.filter(f => !used.has(f.name)).map(f => card(f.name, '', /^(mood|strobe)/.test(f.name), '', f.desc, f.fields)).join('');
+document.getElementById('foot').textContent = EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
+</script></body></html>

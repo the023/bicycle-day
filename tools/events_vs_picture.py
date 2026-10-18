@@ -16,7 +16,7 @@ import sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from check import make_page  # noqa: E402
 
-STYLES = ["electro", "chiptune", "chiptune2", "drone", "gamelan",
+STYLES = ["electro", "chiptune", "chiptune2", "drone", "gamelan", "minimal", "berlin", "lofi",
           "ambient", "gnossienne3", "tempest", "gymnopedie"]
 WIN, STEP, PASS_S = 3.0, 0.1, 1.0
 
@@ -55,7 +55,7 @@ def events_for(page, style):
         return evt, "EVT"
     plan = page.evaluate("() => vplan().map(x => ({a: x.a, e: x.e}))")
     if plan:
-        kinds = page.evaluate("""() => { const P = MUSIC === 'electro' ? window.ELECTRO_PLAN : MUSIC === 'drone' ? window.DRONEPLAN : MUSIC.startsWith('chiptune') ? window.CHIPPLAN : MUSIC === 'gamelan' ? window.GAMELANPLAN : []; return P.map(x => x.kind || 'section'); }""")
+        kinds = page.evaluate("""() => { const P = MUSIC === 'electro' ? window.ELECTRO_PLAN : MUSIC === 'drone' ? window.DRONEPLAN : MUSIC.startsWith('chiptune') ? window.CHIPPLAN : MUSIC === 'gamelan' ? window.GAMELANPLAN : MUSIC === 'minimal' ? window.MINIMALPLAN : MUSIC === 'berlin' ? window.BERLINPLAN : MUSIC === 'lofi' ? window.LOFIPLAN : []; return P.map(x => x.kind || 'section'); }""")
         return [{"t": p["a"], "k": "section:" + kinds[i], "s": round(p["e"], 2)} for i, p in enumerate(plan) if i > 0], "plan"
     if style == "ambient":
         m = page.evaluate("() => ({T: TOTAL, m: ARC.marks})")
