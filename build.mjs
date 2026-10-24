@@ -2,6 +2,7 @@
 // (The images must be inlined: WebGL refuses to use an image loaded from file:// as a texture.)
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import vm from 'node:vm';
+import { execSync } from 'node:child_process';
 import { appHtml } from './tools/assemble.mjs';
 
 // gallery manifest: [file in assets/gallery/, title shown in the app]; order = order in the app
@@ -43,8 +44,12 @@ const cut = (src, start, end, what) => {
   return src.slice(i, j + (end === '\n' ? 0 : end.length));
 };
 const eff = readFileSync('src/js/08z-effects.js', 'utf8'), fxs = readFileSync('src/js/09-fx.js', 'utf8');
-const docData = [cut(eff, 'const PF = {', '\n};', 'PF'), cut(eff, 'const ENGINE = {', '\n};', 'ENGINE'), cut(eff, 'const EFFECTS = [', '\n];', 'EFFECTS'), cut(fxs, 'const FX = [', '\n];', 'FX'), cut(fxs, 'const TUNE_G = ', '\n', 'TUNE_G')].join('\n');
-const doc = readFileSync('src/doc.html', 'utf8').replace('__DOC_DATA__', () => docData);
+const arcs = readFileSync('src/js/03-arcs.js', 'utf8'), dir = readFileSync('src/js/08-director.js', 'utf8');
+// Doc stamp: date + short hash of the last commit that touched the app sources (so dist/ only changes when the sources do).
+const sh = (c) => { try { return execSync(c, { encoding: 'utf8' }).trim(); } catch { return ''; } };
+const stamp = sh('git log -1 --format=%cs -- src build.mjs tools') + ' · ' + sh('git log -1 --format=%h -- src build.mjs tools');
+const docData = [cut(arcs, 'const STYLES = {', '\n', 'STYLES'), cut(arcs, 'const MUSICS = [', '\n', 'MUSICS'), cut(dir, 'const EN = {', '\n', 'EN'), cut(eff, 'const PF = {', '\n};', 'PF'), cut(eff, 'const ENGINE = {', '\n};', 'ENGINE'), cut(eff, 'const EFFECTS = [', '\n];', 'EFFECTS'), cut(fxs, 'const FX = [', '\n];', 'FX'), cut(fxs, 'const TUNE_G = ', '\n', 'TUNE_G')].join('\n');
+const doc = readFileSync('src/doc.html', 'utf8').replace('__DOC_DATA__', () => docData).replace('__DOC_STAMP__', stamp);
 for (const m of doc.matchAll(/<script>([\s\S]*?)<\/script>/g)) new vm.Script(m[1], { filename: 'doc-inline-script' });
 writeFileSync('dist/bicycle-day-doc.html', doc);
 console.log(`dist/bicycle-day-doc.html  ${(doc.length / 1024).toFixed(0)} KB`);

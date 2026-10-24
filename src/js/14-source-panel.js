@@ -9,7 +9,7 @@ function switchSource(kind, stream) {   // kind: 'gen' | 'file' (localData decod
     resetFx(); applyArc();
   } else {   // old source: Generated / Audio file (stopPlay() without its homeGate / exitFullscreen)
     playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-    leaveLocal(); leaveCtrl();
+    leaveLocal(); resetFx();
   }
   PEND = null;
   if (kind === 'tab' || kind === 'mic') {
@@ -19,7 +19,7 @@ function switchSource(kind, stream) {   // kind: 'gen' | 'file' (localData decod
   } else {
     document.body.classList.remove('live', 'mic'); playing = true; document.body.classList.add('playing');
     if (kind === 'file') { LOC = localData; LIVE = newLive(); TOTAL = LOC.dur; setArc('journey'); drawProfile(); syncNext(); lsSet('setup', { src: 'local' }); }
-    else { if (PGEN) { MUSIC = PGEN.music; arcName = PGEN.arc; MIN = PGEN.min; lsSet('music', MUSIC); drawProfile(); markMus(); markArcOn(); markArcHint(); markDur(); } TOTAL = MIN * 60; applyArc(); lsSet('setup', { src: 'gen', music: MUSIC, arc: arcName, min: MIN }); if (CTRL) enterCtrl(); }   // manual + generated: the 'waves' base, as in start()
+    else { if (PGEN) { MUSIC = PGEN.music; arcName = PGEN.arc; MIN = PGEN.min; lsSet('music', MUSIC); drawProfile(); markMus(); markArcOn(); markArcHint(); markDur(); } TOTAL = MIN * 60; applyArc(); lsSet('setup', { src: 'gen', music: MUSIC, arc: arcName, min: MIN }); }
     begin(0, true);
     if (!wasPlaying) requestAnimationFrame(loop);   // (a running loop picks up the new source by itself)
   }

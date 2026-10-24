@@ -29,6 +29,8 @@
   .card dt{color:#f4f1ea77}.card dd{margin:0;word-break:break-word}
   .inv{background:#ffffff0d;border:1px solid #ff9f0a66;border-radius:10px;padding:6px 20px 6px 36px}
   .inv li{margin:8px 0}
+  table.t{border-collapse:collapse;font-size:13px;margin:8px 0}
+  .t th,.t td{border:1px solid #ffffff22;padding:4px 10px;text-align:left}
   .small{color:#f4f1ea77;font-size:12px;margin-top:10px}
 </style></head><body><main>
 <h1>Bicycle Day — how it works</h1>
@@ -50,6 +52,17 @@
 <div class="cards" id="cards"></div>
 <h2>Other engine effects (showcase / automatic only, no key)</h2>
 <div class="cards" id="cards2"></div>
+
+<h2>Energy (the user's one picture setting)</h2>
+<p class="lead">Five levels, read from <code>EN</code>. Look only, the music does not change. <code>off</code> shifts the arc, <code>amp</code> scales every effect, <code>big</code> scales the big moves (tiles, tunnel, glitch, blaze, zoom pulses), <code>strobe</code> scales the strobe mood. Level 4 (extreme) switches the hardcore look on.</p>
+<div id="en"></div>
+
+<h2>Slow start</h2>
+<p class="lead" id="ramp"></p>
+
+<h2>Music</h2>
+<p class="lead">Piano pieces (calm arc) and generated synth styles. Each style is a branch of <code>buildAudio</code>; <code>bpm</code> is its tempo range, <code>nohb</code> = no heartbeat pulse in the picture.</p>
+<div id="mus"></div>
 
 <h2>Invariants</h2>
 <ul class="inv">
@@ -92,5 +105,9 @@ document.getElementById('cards').innerHTML = EFFECTS.map(r => {
   return card(r.label, r.key, r.mood, r.mode, r.desc || (f && f.desc), f ? f.fields : (r.field ? [r.field] : []));
 }).join('');
 document.getElementById('cards2').innerHTML = FX.filter(f => !used.has(f.name)).map(f => card(f.name, '', /^(mood|strobe)/.test(f.name), '', f.desc, f.fields)).join('');
-document.getElementById('foot').textContent = EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
+document.getElementById('en').innerHTML = '<table class="t"><tr><th></th>' + EN.names.map(n => `<th>${esc(n)}</th>`).join('') + '</tr>' + ['off', 'offG', 'amp', 'big', 'strobe'].map(k => `<tr><td><code>${k}</code></td>${EN[k].map(v => `<td>${fmt(v)}</td>`).join('')}</tr>`).join('') + '</table>';
+const R = ENGINE.ramp;
+document.getElementById('ramp').innerHTML = `Generated music only. Quiet for ${R.quietFrac * 100}% of the piece (max ${R.quiet} s), then ${R.ease} s up to ${R.lv[0] * 100}% of the Energy level. Each next step (${R.lv.slice(1).map(v => v * 100 + '%').join(' → ')}) starts with the next energetic music section, at least ${R.gap} s after the previous one (scaled down for pieces shorter than 10 min). Extreme skips it.`;
+document.getElementById('mus').innerHTML = '<table class="t"><tr><th>choice</th><th>bpm</th><th>heartbeat pulse</th></tr>' + MUSICS.map(m => { const s = STYLES[m]; return `<tr><td><code>${esc(m)}</code></td><td>${s ? s.bpm.join('–') : '—'}</td><td>${s ? (s.nohb ? 'no' : 'yes') : '—'}</td></tr>`; }).join('') + '</table>';
+document.getElementById('foot').textContent = 'Built from sources of __DOC_STAMP__. ' + EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
 </script></body></html>

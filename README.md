@@ -36,7 +36,7 @@ Source and issues: https://github.com/the023/bicycle-day
 |---|---|
 | **Auto** | The engine alone follows the music. |
 | **Assisted** | The engine keeps running; effect and mood keys add on top and fade by themselves after 4.5 s (held keys stay while held). |
-| **Manual** | A quiet base plus only what you toggle (stays on until switched off). Generated music uses a 20 min "waves" piece; local / live music plays as usual but the picture ignores the analysis. |
+| **Manual** | A quiet base plus only what you toggle (stays on until switched off). The music plays as chosen (same piece and shape), but the picture ignores the music analysis and the arc. |
 
 **Extreme** look (key N, or Settings): relentless visuals — no calm start, scenes every 8 s, frequent surges and moods, strobe grid at peaks, fast spin. Look only; the music is not changed. Works with every source at auto / assisted, not in manual. Contains **flashing strobe effects** (full-screen white/dark at 5–11 Hz).
 

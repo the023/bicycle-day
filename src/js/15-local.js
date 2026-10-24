@@ -36,8 +36,9 @@ async function analyseLocal(buf, progress) {
   const lv = zp(lvl, .8, fps), ls = zp(lvl, 10, fps), bf = zp(bri, 1.5, fps), bsl = zp(bri, 10, fps), bLong = zp(nB, 2.5, fps), bSlow = zp(nB, 6, fps);
   const kick = nB.map((b, f) => clamp((b - (f ? nB[f - 1] : b)) * 5));
   const D = { ...DET, warm: 6 }, dt = 1 / fps, ease = tau => 1 - Math.exp(-dt / tau);   // the auto-gain is exact here, so the detectors can start after 6 s instead of 25
-  const P = { buf, dur: buf.duration, fps, nf, off: N / 2 / sr, u: new Float32Array(nf), kick, bn: nB, mn: nM, hn: nH, tens: new Float32Array(nf), boo: new Float32Array(nf), st: new Uint8Array(nf), sceneT: [], minorT: [], kinds: [ag.subarray(0, Math.round(10 * fps)).reduce((a, b) => a + b, 0) / Math.round(10 * fps) < .3 ? 0 : 1] };
+  const P = { buf, dur: buf.duration, fps, nf, off: N / 2 / sr, u: new Float32Array(nf), kick, bn: nB, mn: nM, hn: nH, tens: new Float32Array(nf), boo: new Float32Array(nf), st: new Uint8Array(nf), sceneT: [], minorT: [], accA: [], accB: [], accBld: [], kinds: [ag.subarray(0, Math.round(10 * fps)).reduce((a, b) => a + b, 0) / Math.round(10 * fps) < .3 ? 0 : 1] };
   let tension = 0, sinceDrop = 99, boost = 0, sinceScene = 0, sinceMinor = 0, secT = 0, pT = 0, bigT = 0, dm = null, u = -1, stT = 0, st = 0, cand = -1, candT = 0, sf = [0, 0, 0], ss = [0, 0, 0], pf = null, ps = null;
+  const acc = accNew();
   for (let f = 0; f < nf; f++) {
     const t = f * dt, age = t;
     const rising = (bf[f] - bsl[f]) > .01 && lv[f] > ls[f] + .02;
@@ -68,6 +69,9 @@ async function analyseLocal(buf, progress) {
       if (rawSt === st) cand = -1; else if (rawSt === 1 || st === 0) { st = rawSt; stT = 0; cand = -1; }
       else if (stT > 4) { if (rawSt !== cand) { cand = rawSt; candT = 0; } else if ((candT += dt) > 3) { st = rawSt; stT = 0; cand = -1; } } }
     P.st[f] = st;
+    { const nu = accTrack(acc, LST[st], P.kinds[P.sceneT.length], P.sceneT.length, t), na = P.accA.length;   // T157: the build-accent units: [accA, accB) while the state is drop / build / groove in an energetic scene
+      if ((nu || !acc.on) && na && P.accB[na - 1] > 1e8) P.accB[na - 1] = t;
+      if (nu) { P.accA.push(t); P.accBld.push(acc.bld); P.accB.push(1e9); } }
   }
   const sh = Math.round(.25 * fps); P.u = P.u.map((_, f, a) => a[Math.min(nf - 1, f + sh)]);   // look ahead 0.25 s: the picture arrives with the hit instead of after it
   return P;
@@ -84,7 +88,7 @@ function integrateLocal(off) {   // like integrateTo(), but along the timeline (
   hue = hueBase; rotA = 0;
   for (let s = 0; s < off; s += .5) {
     localView(s); const u = uAt(s, UE.off).u, e = score(u), g = smooth(0, 5, s), tr = g * Math.exp(-(s - trT0) / 1.4), tm = g * Math.exp(-(s - tmT0) / 1.2);   // g = render()'s local ramp-up gate
-    hue += e[4] * UE.hueK * UE.calm * .5; rotA += .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (ENGINE.kal.spinBase + ENGINE.kal.spinKal * e[1] + ENGINE.kal.spinWob * wob(s, 5)) + HCspin(s) * (HCr.v ?? 0));
+    hue += e[4] * UE.hueK * UE.calm * .5; rotA += UE.amp * .5 * rotDir * ((LIVE.mn * .12 + tr * .5 + tm * .2) + (.25 + .75 * smooth(.12, .35, u)) * (ENGINE.kal.spinBase + ENGINE.kal.spinKal * e[1] + ENGINE.kal.spinWob * wob(s, 5)) + HCspin(s) * (HCr.v ?? 0));
   }
   localView(off);
 }
@@ -152,7 +156,7 @@ $('playlast').addEventListener('click', e => {   // one click: replay the last s
 $('surprise').addEventListener('click', e => {   // one click: random music / energy (never extreme) / length, then the normal Start; images stay as they are (poster unless the user added some)
   e.stopPropagation(); if (!ready || playing || liveOn) return;
   const pick = a => a[Math.floor(Math.random() * a.length)];
-  MUSIC = pick(['ambient', 'gnossienne', 'gnossienne3', 'tempest', 'gymnopedie', 'electro', 'chiptune', 'chiptune2', 'drone', 'gamelan', 'minimal', 'berlin', 'lofi'].filter(m => MUSICS.includes(m))); arcName = pick(['journey', 'slam', 'intense']); MIN = pick([2, 5, 10]); TOTAL = MIN * 60;
+  MUSIC = pick(['ambient', 'gnossienne', 'gnossienne3', 'gymnopedie', 'electro', 'chiptune', 'chiptune2', 'drone', 'gamelan', 'minimal', 'berlin', 'lofi'].filter(m => MUSICS.includes(m))); arcName = pick(['journey', 'slam', 'intense']); MIN = pick([2, 5, 10]); TOTAL = MIN * 60;
   applyArc(); drawProfile(); markMus(); markDur(); markArcOn(); markArcHint(); markEN(); start();
 });
 $('galtoggle').addEventListener('click', e => { e.stopPropagation(); const g = $('ggal'); g.hidden = !g.hidden; e.currentTarget.setAttribute('aria-expanded', String(!g.hidden)); e.currentTarget.textContent = g.hidden ? 'Gallery ▾' : 'Gallery ▴'; });
@@ -168,7 +172,7 @@ function applyTouchEnergyLabels() {
   const enh = $('enh'); if (enh) enh.title = "How wild the picture is, for every source (Energy buttons \u25B2 \u25BC at the right edge while playing). Look only: the music does not change.";
   const up = $('en-up'); if (up) up.title = "Energy up (right edge \u25B2)";
   const down = $('en-down'); if (down) down.title = "Energy down (right edge \u25BC)";
-  const enp = $('enp'); const cell = enp ? enp.closest('.pcell') : null; if (cell) cell.title = "Energy: how wild the picture is (right-edge \u25B2/\u25BC buttons; chips too; N = extreme on keyboard). Look only.";
+  const enp = $('enp'); const cell = enp ? enp.closest('.pcell') : null; if (cell) cell.title = "Energy: how wild the picture is (right-edge \u25B2/\u25BC buttons; chips too; keys Z, X). Look only.";
   document.querySelectorAll('kbd[data-code="KeyZ"],kbd[data-code="KeyX"]').forEach(k => { k.style.display = 'none'; k.textContent = ''; });
 }
 applyTouchEnergyLabels();
@@ -267,7 +271,7 @@ addEventListener('load', () => {
   let IMGFAIL = false; const IMGQ = Q.get('img'), onReady = async () => {
     ready = true; $('playgen').disabled = false; $('surprise').disabled = false; $('playlast').disabled = false; updateHint(); drawProfile(); renderImgs();
     // shared level from ?u= (applied before start so manual entry is honored)
-    if (window.__sharedLevel != null) { try { setLevel(window.__sharedLevel, false, true); } catch (e) {} window.__sharedLevel = null; }
+    if (window.__sharedLevel != null) { try { setLevel(window.__sharedLevel, false, true, true); } catch (e) {} window.__sharedLevel = null; }
     const lq = Q.get('local'), localReady = lq ? loadLocal(lq) : null;   // test hook: ?local=<url of an audio file> (+ &t=… for a silent still, otherwise it plays)
     if (lq && Q.get('t') === null) { await localReady; startLocal(); }
     const dbg = Q.get('t');

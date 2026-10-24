@@ -69,7 +69,7 @@ const MT = (() => {
 })();
 let analyser = null, fdata = null;
 function buildAudio(a, t0, off = 0) {
-  EVT = []; EVTM = MUSIC;   // T101: refilled by the style branches below (whole-piece plan loops only)
+  EVT = []; CHLV = null; EVTM = MUSIC;   // T101: refilled by the style branches below (whole-piece plan loops only)
   const rand = rng, pick = arr => arr[Math.floor(rand() * arr.length)];
   const mtof = m => 440 * Math.pow(2, (m - 69) / 12), SC = SCALE;            // D dorian
   const note = i => ROOT + SC[((i % 7) + 7) % 7] + 12 * Math.floor(i / 7);
@@ -249,6 +249,15 @@ function buildAudio(a, t0, off = 0) {
       ...SECS.filter(s => s.kind === 'drop' && s.b0 > 0 && s.b0 < NB).map(s => ({ t: BEATS[s.b0], k: 'hit', s: .9, d: 0 })),
       ...SECS.filter(s => s.next === 'drop' && s.b1 - 8 >= s.b0 && s.b1 - 8 < NB - 1).map(s => ({ t: BEATS[s.b1 - 8], k: 'riser', s: .8, d: BEATS[Math.min(s.b1, NB - 1)] - BEATS[s.b1 - 8] })),
       ...evtPhr(BEATS, SECS.map(s => s.b0 / 4), TOTAL)]);
+    {   // T146 chart level (CHLV, data only): the intro is not flat: pad alone, then shaker + hats (KB/2 beats in), kick + snare (KB), bass (KB+8); the riser lifts the 8 beats before a drop
+      const T = b => BEATS[Math.min(Math.max(b, 0), NB - 1)];
+      lvlSet(lvlSecs(SECS.map((s, i) => {
+        const e = planEnergy(window.ELECTRO_PLAN[i]), a = i ? T(s.b0) : 0, b = i < SECS.length - 1 ? T(s.b1) : TOTAL, rs = s.next === 'drop' ? Math.max(e, .72) : e, mid = [];
+        if (s.kind === 'intro') mid.push([T(s.b0), .1], [T(s.b0 + KB / 2), .17], [T(s.b0 + KB / 2 + 4), .22], [T(s.b0 + KB), .38], [T(s.b0 + KB + 8), .5]);
+        if (s.next === 'drop' && s.b1 - 8 > s.b0) mid.push([T(s.b1 - 8), s.kind === 'intro' ? .5 : e]);
+        return { a, b, e0: s.kind === 'intro' ? .05 : e, e1: s.kind === 'intro' && s.next !== 'drop' ? .5 : rs, mid };
+      })));
+    }
     // — graph: tonal bus (ducked by the kick, filtered) + drum buses
     const tb = a.createGain(), duck = a.createGain(), mf = a.createBiquadFilter(); tb.gain.value = .8; mf.type = 'lowpass'; mf.Q.value = 1.4; mf.frequency.value = 1500;
     tb.connect(duck); duck.connect(mf); mf.connect(master); send(mf, .2, .1);
@@ -400,10 +409,12 @@ function buildAudio(a, t0, off = 0) {
     const crash = (t, v) => { crG.gain.setValueAtTime(v, t); crG.gain.setTargetAtTime(0, t + .01, .3); };
     const secAt = k => SEC.find(s => k >= s.k0 && k < s.k1) || SEC[SEC.length - 1];
     const fold = (i, top) => { while (i > top) i -= 7; return i; };
+    // d = the bar's density (what switches the layers on, see schedBar); T146: also the chart's level (CHLV, data only)
+    const dBar = (S, tbar) => cc(Math.max(.14, energy(tbar / TOTAL) * .7 + .2 + S.eOff + S.eRamp * cc((tbar - S.tA) / Math.max(1, S.tB - S.tA), 0, 1)), 0, 1);
+    lvlSet(Array.from({ length: nBars }, (_, k) => [B[4 * k], dBar(secAt(k), B[4 * k])]).concat([[TOTAL, dBar(SEC[SEC.length - 1], TOTAL)]]));
     const schedBar = k => {
       const S = secAt(k), lb = k - S.k0, nb = S.k1 - S.k0, br = mulberry32(S.seed * 131 + lb * 17 + 5), tbar = B[4 * k];
-      const pr = cc((tbar - S.tA) / Math.max(1, S.tB - S.tA), 0, 1);
-      const d = cc(Math.max(.14, energy(tbar / TOTAL) * .7 + .2 + S.eOff + S.eRamp * pr), 0, 1), vs = .4 + .75 * d, role = S.role, brk = role === 'break';
+      const d = dBar(S, tbar), vs = .4 + .75 * d, role = S.role, brk = role === 'break';
       const isFill = lb === nb - 1 && S !== SEC[SEC.length - 1], minorFill = !isFill && lb % 4 === 3 && d > .5;
       const rep = Math.floor(lb / 4), bi = lb % 4, dr = DR[S.drum], bp = BP[S.bass];
       const chordAt = s => S.prog[(S.half ? lb * 2 + (s >> 3) : lb) % 4];
@@ -537,10 +548,12 @@ function buildAudio(a, t0, off = 0) {
     const ohat = (t, v) => { crG.gain.setValueAtTime(v, t); crG.gain.setTargetAtTime(0, t + .01, .07); };
     const crash = (t, v) => { crG.gain.setValueAtTime(v, t); crG.gain.setTargetAtTime(0, t + .01, .3); };
     const secAt = k => SEC.find(s => k >= s.k0 && k < s.k1) || SEC[SEC.length - 1];
+    // d = the bar's density (what switches the layers on, see schedBar); T146: also the chart's level (CHLV, data only)
+    const dBar = (S, tbar) => cc(Math.max(.14, energy(tbar / TOTAL) * .7 + .2 + S.eOff + S.eRamp * cc((tbar - S.tA) / Math.max(1, S.tB - S.tA), 0, 1)), 0, 1);
+    lvlSet(Array.from({ length: nBars }, (_, k) => [B[4 * k], dBar(secAt(k), B[4 * k])]).concat([[TOTAL, dBar(SEC[SEC.length - 1], TOTAL)]]));
     const schedBar = k => {
       const S = secAt(k), lb = k - S.k0, nb = S.k1 - S.k0, br = mulberry32(S.seed * 131 + lb * 17 + 5), tbar = B[4 * k], NX = SEC[S.i + 1];
-      const pr = cc((tbar - S.tA) / Math.max(1, S.tB - S.tA), 0, 1);
-      const d = cc(Math.max(.14, energy(tbar / TOTAL) * .7 + .2 + S.eOff + S.eRamp * pr), 0, 1), vs = .4 + .75 * d, role = S.role, brk = role === 'break';
+      const d = dBar(S, tbar), vs = .4 + .75 * d, role = S.role, brk = role === 'break';
       const isFill = lb === nb - 1 && !!NX, FL = isFill ? MT.FILLS[S.fill] : null, stop = isFill && S.fill === 'stop', minorFill = !isFill && lb % 4 === 3 && d > .5, mf = Math.floor(br() * 3);
       const pb = lb % 8, rep = Math.floor(lb / 8), dr = MT.DRUMS[S.drum], bp = BP[S.bass], T = ROOT + S.key, P = dd => T + MT.st(S.mode, dd);
       const chordAt = s => S.prog[(S.half ? lb * 2 + (s >> 3) : lb) % S.prog.length];
@@ -643,6 +656,7 @@ function buildAudio(a, t0, off = 0) {
       const f0 = ex(s => s.f0), P = [0, 1, 2, 3, 4].map(k => ex(s => s.f0 * Math.pow(2, s.iv[k] / 12 + OCT[k])) * (1 + .003 * Math.sin(t * 6.283 / (31 + 7 * k) + k)));
       return { t, I, f0, P, tw: [0, 1, 2, 3, 4].map(j => lin(s => s.tw[j])), br: lin(s => s.bright), dens: lin(s => s.dens), modr: lin(s => s.modr) };
     };
+    lvlSet(Array.from({ length: Math.ceil(TOTAL / 3) + 1 }, (_, i) => { const t = Math.min(TOTAL, 3 * i); return [t, stateAt(t).I]; }));   // T146: the chart follows the drone's own intensity I(t) (slow fade in / out, swells), data only
     const N = clamp(Math.round((TOTAL - off) / 1.5), 24, 700), cdur = Math.max(1, TOTAL - off), ST = [];
     for (let i = 0; i < N; i++) ST.push(stateAt(Math.min(TOTAL, off + cdur * i / (N - 1))));
     const cv = (param, fn) => { const arr = new Float32Array(N); for (let i = 0; i < N; i++) { const v = fn(ST[i]); arr[i] = isFinite(v) ? v : 0; } param.setValueCurveAtTime(arr, ts, cdur); };
@@ -817,6 +831,9 @@ function buildAudio(a, t0, off = 0) {
     EV.sort((x, y) => x.t - y.t);
     // T101 events: a section per plan entry (its first beat), a phrase at each cycle-end gong
     evtSet([...SEC.map((s, i) => evtSec(BT[s.b0].t, s.kind, planEnergy(window.GAMELANPLAN[i]))), ...PHR.map(p => ({ t: p.t, k: 'phrase', s: p.s, d: 0 }))]);
+    lvlSet(lvlSecs(SEC.map((s, i) => { const e = planEnergy(window.GAMELANPLAN[i]);   // T146 chart level (data only): a build swells (V .75 -> 1), the outro thins out (volume and notes); other sections are flat
+      return { a: i ? BT[s.b0].t : 0, b: i < SEC.length - 1 ? BT[SEC[i + 1].b0].t : TOTAL, e0: s.kind === 'build' ? e - .08 : s.kind === 'outro' ? e + .1 : e, e1: s.kind === 'build' ? e + .08 : s.kind === 'outro' ? .05 : e };
+    })));
     // — sound
     const BUSC = { gong: [0, .55, 1, 900], kgong: [.2, .4, 1, 2500], kethuk: [-.35, .12, 1, 4000], demung: [-.2, .35, 1, 2500], saron: [.3, .3, 1, 3200], peking: [.1, .25, 1, 4000], bonang: [-.1, .3, 1, 3000], pol: [-.6, .25, 1, 3500], san: [.6, .25, 1, 3500], gender: [.05, .5, 1, 2000] }, BUS = {};
     for (const k in BUSC) {   // one bus per voice group: gain -> pan -> master (+ the shared reverb send); noise strikes go through a bandpass into the same bus
@@ -978,6 +995,7 @@ function buildAudio(a, t0, off = 0) {
     EV.sort((x, y) => x.t - y.t);
     // T99 events: a section per plan entry, a phrase at each phasing lock-in
     evtSet([...SEC.map((s, i) => evtSec(s.tA, s.kind, planEnergy(window.MINIMALPLAN[i]))), ...LOCK.map(t => ({ t, k: 'phrase', s: .5, d: 0 }))]);
+    lvlSet(Array.from({ length: NC + 1 }, (_, c) => { const s = secOf(Math.min(c, NC - 1)); return [T0 + c * C, s.I * (.55 + .45 * cnt[Math.min(c, NC - 1)] / FULL)]; }));   // T146 chart level (data only): the section's I x how much of the cell the marimba plays (additive build-up in the intro, thinning in breaks and the outro)
     const secT = t => { let i = 0; while (i < NS - 1 && t >= SEC[i + 1].tA) i++; return SEC[i]; };
     // — sound. Buses: gain -> pan -> (mallets: shared brightness lowpass) -> master, + reverb send
     const G = (v, dest) => { const g = a.createGain(); g.gain.value = v; if (dest) g.connect(dest); return g; };
@@ -1196,6 +1214,7 @@ function buildAudio(a, t0, off = 0) {
     const sq2Lv = t => { const S = secAt(t), p = prog(S, t), dt = t - tB(S.b0);
       return S.kind === 'build' ? smooth(.45, .75, p) : S.kind === 'drop' ? (prevK(S) === 'build' ? 1 : smooth(0, 2 * BARD, dt)) : S.kind === 'break' ? 1 - smooth(0, BARD, dt) : 0; };
     const padLv = t => { const S = secAt(t), p = prog(S, t); return S.kind === 'intro' ? smooth(0, .22, p) * (1 - .25 * smooth(.6, 1, p)) : S.kind === 'break' ? 1 : S.kind === 'outro' ? .8 + .2 * smooth(.3, .7, p) : S.kind === 'drop' ? .62 : .72; };
+    lvlSet(Array.from({ length: Math.ceil(TOTAL / 2) + 1 }, (_, i) => { const t = Math.min(TOTAL, 2 * i); return [t, Iat(t)]; }));   // T146 chart level (data only): the music's own intensity Iat(t) (intro rise, build, peak, break, outro fade), the curve that drives cutoff and levels
     // — graph
     const END = t0 + TOTAL + 1, MOB = MOBILE;
     const O = (type, f, det = 0) => { const o = a.createOscillator(); if (typeof type === 'string') o.type = type; else o.setPeriodicWave(type); o.frequency.value = f; o.detune.value = det; o.start(ts); o.stop(END); return o; };

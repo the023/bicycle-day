@@ -7,7 +7,7 @@ const MOBILE = /Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent) || (
 const PHONE = MOBILE || (matchMedia('(pointer:coarse)').matches && innerWidth < 700);   // T34: phone = auto only, short pupitre (no level switch)
 let MIN = parseFloat(Q.get('min')) || 5, TOTAL = MIN * 60;
 const SHOW = Q.get('showcase') || Q.get('tune') ? { seg: Math.max(2, parseFloat(Q.get('seg')) || 30) } : null;   // ?showcase=1[&seg=<s>]: one effect at a time on a plain image (see FX)
-let CL = 0, CTRL = false, ARCSWAP = false;   // control level (0 auto, 1 assisted, 2 manual; any music source); CTRL = manual (the old 'controlled mode'); ARCSWAP = generated music runs the 20 min 'waves' base (see CT)
+let CL = 0, CTRL = false;   // control level (0 auto, 1 assisted, 2 manual; any music source); CTRL = manual (the old 'controlled mode'); manual keeps the chosen piece and shape (T139)
 const CTRL_URL = Q.get('ctrl') !== null && Q.get('ctrl') !== '0';   // ?ctrl=1 = alias for level manual (?level=auto|assisted|manual)
 const cv = document.getElementById('c'), gate = document.getElementById('gate'), hint = document.getElementById('hint');
 const gl = cv.getContext('webgl2', { antialias: false, alpha: false });

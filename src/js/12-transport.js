@@ -22,7 +22,7 @@ function newSeed() {   // one seed drives all the randomness of a play (notes, d
 function integrateTo(off) {
   if (LOC) return integrateLocal(off);   // fast-forward the drifting state (hue, spin) to a given time; mirrors render()
   hue = hueBase; rotA = 0; const hk = HCr.v ?? 0;
-  for (let s = 0; s < off; s += .5) { const { u, u0 } = uAt(s, UE.off), e = score(u); hue += e[4] * UE.hueK * UE.calm * .5; rotA += .5 * rotDir * HCspin(s) * hk + .5 * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (ENGINE.kal.spinBase + ENGINE.kal.spinKal * e[1] + ENGINE.kal.spinWob * wob(s, 5)); }
+  for (let s = 0; s < off; s += .5) { const { u, u0 } = uAt(s, UE.off), e = score(u); hue += e[4] * UE.hueK * UE.calm * .5; rotA += UE.amp * (.5 * rotDir * HCspin(s) * hk + .5 * rotDir * opening(u0) * (.25 + .75 * smooth(.12, .35, u)) * (ENGINE.kal.spinBase + ENGINE.kal.spinKal * e[1] + ENGINE.kal.spinWob * wob(s, 5))); }   // T155: x UE.amp = render()'s spin speed
 }
 const setPP = () => { $('pp').textContent = $('mpp').textContent = paused ? '▶' : '❚❚'; };
 function begin(off, fresh) {   // (re)start sound + state at song time `off`; the picture is a pure function of time so it just follows
@@ -31,16 +31,15 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   off = clamp(off, 0, Math.max(0, TOTAL - 3));
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
-  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; cellGrid = 4; paused = false; setPP();
+  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; strPrev = 0; strLn = cellLn = null; cellGrid = 4; paused = false; setPP();
   pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); if (Q.has('debug') && !LOC) console.log('EVT', MUSIC, JSON.stringify(EVT)); integrateTo(off);   // T103: after buildAudio (uAt -> planE -> vplan reads EVT)
   if (STYLES[MUSIC]) drawProfile(); pump(); pumpId = setInterval(pump, 1000);
 }
 let SUSP = null;
 function start() {
   if (playing || !ready || liveOn) return;
-  SUSP = null; if (!LOC && !ARCSWAP) lsSet('setup', { src: 'gen', music: MUSIC, arc: arcName, min: MIN });
+  SUSP = null; if (!LOC) lsSet('setup', { src: 'gen', music: MUSIC, arc: arcName, min: MIN });
   if (TUNE && !LOC) { MUSIC = 'gymnopedie'; applyArc(); }   // T117: tune mode: a fixed calm piano piece, whatever the user picked (the picture does not read it)
-  if (CTRL && !LOC && !ARCSWAP) enterCtrl();   // manual + generated music
   begin(0, true); playing = true; homeGate(false); document.body.classList.add('playing');
   const el = document.documentElement; if (!document.fullscreenElement && el.requestFullscreen) el.requestFullscreen().catch(() => {});
   if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Enter = surge  ·  Space = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  Shift+← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
@@ -127,13 +126,13 @@ function loop() {
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if ((document.body.classList.contains('ui') || document.body.classList.contains('pshow')) && !dragging) { $('tm').textContent = $('mtm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = $('mhead').style.left = (tc / TOTAL * 100) + '%'; }
   endWarn(tc);
-  if (t >= TOTAL + .3 && !LOC && !SHOW && !liveOn) { toast('New piece'); if (SUSP !== null) SUSP = performance.now(); begin(0, true); requestAnimationFrame(loop); return; }   // SUSP (autoplay blocked): restart the wall clock too, else t stays past the end and restarts every frame   // generated: next piece, same settings (new seed); fullscreen and USER.* stay
+  if (t >= TOTAL + .3 && !LOC && !SHOW && !liveOn) { toast('New piece'); { const o = MUSICS.filter(m => m !== MUSIC); MUSIC = o[Math.floor(Math.random() * o.length)]; arcName = ['journey', 'slam', 'intense'][Math.floor(Math.random() * 3)]; applyArc(); drawProfile(); markMus(); markArcOn(); markArcHint(); } if (SUSP !== null) SUSP = performance.now(); begin(0, true); requestAnimationFrame(loop); return; }   // SUSP (autoplay blocked): restart the wall clock too, else t stays past the end and restarts every frame   // generated: next piece, same settings (new seed); fullscreen and USER.* stay
   if (LOC && NEXT && (NEXTGO || t >= TOTAL + .3)) {   // a queued next track: play it when this one ends (or on "Play next now")
     if (NEXTDATA) { goNext(); requestAnimationFrame(loop); return; }
     if (NEXTFAIL) { toast('Next track could not be read'); clearNext(); }
     else { if (!NEXTGO) toast('Loading next track…', 60000); NEXTGO = true; if (t >= TOTAL + .3) { requestAnimationFrame(loop); return; } }   // still decoding: hold the last picture, silent
   }
-  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
+  if (t >= TOTAL + .3) { playing = false; clearInterval(pumpId); leaveLocal(); resetFx(); resetControls(); document.body.classList.remove('playing', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); hint.textContent = 'Finished · seed ' + seedUsed; homeGate(true); return; }
   requestAnimationFrame(loop);
 }
 // Transport follows pointer activity; settings only open by explicit click.
@@ -175,7 +174,8 @@ function togglePult() {   // H (while playing): shows the pupitre until H again
   toast(on ? 'Controls shown (H to hide)' : 'Controls hidden', 1600);
 }
 function zoneCheck(e) {   // pupitre shows while the pointer is in the bottom 10 % or over it / the Source panel
-  const low = e.clientY >= innerHeight * 0.9 || !!(e.target && e.target.closest && e.target.closest('#pult,#mpult,#tune,#ctl'));
+  const th = $('thumbs').getBoundingClientRect(), top = th.height ? Math.min(innerHeight * 0.9, th.top - 4) : innerHeight * 0.9;   // T148: the zone reaches up to the image thumbnails (when shown), so the pointer can climb onto them
+  const low = e.clientY >= top || !!(e.target && e.target.closest && e.target.closest('#pult,#mpult,#tune,#ctl'));
   const b = document.body.classList; if (low !== b.contains('pultZ')) { b.toggle('pultZ', low); syncPult(); }
   if (low) showUI();   // body.ui un-hides the cursor
 }
@@ -215,7 +215,7 @@ const toggleFullscreen = async () => {
 $('fullscreen').addEventListener('click', toggleFullscreen);
 function stopPlay() {   // back to the start screen
   if (!playing) return; recStop(); playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
-  leaveLocal(); leaveCtrl(); resetControls(); document.body.classList.remove('playing', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); homeGate(true); hint.textContent = 'Stopped · seed ' + seedUsed;
+  leaveLocal(); resetFx(); resetControls(); document.body.classList.remove('playing', 'ui', 'pultH', 'pultZ', 'pshow'); syncPult(); homeGate(true); hint.textContent = 'Stopped · seed ' + seedUsed;
   if (document.fullscreenElement) document.exitFullscreen();
 }
 const bar = $('bar'), mbar = $('mbar'), frac = (e, b = bar) => clamp((e.clientX - b.getBoundingClientRect().left) / b.clientWidth);
@@ -255,12 +255,13 @@ const markHold = () => { $('u-hold').value = USER.hold; $('uhv').textContent = h
 const markCalm = () => { const v = USER.calm; if ($('u-calm')) { $('u-calm').value = v; $('ucv').textContent = v + '%'; } $('m-calm').value = v; $('mcv').textContent = v + '%'; };
 const setCalm = (v, quiet) => { USER.calm = clamp(Math.round(v), 0, 100); markCalm(); autosave(); };
 function setTrans(v, quiet) { USER.trans = v; markTR(); autosave(); if (!quiet) toast('Transition: ' + (v ? v + ' s' : 'instant'), 1400); }
-const AUTO_OK = new Set(['KeyZ', 'KeyX', 'KeyN', 'KeyV', 'BracketLeft', 'BracketRight', 'Semicolon', 'Space', 'Escape', 'KeyF', 'KeyH', 'KeyB', 'KeyM', 'ShiftLeft', 'ShiftRight']);
+const AUTO_OK = new Set(['KeyZ', 'KeyX', 'KeyV', 'BracketLeft', 'BracketRight', 'Semicolon', 'Space', 'Escape', 'KeyF', 'KeyH', 'KeyB', 'KeyM', 'ShiftLeft', 'ShiftRight']);
 let hintAt = -1e9;
 const hintAuto = () => { if (performance.now() - hintAt > 5000) { hintAt = performance.now(); toast('Auto: the engine decides · M = assisted to play the effects', 2200); } };
-function setEnergy(n, quiet) {   // Energy 0..4 (keys Z X N, pupitre, home screen); look only, the music does not change
+function setEnergy(n, quiet) {   // Energy 0..4 (keys Z X, pupitre, home screen); look only, the music does not change
   n = clamp(Math.round(n), 0, 4); if (n === USER.energy && !quiet) { toast('Energy ' + EN.names[n] + ' (' + n + '/4)', 1000); return; }
-  USER.energy = n; if (n < 4) EN.last = n; markEN(); autosave();   if (!quiet && (playing || liveOn)) toast('Energy: ' + EN.names[n] + ' (' + n + '/4)' + (CTRL && n === 4 ? '  ·  Extreme look does not apply in manual' : ''), 1400);
+  if (!quiet && !SHOW && CL !== 2 && (playing || liveOn)) ETR.pend = n > USER.energy ? 1 : -1;   // T155: render() draws the Energy-change transition
+  USER.energy = n; markEN(); autosave();   if (!quiet && (playing || liveOn)) toast('Energy: ' + EN.names[n] + ' (' + n + '/4)' + (CTRL && n === 4 ? '  ·  Extreme look does not apply in manual' : ''), 1400);
 }
 addEventListener('keydown', e => {
   if (e.code === 'Escape' && $('phelp').classList.contains('on')) { closeDemo(); return; }
@@ -271,7 +272,6 @@ addEventListener('keydown', e => {
   if (e.code === 'KeyF') { toggleFullscreen(); return; }
   if (e.code === 'KeyB' && e.shiftKey && !e.ctrlKey && !e.metaKey && !e.altKey) { snapWant = true; return; }   // Shift+B: mark this moment ("bad")
   if (e.code === 'KeyL' && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) codeToggle(); return; }   // live-coding overlay, every level
-  if (e.code === 'KeyN' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setEnergy(USER.energy === 4 ? EN.last : 4); return; }   // Extreme = Energy 4, back to the previous level
   if (e.code === 'KeyM' && !SHOW && !e.ctrlKey && !e.metaKey && !e.altKey) { if (!e.repeat) setLevel((CL + 1) % 3); return; }   // control level: auto / assisted / manual
   if (!SHOW && !CL && !AUTO_OK.has(e.code) && !/^(Digit[1-8]|Arrow(Up|Down|Left|Right))$/.test(e.code) && !e.ctrlKey && !e.metaKey) { hintAuto(); return; }   // auto: the engine decides everything but Energy, images, camera and the tools
   if (CL && !e.ctrlKey && !e.metaKey && !e.altKey && ctrlKey(e)) return;
@@ -308,13 +308,13 @@ addEventListener('keydown', e => {
     else { const o = lsGet('slot' + n); if (o) { applyTweaks(o); autosave(); toast('Preset ' + n + ' loaded', 1500); } else toast('Preset ' + n + ' is empty', 2000); }
     return;
   }
+  // arrows held rotate/zoom (all levels, also Live: this sits before the liveOn return)
+  if (!isMod && /^Arrow(Up|Down|Left|Right)$/.test(e.code)) { CT.held.add(e.code); e.preventDefault(); return; }
   if (liveOn) return;
   // +.5 on lastT: right after a seek (paused) it can sit a hair before the effect start, and N would land on the same effect
   if (SHOW && (e.code === 'KeyN' || e.code === 'KeyP')) { fxSelect((TUNE.loop ? TUNE.i : fxIndex(lastT + .5)) + (e.code === 'KeyN' ? 1 : -1)); return; }
   // Space pause/resume all levels
   if (!isMod && e.code === 'Space') { e.preventDefault(); togglePause(); return; }
-  // arrows held rotate/zoom (all levels)
-  if (!isMod && /^Arrow(Up|Down|Left|Right)$/.test(e.code)) { CT.held.add(e.code); e.preventDefault(); return; }
   // shift+arrows seek
   if (e.shiftKey && (e.code === 'ArrowLeft' || e.code === 'ArrowRight') && !liveOn) { seekTo(lastT + (e.code === 'ArrowRight' ? 10 : -10)); return; }
 });
@@ -441,7 +441,7 @@ const THEMES = ['modern', 'classic', 'geek'];
 function setTheme(n, save = true) { if (!THEMES.includes(n)) n = 'modern'; THEMES.forEach(t => document.body.classList.toggle('th-' + t, t === n && n !== 'modern')); document.querySelectorAll('#tthemes [data-theme]').forEach(b => b.classList.toggle('on', b.dataset.theme === n)); if (save) lsSet('theme', n); }
 $('tthemes').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('[data-theme]'); if (b) setTheme(b.dataset.theme); });
 setTheme(Q.has('theme') ? Q.get('theme') : lsGet('theme'), false);
-if (USER.energy < 4) EN.last = USER.energy; markEN();
+markEN();
 if (Q.has('trans')) USER.trans = Math.max(0, +Q.get('trans') || 0); markTR();
 if (Q.has('calm')) USER.calm = clamp(Math.round(+Q.get('calm') || 0), 0, 100); markCalm();
 if (Q.has('autoimg')) USER.auto = +Q.get('autoimg') || 0; markAI();   // ?autoimg=<s> (tests; -1 = some scenes, ~2 in 5)   // ?trans=<s> (tests)
@@ -548,7 +548,7 @@ wrapEl.addEventListener('wheel', e => { if (!(playing || liveOn)) return; e.prev
 function drawProfile() {   // the arc's intensity curve, drawn behind the seek bar
   let pl; const c = $('prof'), x = c.getContext('2d'), w = c.width, h = c.height; x.clearRect(0, 0, w, h);
   x.fillStyle = 'rgba(244,241,234,.28)'; x.beginPath(); x.moveTo(0, h);
-  for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - (LOC ? energy(LOC.u[Math.min(LOC.nf - 1, Math.floor(i / 200 * LOC.nf))]) : (pl = !SHOW && vplan().length ? planE(i / 200 * TOTAL) : null) != null ? pl : energy(i / 200)) * (h - 8));
+  for (let i = 0; i <= 200; i++) x.lineTo(i / 200 * w, h - 4 - (LOC ? energy(LOC.u[Math.min(LOC.nf - 1, Math.floor(i / 200 * LOC.nf))]) : (pl = !SHOW && vplan().length ? (CHLV ? lvlAt(i / 200 * TOTAL) : planE(i / 200 * TOTAL)) : null) != null ? pl : energy(i / 200)) * (h - 8));
   x.lineTo(w, h); x.fill();
   if (SHOW) { x.font = '14px sans-serif'; x.lineWidth = 2;   // showcase: one tick + number per effect, coloured like the pupitre classes
     const clsColor = c => c === 'gE' ? '#5cf08a' : c === 'gM' ? '#ff6fae' : c === 'gX' ? '#ffc94d' : c === 'gI' ? '#4fe0ff' : c === 'gT' ? '#7db4ff' : c === 'gN' ? '#7fb09a' : '#c9c9d6';

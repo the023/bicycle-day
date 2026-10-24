@@ -24,7 +24,7 @@
   #fxlabel.gE{color:#5cf08a}#fxlabel.gM{color:#ff6fae}#fxlabel.gX{color:#ffc94d}#fxlabel.gI{color:#4fe0ff}#fxlabel.gT{color:#7db4ff}#fxlabel.gG{color:#c9c9d6}#fxlabel.gN{color:#7fb09a}
   body.playing #fxlabel,body.still #fxlabel{display:block}
   #code{position:fixed;left:1.2vw;bottom:calc(var(--pult-h) + 32px);width:32vw;height:30vh;display:none;flex-direction:column;justify-content:flex-end;overflow:hidden;padding:8px 12px;box-sizing:border-box;background:#000a;border:1px solid #3dff7a44;border-radius:6px;font:600 clamp(10px,.95vw,14px)/1.45 ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:#3dff7a;text-shadow:0 0 6px #3dff7a88;pointer-events:none;z-index:8;-webkit-mask-image:linear-gradient(transparent,#000 35%);mask-image:linear-gradient(transparent,#000 35%)}
-  body.code.playing #code,body.code.still #code{display:flex}
+  body.code.playing #code,body.code.live #code,body.code.still #code{display:flex}
   #code div{white-space:pre;overflow:hidden;min-height:1.45em}
   #code div.a{color:#ffb000;text-shadow:0 0 6px #ffb00088}#code div.d{opacity:.55}
   #code div.cur::after{content:"\2588";animation:cblink 1s steps(1) infinite}
@@ -46,9 +46,8 @@
   body.showc.playing #fxpanel,body.showc.still #fxpanel{display:block;transform:none}body.showc #fxpanel::before{display:none}
   #fxpanel div{padding:4px 10px;border-radius:6px;cursor:pointer;opacity:.75;white-space:nowrap}#fxpanel div:hover{opacity:1;background:#f4f1ea22}#fxpanel div.on{opacity:1;color:#ffd60a;background:#ffd60a22}
   #fxpanel div.gE{color:#5cf08a}#fxpanel div.gM{color:#ff6fae}#fxpanel div.gX{color:#ffc94d}#fxpanel div.gI{color:#4fe0ff}#fxpanel div.gT{color:#7db4ff}#fxpanel div.gG{color:#c9c9d6}#fxpanel div.gN{color:#7fb09a}
-  body.ctrl #bar,body.ctrl #tm{display:none}   /* (manual level with the generated 20 min piece: nothing to seek) */
-  #thumbs{position:fixed;left:50%;bottom:calc(var(--pult-h) + 28px);transform:translateX(-50%);display:none;gap:6px;z-index:6;opacity:0;transition:opacity .4s;pointer-events:none}
-  body.ui #thumbs{opacity:1;pointer-events:auto}
+  #thumbs{position:fixed;left:50%;bottom:calc(var(--pult-h) + 28px);transform:translateX(-50%);display:none;gap:6px;z-index:6;opacity:0;transition:opacity .3s;pointer-events:none}
+  body.pshow #thumbs{opacity:1;pointer-events:auto}   /* T148: with the pupitre (same fade) */
   body.playing.multi #thumbs,body.live.multi #thumbs{display:flex}
   #thumbs button{width:44px;height:44px;padding:0;border:2px solid #fff4;border-radius:6px;background:#000 center/cover;cursor:pointer;overflow:hidden}
   #thumbs button.on{border-color:#f4f1ea}
@@ -248,7 +247,7 @@
   .pult #pp,.pult #stopb{width:20px;height:20px;font-size:9px;flex:none;display:inline-flex;align-items:center;justify-content:center;padding:0;line-height:1}
   .pult #bar{height:18px;border-bottom-width:1px}.pult #vol{width:50px;flex:none}
   .pnow{flex:0 1 auto;min-width:0;max-width:230px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font:600 12px/1 "Helvetica Neue",Arial,sans-serif;color:#f4f1ea;letter-spacing:.01em}.pnow:empty{display:none}
-  .pmeta{display:flex;align-items:center;gap:0 7px;min-width:0;overflow:hidden;font-size:11px;white-space:nowrap}.pmeta span{display:inline-flex;align-items:center;gap:3px}
+  .pmeta{display:flex;align-items:center;gap:0 4px;min-width:0;overflow:hidden;font-size:11px;white-space:nowrap}.pmeta span{display:inline-flex;align-items:center;gap:3px}.pmeta .phint{opacity:.5}
   @media(max-height:560px){.pmain{height:48px}}
   /* narrow (700-1180 px): columns keep their width and wrap onto more rows; the pupitre gets taller */
   @media(max-width:1180px){.pult{width:calc(100vw - 16px)}.pmain{flex-wrap:wrap;height:auto;gap:8px 12px}.pc1{width:400px;flex:none}.prow4{flex-wrap:wrap;height:auto;row-gap:6px}.pmeta{flex-wrap:wrap;white-space:normal;height:auto}}
@@ -533,7 +532,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
       <section class="step" id="st2" hidden aria-labelledby="s2"><span class="field" id="s2"><span id="s2t">Music and energy</span></span>
       <div id="cards">
         <div class="card" id="c-gen" hidden>
-          <div><span class="field sub" id="f-mus">Style</span><div id="mus" role="group" aria-labelledby="f-mus"><button data-music="ambient">Ambient</button><button data-music="gnossienne">Gnossienne</button><button data-music="gnossienne3">Gnossienne 3</button><button data-music="tempest">Tempest</button><button data-music="gymnopedie">Gymnopedie</button><button data-music="electro">Electro</button><button data-music="chiptune">Chiptune</button><button data-music="chiptune2">Chiptune 2</button><button data-music="drone">Drone</button><button data-music="gamelan">Gamelan</button><button data-music="minimal">Minimal</button><button data-music="berlin">Berlin School</button><button data-music="lofi">Lo-fi</button></div></div>
+          <div><span class="field sub" id="f-mus">Style</span><div id="mus" role="group" aria-labelledby="f-mus"><button data-music="ambient">Ambient</button><button data-music="gnossienne">Gnossienne</button><button data-music="gnossienne3">Gnossienne 3</button><button data-music="gymnopedie">Gymnopedie</button><button data-music="electro">Electro</button><button data-music="chiptune">Chiptune</button><button data-music="chiptune2">Chiptune 2</button><button data-music="drone">Drone</button><button data-music="gamelan">Gamelan</button><button data-music="minimal">Minimal</button><button data-music="berlin">Berlin School</button><button data-music="lofi">Lo-fi</button></div></div>
           <details id="more">
             <summary id="len-sum">Length: 5 min, more options</summary>
             <div><span class="field sub" id="f-arc">Shape</span><div id="opts" role="group" aria-labelledby="f-arc"><button data-arc="journey">Journey</button><button data-arc="slam">Slam</button><button data-arc="intense">Intense</button><button data-arc="extreme">Non-stop</button></div>
@@ -582,7 +581,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
       <h2>Make it yours</h2><p>A few choices before you start. More controls are available during the trip.</p>
       <div id="qual"><span>Graphics</span><button data-q="high">High</button><button data-q="medium">Medium</button><button data-q="low">Low</button></div>
       <div id="lvl"><span>Control</span><button data-cl="0">Auto</button><button data-cl="1">Assisted</button><button data-cl="2">Manual</button></div>
-      <p>Auto follows the music. Assisted adds your effect keys. Manual puts you in control; generated music uses a 20-minute waves piece.</p>
+      <p>Auto follows the music. Assisted adds your effect keys. Manual puts you in control; the music keeps playing as chosen.</p>
       <div class="rsets"><button class="chip" data-reset="settings" title="Put every tweak (sliders, tiles, colour, transition…) back to its default. Keeps presets and images.">Reset settings</button><button class="chip" data-reset="memory" title="Forget everything saved in this browser (tweaks, presets 1-8, quality, music choice, bookmarks) and reload">Reset memory</button></div>
       <p id="qnote" role="status"></p>
     </div>
@@ -624,14 +623,14 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
     </div>
   </section>
   <section class="tsec" aria-labelledby="ttim">
-    <h3 class="th" id="ttim">Calage</h3>
-    <div id="tgrid" title="Calage: when the picture changes scene. Beat = as before; Bar = scene changes on bar starts (4 beats); Phrase = on phrase starts (8 bars), small changes on bars. Generated music only (ambient, electro, chiptune); no effect on audio files, tab or microphone.">
+    <h3 class="th" id="ttim">Timing</h3>
+    <div id="tgrid" title="Timing: when the picture changes scene. Beat = as before; Bar = scene changes on bar starts (4 beats); Phrase = on phrase starts (8 bars), small changes on bars. Generated music only (ambient, electro, chiptune); no effect on audio files, tab or microphone.">
       <div class="trow"><button type="button" class="chip" data-grid="0">Temps</button><button type="button" class="chip" data-grid="1">Mesure</button><button type="button" class="chip" data-grid="2">Phrase</button></div>
     </div>
   </section>
   <section class="tsec" aria-labelledby="tth">
     <h3 class="th" id="tth">Theme</h3>
-    <div id="tthemes" title="Look of the pupitre and this panel. Theme only: no effect on picture, music or presets."><div class="trow"><button type="button" class="chip" data-theme="modern">Modern</button><button type="button" class="chip" data-theme="classic">Classic</button><button type="button" class="chip" data-theme="geek">Geek</button></div></div>
+    <div id="tthemes" title="Look of the control bar and this panel. Theme only: no effect on picture, music or presets."><div class="trow"><button type="button" class="chip" data-theme="modern">Modern</button><button type="button" class="chip" data-theme="classic">Classic</button><button type="button" class="chip" data-theme="geek">Geek</button></div></div>
   </section>
   <div class="trow tgfx" id="tgfx" hidden><button data-q="low">Low</button><button data-q="medium">Medium</button><button data-q="high">High</button></div>
   <div class="tfoot">
@@ -655,7 +654,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
 <div id="mpult" class="pult mpult">
   <div class="mrow">
     <span class="pkg"><kbd class="pk u0" data-code="KeyM" title="Control level (key M)">M</kbd><div id="mplvl" class="plvl" title="Control level"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div></span>
-    <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more, N = extreme). Look only."><div class="pkg"><kbd class="pk u0" data-code="KeyZ" title="Energy down (Z)">Z</kbd><div class="enb"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk u0" data-code="KeyX" title="Energy up (X)">X</kbd></div></div>
+    <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more). Look only."><div class="pkg"><kbd class="pk u0" data-code="KeyZ" title="Energy down (Z)">Z</kbd><div class="enb"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk u0" data-code="KeyX" title="Energy up (X)">X</kbd></div></div>
     <span class="pkg" title="Calm: master effect strength (0 = plain image). V less, B more"><kbd class="pk gG u0" data-code="KeyV" title="Calm less (V)">V</kbd><span class="pkm"><span>calm</span><input type="range" class="pr" id="m-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="mcv">100%</span></span><kbd class="pk gG u0" data-code="KeyB" title="Calm more (B)">B</kbd></span>
   </div>
   <div class="mrow">
@@ -670,7 +669,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   <div id="pmain" class="pmain">
     <div class="pucol pc1" id="pc1">
       <div class="pcell" style="cursor:default;gap:8px"><span class="pkg"><kbd class="pk u0" data-code="KeyM" title="Control level (key M)">M</kbd><div id="plvl" class="plvl" title="Control level (key M)"><button data-cl="0">auto</button><button data-cl="1">assisted</button><button data-cl="2">manual</button></div></span><span class="pkg" title="Calm: master effect strength (0 = plain image). V less, B more"><kbd class="pk gG u0" data-code="KeyV" title="Calm less (V)">V</kbd><span class="pkm"><span>calm</span><input type="range" class="pr" id="u-calm" min="0" max="100" step="1" value="100"><span class="pvv" id="ucv">100%</span></span><kbd class="pk gG u0" data-code="KeyB" title="Calm more (B)">B</kbd></span></div>
-      <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more, N = extreme). Look only."><div class="pkg"><kbd class="pk gX" data-code="KeyZ" title="Energy down (Z)">Z</kbd><div class="enb" id="enp"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk gX" data-code="KeyX" title="Energy up (X)">X</kbd></div><span class="pchips" style="margin-left:8px"><span><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span></span></div>
+      <div class="pcell" style="cursor:default" title="Energy: how wild the picture is (keys Z less, X more). Look only."><div class="pkg"><kbd class="pk gX" data-code="KeyZ" title="Energy down (Z)">Z</kbd><div class="enb" id="enp"><button data-en="0">calm</button><button data-en="1">soft</button><button data-en="2">normal</button><button data-en="3">strong</button><button data-en="4">extreme</button></div><kbd class="pk gX" data-code="KeyX" title="Energy up (X)">X</kbd></div><span class="pchips" style="margin-left:8px"><span><kbd class="pk gI" data-code="BracketLeft">[</kbd><kbd class="pk gI" data-code="BracketRight">]</kbd>img</span></span></div>
       <div class="pchips"><span class="pkg" title="Assisted only: how long a toggled effect stays on (rand = random 4.5-15 s, 31 = until switched off)"><span class="pkm"><span>hold</span><input type="range" class="pr" id="u-hold" min="0" max="31" step="1" value="0"><span class="pvv" id="uhv"></span></span></span><span class="pkg" title="Transition time (keys , shorter, . longer). Assisted / manual: drag to set it. Auto: chosen by the engine (read only)"><kbd class="pk gX" data-code="Comma" title="Transition shorter (,)">,</kbd><span class="pkm"><span>trans</span><input type="range" class="pr" id="u-trans" min="0" max="10" step=".5" value="3"><span class="pvv" id="ptrv"></span></span><kbd class="pk gX" data-code="Period" title="Transition longer (.)">.</kbd></span><span><kbd class="pk gI" data-code="Semicolon">;</kbd>auto <b id="pai">off</b></span></div>
     </div>
     <div class="pucol pgrid pfx" id="pfx"></div>
@@ -684,7 +683,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   <div id="prow4" class="prow4">
     <div id="ctl" class="pctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
     <span id="pnow" class="pnow"></span>
-    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gX">⇧1-8</kbd>save</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span></div>
+    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span><span class="phint">⇧ less · Alt more</span></div>
     <button id="pexp" class="pk gG pexpb" title="Explain" aria-controls="pxt" aria-expanded="false">▾</button>
   </div>
 </div>

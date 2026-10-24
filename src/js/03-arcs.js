@@ -78,7 +78,8 @@ let arcName = ARCS[ARCQ] ? ARCQ : 'journey', ARC, KEYS, EMAX = 1, BEATS = [], PH
 // music styles. ambient = the original engine (arc drives it, incl. bpm/drive); gnossienne/gymnopedie = piano (swap in the calm 'piano' arc); the others are standalone generators
 // that read energy(u) of the chosen arc but carry their own sections/tempo. bpm = tempo range (energy 0..1) used for BEATS (the picture's pulse); nohb = no heartbeat pulse on the picture.
 const STYLES = { electro: { bpm: [100, 138] }, chiptune: { bpm: [126, 164] }, chiptune2: { bpm: [118, 152] }, drone: { bpm: [60, 80], nohb: 1 }, gamelan: { bpm: [60, 96], nohb: 1 }, minimal: { bpm: [100, 132], nohb: 1 }, berlin: { bpm: [112, 128], nohb: 1 }, lofi: { bpm: [70, 90], nohb: 1 } };   // berlin: one constant tempo per piece, its buildAudio re-lays BEATS on it
-const MUSICS = ['ambient', 'gnossienne', 'gnossienne3', 'tempest', 'gymnopedie', ...Object.keys(STYLES)];
+// T164: 'tempest' is switched off (it lags). Code and note data stay; to re-enable add it back here, as a chip in #mus (index.html), in the 15-local.js random pick and in tools/events_vs_picture.py. Not listed = ?music= / saved value / preset fall back to 'ambient'.
+const MUSICS = ['ambient', 'gnossienne', 'gnossienne3', 'gymnopedie', ...Object.keys(STYLES)];
 let MUSIC = MUSICS.includes(Q.get('music')) ? Q.get('music') : (() => { try { const m = JSON.parse(localStorage.getItem('bicycleday.music')); return MUSICS.includes(m) ? m : 'ambient'; } catch (e) { return 'ambient'; } })();
 function score(u) {
   let i = 0; while (i < KEYS.length - 2 && u > KEYS[i + 1][0]) i++;

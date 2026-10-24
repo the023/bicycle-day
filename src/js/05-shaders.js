@@ -7,7 +7,8 @@ precision highp float;
 uniform sampler2D uTex,uPrev,uTex2,uCode,uGhostA,uGhostB; uniform float uImgMix,uGhostMix,uCodeAmt;
 uniform vec2 uRes;
 uniform vec2 uCenter; uniform vec4 uRip; uniform vec3 uPalC,uPalD; uniform vec2 uTilt; uniform float uHueAmt,uTT,uSrcZ,uSrcRot,uStretch,uTunnel;
-uniform float uWarpN,uFx,uKali,uJulia;
+uniform float uWarpN,uFx,uKali,uJulia,uKalZ;
+uniform vec3 uKaliP,uJuliaP;   // T163 shape of the styles (ENGINE.kali / ENGINE.julia): x = input zoom (smaller = closer = bigger shapes), y = iterations, z = fold scale (Kali) / c drift (Julia); uKalZ = ENGINE.kal.zoom
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uTileSize,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 vec2 gX=vec2(0.),gY=vec2(0.); bool gOn=false;   // tunnel only: analytic screen gradients of the sampling coordinate, so the mip level never sees the ring wrap
 vec4 texI(sampler2D t,vec2 uv){
@@ -19,7 +20,7 @@ vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);r
 vec2 rot(vec2 p,float a){float s=sin(a),c=cos(a);return vec2(c*p.x-s*p.y,s*p.x+c*p.y);}
 vec2 kal(vec2 p,float n){
   vec2 off=vec2(.12*sin(uT*.07),.1*cos(uT*.05)-.05)+uCenter; p-=off;
-  float a=atan(p.y,p.x),r=length(p),seg=TAU/n; a=mod(a,seg); a=abs(a-seg*.5);
+  float a=atan(p.y,p.x),r=length(p)*uKalZ,seg=TAU/n; a=mod(a,seg); a=abs(a-seg*.5);   // T163: uKalZ < 1 = closer (the wedges show a smaller part of the picture, so bigger)
   return r*vec2(cos(a),sin(a))+off;
 }
 // tiles: cut the picture into an N×N grid; each cell turns / zooms / shifts its own piece (smooth, never a flash)
@@ -33,14 +34,15 @@ vec2 tile(vec2 p){
   return mix(p,c+rot(f,a)*z/N,uTile);
 }
 // styles (2D, cheap, inspired by raymarched Shadertoy fractals): the picture is re-sampled through a fractal map
+const float KALI_K=2.5;   // T142: Kali response exponent, mix = uKali^KALI_K (the |.| folds are harsh: at .3 it looks like Julia at .3, 1 is unchanged; calibrated with stills)
 vec2 kaliFold(vec2 p){   // Kaliset-like: fold |p+1|-1, inversion, scale, repeated
-  vec2 q=p*1.4; float sc=1.25+.35*sin(uT*.13);
-  for(int i=0;i<4;i++){ q=abs(q+1.)-1.; q/=clamp(dot(q,q),.25,1.); q*=sc; }
+  vec2 q=p*uKaliP.x; float sc=uKaliP.z+.35*sin(uT*.13);
+  for(int i=0;i<12;i++){ if(float(i)>=uKaliP.y) break; q=abs(q+1.)-1.; q/=clamp(dot(q,q),.25,1.); q*=sc; }
   return q*.35;
 }
 vec2 juliaWarp(vec2 p){   // a few Julia iterations: the picture is smeared along the orbit
-  vec2 z=p*.7+vec2(.1*sin(uT*.04),-.6+.05*cos(uT*.05)), c=vec2(-.74+.08*sin(uT*.07),.12+.1*cos(uT*.09));   // zoomed in on the set's lower border (seen up close), drifting slowly along it
-  for(int i=0;i<6;i++) z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c;
+  vec2 z=p*uJuliaP.x+vec2(.1*sin(uT*.04),-.6+.05*cos(uT*.05)), c=vec2(-.74+.08*uJuliaP.z*sin(uT*.07),.12+.1*uJuliaP.z*cos(uT*.09));   // zoomed in on the set's lower border (seen up close), drifting slowly along it
+  for(int i=0;i<16;i++){ if(float(i)>=uJuliaP.y) break; z=vec2(z.x*z.x-z.y*z.y,2.*z.x*z.y)+c; }
   return z*.35/(1.+.1*dot(z,z));
 }
 vec4 codeS(vec2 p){ return texture(uCode,vec2(p.x/1.7778,p.y)+.5); }   // crazy live-coding text (2D canvas, whole frame, transparent background)
@@ -61,7 +63,7 @@ vec3 tx(vec2 p){
 vec3 layer(vec2 p,out vec4 cd){
   float n0=floor(uKalN),f=fract(uKalN);
   if(uTile>.001) p=tile(p);
-  if(uKali>.001) p=mix(p,kaliFold(p),uKali);
+  if(uKali>.001) p=mix(p,kaliFold(p),(uKali<1.?pow(uKali,KALI_K):uKali));   // T142: perceptual curve (the |.| folds make seams even at tiny mixes); P.kali stays the amount
   if(uJulia>.001) p=mix(p,juliaWarp(p),uJulia);
   vec2 pa=warp(mix(p,kal(p,n0),uKal)), pb=warp(mix(p,kal(p,n0+1.),uKal));
   vec3 c=mix(tx(pa),tx(pb),f);
@@ -124,7 +126,7 @@ void main(){
 
 const FS_SHOW = `#version 300 es
 precision highp float;
-uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate,uCells,uGrid,uGlitch,uGSeed;
+uniform sampler2D uTex; uniform vec2 uRes; uniform float uT,uAber,uPulse,uHi,uFx,uDark,uBlaze,uStrobe,uRate,uCells,uGrid,uGlitch,uGSeed,uNeg,uPh,uCol,uCacc,uCph;
 out vec4 o;
 float h1(vec2 p){ return fract(sin(dot(p,vec2(127.1,311.7)))*43758.5453); }
 void main(){
@@ -146,15 +148,18 @@ void main(){
   vec3 c=rgbK>0.?vec3(texture(uTex,uvg+vec2(rgbK,0.)).r,texture(uTex,uvg).g,texture(uTex,uvg-vec2(rgbK,0.)).b):uFx<.5?texture(uTex,uvg).rgb:vec3(texture(uTex,uvg+d*ab).r,texture(uTex,uvg).g,texture(uTex,uvg-d*ab).b);
   c=clamp(c,0.,1.); float L=dot(c,vec3(.299,.587,.114)); c=mix(vec3(L),c,1.8); c=clamp(c,0.,1.); c=mix(c,c*c*(3.-2.*c),.5);   // colour grade: richer, less pastel
   c+=uPulse*.05; c*=1.-.55*smoothstep(.45,1.05,r*1.2);
-  // moods (display pass only, nothing here feeds back): dark = only the brightest bits survive, blaze = near white, strobe = fast white / dark alternation
+  // moods (display pass only, nothing here feeds back): dark = only the brightest bits survive, blaze = brighter and more saturated (T160: only a small white lift), strobe = fast white / dark alternation
   float th=uDark*.45; c=max(c-th,0.)/(1.-th); c*=1.+.5*uDark;
-  c=c*(1.+1.3*uBlaze)+uBlaze*.3;
-  c=mix(c,fract(uT*uRate)<.5?vec3(1.):c*.12,uStrobe*.85);
+  if(uBlaze>.001){ float Lb=dot(c,vec3(.299,.587,.114)); c=max(mix(vec3(Lb),c,1.+.4*uBlaze),0.); c=c*(1.+.6*uBlaze)+uBlaze*.08; }
+  // T161: uPh = the strobe phase in cycles (computed on the CPU, a closed form of the time, so it can accelerate); uNeg = the flash is the inverted image instead of white (the off half is the plain picture)
+  c=mix(c,fract(uPh)<.5?(uNeg>.5?1.-c:vec3(1.)):(uNeg>.5?c:c*.12),uStrobe*.85);
   if(uCells>.001){   // strobe grid: an N x N grid (N = uGrid, 3..10), ~30% random cells (re-rolled ~every second, a pure function of uT) flash white / dark / inverted at 8-14 Hz, the rest is untouched
     float N=max(3.,uGrid); vec2 cl=floor(uv*N); float id=cl.x+N*cl.y, ep=floor(uT/1.05); float total=N*N; int n=int(floor(total*0.3+0.5)); if(n<1) n=1; float sel=0.;
     for(int k=0;k<30;k++){ if(k<n && floor(h1(vec2(ep,float(k)))*total)==id) sel=1.; }
-    float hh=h1(vec2(ep,id+20.)), on=step(fract(uT*(8.+6.*hh)+hh*3.),.5), md=floor(h1(vec2(ep,id+40.))*3.);
+    float hh=h1(vec2(ep,id+20.)), ph=uCacc>.5?uCph*(.8+.4*hh)+hh*3.:uT*(8.+6.*hh)+hh*3.;   // T161: accelerating = the cell clock is the CPU ramp phase (uCph), each cell at 0.8-1.2 x its rate
+    float on=step(fract(ph),.5), md=floor(h1(vec2(ep,id+40.))*3.);
     vec3 fl=md<.5?vec3(1.):md<1.5?vec3(.02):1.-c;
+    if(uCol>.5){ float hc=floor(h1(vec2(id+7.,floor(ph)))*6.); fl=clamp(abs(fract(vec3(hc/6.)+vec3(0.,.6667,.3333))*6.-3.)-1.,0.,1.); }   // coloured: red / yellow / green / cyan / blue / magenta from the cell and its flash count
     c=mix(c,fl,uCells*sel*on);
   }
   if(uFx>.5){ float g=fract(sin(dot(gl_FragCoord.xy+uT*91.,vec2(12.9898,78.233)))*43758.5453); c+=(g-.5)*(.05+.05*uHi); }

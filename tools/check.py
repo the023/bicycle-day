@@ -158,7 +158,7 @@ def main(only=None):
 
         # ---------- 3. keys in auto ----------
         if want(3):
-            label = "auto keys: C J T , W Q unchanged; Z X N change USER.energy"
+            label = "auto keys: C J T , W Q unchanged; Z X change USER.energy"
             try:
                 ctx1, page1, errs1 = make_page(browser, qs=FAST)
                 settle(page1, errs1)
@@ -182,9 +182,9 @@ def main(only=None):
                     if not (before["pal"] == after["pal"] and before["trans"] == after["trans"]
                             and before["force"] == after["force"] and before["on"] == after["on"]):
                         bad_auto.append(code)
-                # Z/X/N must change energy
+                # Z/X must change energy
                 energy_changes = []
-                for code in ["KeyX", "KeyZ", "KeyN"]:
+                for code in ["KeyX", "KeyZ"]:
                     before = page1.evaluate("USER.energy")
                     page1.evaluate("fireKey(%s)" % json.dumps(code))
                     page1.wait_for_timeout(80)

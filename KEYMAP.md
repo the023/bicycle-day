@@ -1,6 +1,6 @@
 # Keyboard Map — Bicycle Day (T4 final)
 
-Single meaning per key. **Auto (level 0): only Energy (Z X N), Calm (V B), images ([ ] ;), camera (arrows, mouse), presets and the tools work; every other key shows a hint (the engine decides the rest).** A level may only ENABLE or DISABLE a key (disabled = greyed in the help overlay). Extreme mode (HCX/hcOn) only adds things, never remaps. Modifier convention for adjustable keys: key = toggle/primary, Shift+key = amount DOWN, Alt+key = amount UP (Ctrl unused).
+Single meaning per key. **Auto (level 0): only Energy (Z X), Calm (V B), images ([ ] ;), camera (arrows, mouse), presets and the tools work; every other key shows a hint (the engine decides the rest).** A level may only ENABLE or DISABLE a key (disabled = greyed in the help overlay). Extreme mode (HCX/hcOn) only adds things, never remaps. Modifier convention for adjustable keys: key = toggle/primary, Shift+key = amount DOWN, Alt+key = amount UP (Ctrl unused).
 
 CL: 0 auto, 1 assisted, 2 manual. Lmin = minimum control level that enables the key.
 
@@ -34,7 +34,7 @@ CL: 0 auto, 1 assisted, 2 manual. Lmin = minimum control level that enables the 
 | KeyX | Energy + | 0 | every level |
 | KeyC | palette cycle (6 palettes) | 1 | Shift+C = previous palette |
 | KeyM | cycle control level (auto/assisted/manual) | 0 | |
-| KeyN | Energy 4 (Extreme) ↔ previous Energy (also showcase next) | 0 | |
+| KeyN | showcase: next effect | 0 | |
 | KeyF | fullscreen | 0 | |
 | KeyH | help overlay | 0 | |
 | KeyL | live-coding overlay cycle (auto: engine picks per scene, L = hint) | 1 | |

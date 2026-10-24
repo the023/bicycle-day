@@ -29,6 +29,8 @@
   .card dt{color:#f4f1ea77}.card dd{margin:0;word-break:break-word}
   .inv{background:#ffffff0d;border:1px solid #ff9f0a66;border-radius:10px;padding:6px 20px 6px 36px}
   .inv li{margin:8px 0}
+  table.t{border-collapse:collapse;font-size:13px;margin:8px 0}
+  .t th,.t td{border:1px solid #ffffff22;padding:4px 10px;text-align:left}
   .small{color:#f4f1ea77;font-size:12px;margin-top:10px}
 </style></head><body><main>
 <h1>Bicycle Day — how it works</h1>
@@ -51,6 +53,17 @@
 <h2>Other engine effects (showcase / automatic only, no key)</h2>
 <div class="cards" id="cards2"></div>
 
+<h2>Energy (the user's one picture setting)</h2>
+<p class="lead">Five levels, read from <code>EN</code>. Look only, the music does not change. <code>off</code> shifts the arc, <code>amp</code> scales every effect, <code>big</code> scales the big moves (tiles, tunnel, glitch, blaze, zoom pulses), <code>strobe</code> scales the strobe mood. Level 4 (extreme) switches the hardcore look on.</p>
+<div id="en"></div>
+
+<h2>Slow start</h2>
+<p class="lead" id="ramp"></p>
+
+<h2>Music</h2>
+<p class="lead">Piano pieces (calm arc) and generated synth styles. Each style is a branch of <code>buildAudio</code>; <code>bpm</code> is its tempo range, <code>nohb</code> = no heartbeat pulse in the picture.</p>
+<div id="mus"></div>
+
 <h2>Invariants</h2>
 <ul class="inv">
   <li>The picture is a pure function of the audio clock time <code>t</code>. Drifting state (<code>hue</code>, <code>rotA</code>) is re-derived on seek (<code>integrateTo</code>).</li>
@@ -61,6 +74,9 @@
 <p class="small" id="foot"></p>
 </main>
 <script>
+const STYLES = { electro: { bpm: [100, 138] }, chiptune: { bpm: [126, 164] }, chiptune2: { bpm: [118, 152] }, drone: { bpm: [60, 80], nohb: 1 }, gamelan: { bpm: [60, 96], nohb: 1 }, minimal: { bpm: [100, 132], nohb: 1 }, berlin: { bpm: [112, 128], nohb: 1 }, lofi: { bpm: [70, 90], nohb: 1 } };   // berlin: one constant tempo per piece, its buildAudio re-lays BEATS on it
+const MUSICS = ['ambient', 'gnossienne', 'gnossienne3', 'gymnopedie', ...Object.keys(STYLES)];
+const EN = { off: [-.25, -.12, 0, .12, .25], offG: [-.35, -.23, 0, .12, .25], amp: [.55, .8, 1, 1.15, 1.25], big: [.35, .6, 1, 1, 1], strobe: [0, .5, 1, 1, 1], hc: [0, 0, 0, 0, 1], trn: [3, 1, 0, 0, 0], moodRamp: [5, 2.5, 1.5, 1.5, 1.5], lsN: [[.05, .6, .35], [0, .4, .6], [0, .35, .55, .1], [0, .35, .55, .1], [0, .35, .55, .1]], lsTL: [.4, .7, 1, 1, 1], lsNL: [[.55, .4, .05], [.35, .5, .15], [.3, .5, .2], [.3, .5, .2], [.3, .5, .2]], lsLv: [[.4, .85], [.6, 1], [.8, 1.2], [.8, 1.2], [.8, 1.2]], lsFirst: 2, lsw: [1, 1, 0, 0, 0], capK: [1, 1.5, 1.5, 1.5, 1.5], knee: .5, lp: [.6, .7, 1, 1, 1], lpS: [[.6, .8], [.6, .8], [.5, .75], [.65, .82], [.65, .82]], lpT: 1.5, lpL: .5, hcAb: [1.1, .2], lpX: [1.3, .5], st: [1.4, .45], acc: [[0, 0, .1, 0, .1], [0, 0, .2, .1, .15], [.08, .08, .25, .15, .15], [.2, .2, .2, .1, .1], [.15, .15, .2, .05, .05]], names: ['calm', 'soft', 'normal', 'strong', 'extreme'] };
 const PF = {
   t:        { neutral: 0,   min: -1e6, max: 1e8 },
   warp:     { neutral: 0,   min: -1,   max: 20, sc: 1, quiet: .06 },
@@ -99,39 +115,68 @@ const PF = {
   strobe:   { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
   rate:     { neutral: 8,   min: 0,    max: 60, sc: 1, quiet: 8 },
   cells:    { neutral: 0,   min: -1,   max: 5,  sc: 1, quiet: 0 },
+  // T161 strobe variants (display pass only). rate1 > 0 = accelerating strobe: the rate climbs from `rate` to rate1 over sD s from sT0 (closed-form phase, rampPhase); sNeg = the flash is the inverted image. cD > 0 = accelerating checkerboard (ramp over cD s from cT0, ENGINE.strobe.acc); cCol = lit cells take colours
+  rate1:    { neutral: 0,   min: 0,    max: 60, sc: 1 },
+  sT0:      { neutral: 0,   min: -1e6, max: 1e8, sc: 1 },
+  sD:       { neutral: 0,   min: 0,    max: 1e4, sc: 1 },
+  sNeg:     { neutral: 0,   min: -1,   max: 5,  sc: 1 },
+  cT0:      { neutral: 0,   min: -1e6, max: 1e8, sc: 1 },
+  cD:       { neutral: 0,   min: 0,    max: 1e4, sc: 1 },
+  cCol:     { neutral: 0,   min: -1,   max: 5,  sc: 1 },
   grid:     { neutral: 4,   min: 1,    max: 64 },
   glitch:   { neutral: 0,   min: -1,   max: 5 },
 };
 const ENGINE = {
   v: 0,
   zoom: { min: .15, max: 2.0,                 // limits of a pulse's factor (applied after the seeded draw, so the draw order never changes)
-    durOut: [4, 20], durIn: [1, 10], gap: [30, 70], first: [30, 60],   // pulse length out / in, gap between pulses, start of the first (s)
-    pOut: .67, pFar: .25,                      // chance of a zoom-out; chance that an out is a far one
+    gap: [14, 38], first: [30, 60],            // gap between pulses, start of the first (s)
+    pOut: .85, pFar: .75, pFast: .35,            // chance of a zoom-out; chance that an out is a far one; chance that a pulse is a fast one (else a slow glide)
+    durSlow: [30, 48], easeSlow: [10, 15],     // slow glide: whole pulse length, ease in / out (s; an ease is at most half the length)
+    durFast: [5, 14], easeFast: [.5, 1], easeBack: 3,   // fast jump: length, the quick ease in (s), the ease back out (s)
     fIn: [1.6, 2.0], fOut: [.25, .5], fFar: [.15, .25],   // factor ranges in / out / far out (drawn, then clamped to min..max)
-    ramp: 3, swing: .35 },                     // longest ease in/out of a pulse (s); slow breathing exp(swing*sin) of the zoom
-  kal: { max: .6, maxHc: 1, dip: .65,          // kaleidoscope cap (auto / Extreme), how far it regularly lets the source breathe back
-    base: .35, baseHc: .8, surge: 1,           // amount = ... * (base + surge * surge level)
+    rest: .92, swing: .35,                      // the slow breathing exp(swing*sin) rests around `rest` (< 1 = further out than the picture)
+    punchOut: .7, pPunchOut: .75, punchTail: .5,   // scene punch on an energetic section: depth of the quick zoom-out (peak factor 1 - punchOut), share of such scenes that punch out (else in), tail exponent (< 1 = slower return)
+    kalOut: .3 },                              // zoom-out while the kaleidoscope is on: factor exp(-kalOut * kal)
+  kal: { max: .7, maxHc: 1, dip: .65,          // kaleidoscope cap (auto / Extreme), how far it regularly lets the source breathe back
+    base: .42, baseHc: .8, surge: 1,           // amount = ... * (base + surge * surge level)
     foldMin: 3, foldWob: 1.5,                  // fold count floor; fold wobble amplitude
-    spinBase: .02, spinKal: .06, spinWob: .03 },   // slow auto rotation: base + kal * arc kal + wob
+    spinBase: .02, spinKal: .06, spinWob: .03,   // slow auto rotation: base + kal * arc kal + wob
+    zoom: .85 },                               // T163: pattern scale of the kaleidoscope (shader uKalZ): the radius is multiplied by it, 1 = the old look, smaller = closer (bigger wedges, less fine detail)
+  // T163 shape of the two fractal styles (shader uKaliP / uJuliaP): zoom = input scale (smaller = closer = bigger shapes, less fine detail; old Kali 1.4, Julia .7), iter = iterations (old 4 / 6), scale = Kali fold scale (old 1.25), drift = Julia c drift (1 = old)
+  kali: { zoom: .8, iter: 4, scale: 1.25 },
+  julia: { zoom: .45, iter: 5, drift: 1 },
   warp: { base: .4, surge: 1.3, wob: .3, mid: .35, punch: .5, hc: 1.3 },   // wr = warp * (1 + wob) * (1 + mid) * (1 + punch * scene punch) * (base + surge * sg) * (1 -> hc in Extreme)
   tile: { win: [.15, .35, .65, .85], gate: [.22, .42], kalCut: .6, nonLead: .4, punch: .7, minor: .35, fbCut: .75, sizes: [8, 12, 16, 25], modes: 3 },   // window in/out of the scene, arc gate, strength cuts, trails thinning
-  glitch: { cell: 12, chance: .35, durMin: 1, durVar: 1.5, amp: .3, ampVar: .25 },   // sparse bursts after the intro: a cell of `cell` s has a `chance` of one burst of durMin + durVar * (0..1) s with amplitude amp + ampVar * (0..1)
-  strobe: { rate: [5, 11], dur: [6, 14], amount: 1 },   // strobe mood: flashes per second, stretch length (s), strength (multiplies P.strobe)
+  glitch: { cell: 12, chance: .35, durMin: 1, durVar: 1.5, amp: .3, ampVar: .25, pScene: .7, delay: .1, pLive: .7, pSceneX: 1, pLiveX: 1, cellX: 6 },   // T153 pSceneX / pLiveX / cellX = the same in Live / Local Extreme (cellX = cell length s there, so bursts come twice as often). T152 pScene / delay / pLive = Live + Local only (burst chance after an energetic scene start, its delay s, the cell chance there). Sparse bursts after the intro: a cell of `cell` s has a `chance` of one burst of durMin + durVar * (0..1) s with amplitude amp + ampVar * (0..1)
+  // T161 variants, drawn per launch from the seed: vw = weights of [plain, accelerating, negative] for the strobe, cw = [plain, accelerating, coloured] for the checkerboard; acc = [start, end] Hz of an accelerating stretch (the checkerboard cells run at 0.8-1.2 x this); accD = ramp length (s) of a launch that does not know its own length (held key, Extreme peaks)
+  strobe: { rate: [5, 11], dur: [6, 14], amount: 1, vw: [.4, .3, .3], cw: [.4, .3, .3], acc: [4, 14], accD: 8 },   // strobe mood: flashes per second, stretch length (s), strength (multiplies P.strobe)
+  // T160: random mood stretches. w / wHc = draw weights of [dark, bw, strobe, blaze] (normal / Extreme; were 1,1,1,1 and 1,1,2,2); darkDur = length of a dark stretch (s, was 10-25); surgeTop / hit = blaze peak at the top of a big surge / on a hit (were .8 / .5). The blaze look itself (saturate + small white lift) is in FS_SHOW
+  mood: { w: [2, 2, 1, .5], wHc: [2, 2, 2, 1], darkDur: [14, 32], surgeTop: .55, hit: .35 },
+  // T157 (Live + Local): build accents. unit = longest unit (s); delay / dur = start delay and length of the accent in its unit (s); kBuild = chance factor of strobe / checkerboard / glitch rush in a unit that starts with a build; cells = checkerboard amount; glitch = amount from..to; zoom / warp / warpAdd = push and rise; fade = ease out (s); tail = Live only, decay time of glitch / zoom / warp when the unit ends (s)
+  acc: { unit: 16, delay: [.5, 3], dur: [4, 8], kBuild: 1.6, cells: .9, glitch: [.1, .65], zoom: .25, warp: .8, warpAdd: .08, fade: 1.2, tail: .7 },
+  // T147: picture pace follows the music (generated auto). Interval = lerp(calm, lively, smooth(e[0], e[1], energy)); energy = the plan's section energy (planE), else the arc energy(u). minor / scene = [calm, lively] seconds
+  // between minor look changes / scene changes (the clock path: ambient, piano; a scene follows the plan's sections when there is one). keep x interval = the shortest gap kept between the music's own fill / phrase events (plan styles). calmAmp = minor punch strength at calm (1 at lively).
+  pace: { e: [.3, .7], minor: [28, 11], scene: [70, 40], keep: .9, calmAmp: .6 },
   tun: { first: [70, 110], firstRamp: [10, 40], dur: [9, 16], gap: [70, 160], easeIn: 2.5, easeOut: 3 },   // generated tunnel stretches (s)
+  // T133: generated start = a stepped ramp (rampIn): quiet until min(quiet, quietFrac * TOTAL) s, then `ease` s up to lv[0], then each next level at the start of the next energetic section (e >= .4) at least `gap` s after the previous step (times x min(1, TOTAL / 600)).
+  // Without a section plan (ambient, piano) the same steps run on the clock: sec / secLv = points [seconds, level] (smooth between). floor = the plan mode never falls below the no-plan curve with times x floor. strong (Energy 3) = shorter: times x k, levels lv.
+  ramp: { quiet: 78, quietFrac: .13, ease: 12, gap: 60, floor: 1.5, lv: [.15, .30, .50, 1],
+    sec: [78, 90, 135, 150, 195, 210, 240, 300], secLv: [0, .15, .15, .30, .30, .50, .50, 1],
+    strong: { k: .5, lv: [.3, .6, 1], sec: [78, 90, 135, 150, 195, 210], secLv: [0, .3, .3, .6, .6, 1] } },
 };
 const EFFECTS = [
-  { code: 'KeyQ', key: 'Q', cap: 'Q', label: 'warp', name: 'warp', fx: 'warp', mode: 't', rin: .6, rout: .6, field: 'warp', ref: 2, lv: 'warp', amt: 1, mood: false, snap: 'wp', desc: 'The picture bends and ripples as if seen through moving water.' },
-  { code: 'KeyW', key: 'W', cap: 'W', label: 'kaleidoscope', name: 'kaleido', fx: 'kaleidoscope: 6 folds', mode: 't', rin: .7, rout: .7, field: 'kal', ref: 1, lv: 'kal', amt: 1, mood: false, snap: 'kal', max: 1.5, desc: 'The picture is mirrored into a rotating star of identical wedges.' },
-  { code: 'KeyE', key: 'E', cap: 'E', label: 'trails', name: 'trails', fx: 'feedback trails', mode: 't', rin: .8, rout: .8, field: 'fb', ref: .9, lv: 'fb', amt: 1, mood: false, snap: 'fb', max: 1.1, desc: 'Moving parts leave glowing, slowly fading trails behind them.' },
-  { code: 'KeyR', key: 'R', cap: 'R', label: 'melt', name: 'melt', fx: 'melt', mode: 't', rin: .8, rout: .8, field: 'melt', ref: 1.3, lv: 'melt', amt: 1, mood: false, snap: 'mt', desc: 'The picture drips and flows downward like warm wax.' },
-  { code: 'KeyY', key: 'Y', cap: 'Y', label: 'tiles', name: 'tiles', fx: 'tiles: checker', mode: 't', rin: .5, rout: .5, field: 'tile', ref: 1, lv: 'tile', amt: 1, mood: false, snap: 'tile', max: 2, desc: 'The picture breaks into a grid of tiles that shift, wave or shatter.' },
-  { code: 'KeyU', key: 'U', cap: 'U', label: 'Kali', name: 'Kali', fx: 'style: Kali', mode: 't', rin: .7, rout: .7, field: 'kali', ref: 1, lv: 'kali', amt: 1, mood: false, snap: 'ka', desc: 'The picture is folded again and again into a sharp fractal lattice.' },
-  { code: 'KeyI', key: 'I', cap: 'I', label: 'Julia', name: 'Julia', fx: 'style: Julia', mode: 't', rin: .7, rout: .7, field: 'julia', ref: 1, lv: 'julia', amt: 1, mood: false, snap: 'ju', desc: 'The picture is pulled into soft swirling spirals like a Julia fractal.' },
-  { code: 'KeyO', key: 'O', cap: 'O', label: 'tunnel', name: 'tunnel', fx: 'tunnel', mode: 't', rin: .8, rout: .8, field: 'tun', ref: 1, lv: 'tun', amt: 1, mood: false, snap: 'tn', desc: 'The picture repeats inwards forever, as if you fly down a tunnel.' },
-  { code: 'KeyP', key: 'P', cap: 'P', label: 'stretch', name: 'stretch', fx: 'source stretch', mode: 't', rin: .8, rout: .8, field: 'stretch', ref: 1, lv: 'stretch', amt: 1, mood: false, snap: 'st', desc: 'The picture is smeared outward from one point into long streaks.' },
+  { code: 'KeyQ', key: 'Q', cap: 'Q', label: 'warp', name: 'warp', fx: 'warp', mode: 't', rin: .6, rout: .6, field: 'warp', ref: 2, vis: [.1, .3, 0.6], lv: 'warp', amt: 1, mood: false, snap: 'wp', desc: 'The picture bends and ripples as if seen through moving water.' },
+  { code: 'KeyW', key: 'W', cap: 'W', label: 'kaleidoscope', name: 'kaleido', fx: 'kaleidoscope: 6 folds', mode: 't', rin: .7, rout: .7, field: 'kal', ref: 1, vis: [.1, .3, 0.6], lv: 'kal', amt: 1, mood: false, snap: 'kal', max: 1.5, desc: 'The picture is mirrored into a rotating star of identical wedges.' },
+  { code: 'KeyE', key: 'E', cap: 'E', label: 'trails', name: 'trails', fx: 'feedback trails', mode: 't', rin: .8, rout: .8, field: 'fb', ref: .9, vis: [.09, .27, 0.54], lv: 'fb', amt: 1, mood: false, snap: 'fb', max: 1.1, desc: 'Moving parts leave glowing, slowly fading trails behind them.' },
+  { code: 'KeyR', key: 'R', cap: 'R', label: 'melt', name: 'melt', fx: 'melt', mode: 't', rin: .8, rout: .8, field: 'melt', ref: 1.3, vis: [.167, .5, 1], lv: 'melt', amt: 1, mood: false, snap: 'mt', desc: 'The picture drips and flows downward like warm wax.' },
+  { code: 'KeyY', key: 'Y', cap: 'Y', label: 'tiles', name: 'tiles', fx: 'tiles: checker', mode: 't', rin: .5, rout: .5, field: 'tile', ref: 1, vis: [.083, .25, 0.5], lv: 'tile', amt: 1, mood: false, snap: 'tile', max: 2, desc: 'The picture breaks into a grid of tiles that shift, wave or shatter.' },
+  { code: 'KeyU', key: 'U', cap: 'U', label: 'Kali', name: 'Kali', fx: 'style: Kali', mode: 't', rin: .7, rout: .7, field: 'kali', ref: 1, vis: [.083, .25, 0.5], lv: 'kali', amt: 1, mood: false, snap: 'ka', desc: 'The picture is folded again and again into a sharp fractal lattice.' },
+  { code: 'KeyI', key: 'I', cap: 'I', label: 'Julia', name: 'Julia', fx: 'style: Julia', mode: 't', rin: .7, rout: .7, field: 'julia', ref: 1, vis: [.067, .2, 0.4], lv: 'julia', amt: 1, mood: false, snap: 'ju', desc: 'The picture is pulled into soft swirling spirals like a Julia fractal.' },
+  { code: 'KeyO', key: 'O', cap: 'O', label: 'tunnel', name: 'tunnel', fx: 'tunnel', mode: 't', rin: .8, rout: .8, field: 'tun', ref: 1, vis: [.067, .2, 0.4], lv: 'tun', amt: 1, mood: false, snap: 'tn', desc: 'The picture repeats inwards forever, as if you fly down a tunnel.' },
+  { code: 'KeyP', key: 'P', cap: 'P', label: 'stretch', name: 'stretch', fx: 'source stretch', mode: 't', rin: .8, rout: .8, field: 'stretch', ref: 1, vis: [.067, .2, 0.4], lv: 'stretch', amt: 1, mood: false, snap: 'st', desc: 'The picture is smeared outward from one point into long streaks.' },
   { code: 'KeyA', key: 'A', cap: 'A', label: 'dark', name: 'dark', fx: 'mood: dark', mode: 't', rin: .6, rout: .6, field: 'dark', ref: 1, lv: null, amt: 0, mood: true, desc: 'The screen fades toward black while the picture glows faintly.' },
   { code: 'KeyS', key: 'S', cap: 'S', label: 'black and white', name: 'b&w', fx: 'mood: black and white', mode: 't', rin: .6, rout: .6, field: 'mono', ref: 1, lv: null, amt: 0, mood: true, desc: 'All colour drains out and the picture turns black and white.' },
-  { code: 'KeyD', key: 'D', cap: 'D', label: 'blaze', name: 'blaze', fx: 'mood: blaze', mode: 't', rin: .5, rout: .8, field: 'blaze', ref: 1, lv: null, amt: 0, mood: true, desc: 'The picture burns out toward bright white light.' },
+  { code: 'KeyD', key: 'D', cap: 'D', label: 'blaze', name: 'blaze', fx: 'mood: blaze', mode: 't', rin: .5, rout: .8, field: 'blaze', ref: 1, lv: null, amt: 0, mood: true, desc: 'The picture flares bright and saturated, with a little white.' },
   { code: 'KeyG', key: 'G', cap: 'G', label: 'strobe (hold)', name: 'strobe', fx: 'mood: strobe', mode: 'h', rin: 0, rout: 0, field: 'strobe', ref: 1, lv: null, amt: 0, mood: true, desc: 'The whole screen flashes white and dark several times a second while held.' },
   { code: 'KeyJ', key: 'J', cap: 'J', label: 'strobe grid (hold)', name: 'grid', fx: 'strobe grid', mode: 'h', rin: 0, rout: 0, field: 'cells', ref: 1, lv: null, amt: 0, mood: true, desc: 'A grid of cells flashes one after another while held.' },
   { code: 'Enter', key: 'Enter', cap: 'Ent', label: 'surge (hold)', name: 'surge', fx: 'surge (swell)', mode: 'h', rin: .5, rout: 1.2, field: 'surge', ref: 1, lv: null, amt: 0, mood: true, desc: 'Warp, kaleidoscope, melt and colour swell together while held.' },
@@ -163,12 +208,17 @@ const FX = [
   { name: 'surge (swell)', cls: 'gM', desc: 'Warp, kaleidoscope, melt, aberration and colour swell together.', fields: ['warp', 'kal', 'melt', 'ab', 'pal'], set: (p, k) => { p.warp = 1.2 * k; p.kal = .5 * k; p.melt = .9 * k; p.ab = 1.2 * k; p.pal = .4 * k; } },
   { name: 'mood: dark', cls: 'gM', desc: 'The screen fades toward black while the picture glows faintly.', fields: ['dark'], set: (p, k) => { p.dark = k; } },
   { name: 'mood: black and white', cls: 'gM', desc: 'All colour drains out and the picture turns black and white.', fields: ['mono'], set: (p, k) => { p.mono = k; } },
-  { name: 'mood: blaze', cls: 'gM', desc: 'The picture burns out toward bright white light.', fields: ['blaze'], set: (p, k) => { p.blaze = k; } },
+  { name: 'mood: blaze', cls: 'gM', desc: 'The picture flares bright and saturated, with a little white.', fields: ['blaze'], set: (p, k) => { p.blaze = k; } },
   { name: 'mood: strobe', cls: 'gM', desc: 'The whole screen flashes white and dark several times a second.', fields: ['strobe', 'rate'], set: (p, k) => { p.strobe = k; p.rate = 7; } },
   { name: 'strobe grid', cls: 'gM', desc: 'A grid of cells flashes one after another.', fields: ['cells'], set: (p, k) => { p.cells = k; } },
+  // T161 variants (display pass). The accelerating ones ramp over the whole loop from its start (showcaseParams fills sT0 / cT0 with the loop start)
+  { name: 'mood: strobe, accelerating', cls: 'gM', desc: 'The screen flashes white and dark, faster and faster.', fields: ['strobe', 'rate', 'rate1', 'sD'], set: (p, k) => { p.strobe = k; p.rate = ENGINE.strobe.acc[0]; p.rate1 = ENGINE.strobe.acc[1]; p.sD = tuneLen(); } },
+  { name: 'mood: strobe, negative', cls: 'gM', desc: 'The screen flashes between the picture and its negative.', fields: ['strobe', 'rate', 'sNeg'], set: (p, k) => { p.strobe = k; p.rate = 7; p.sNeg = 1; } },
+  { name: 'strobe grid, colour', cls: 'gM', desc: 'A grid of cells flashes in red, yellow, green, blue and magenta instead of white.', fields: ['cells', 'cCol'], set: (p, k) => { p.cells = k; p.cCol = 1; } },
+  { name: 'strobe grid, accelerating', cls: 'gM', desc: 'A grid of cells flashes faster and faster.', fields: ['cells', 'cD'], set: (p, k) => { p.cells = k; p.cD = tuneLen(); } },
   { name: 'glitch', cls: 'gN', desc: 'Slices of the picture shift sideways and tear for a moment.', fields: ['glitch'], set: (p, k) => { p.glitch = .8 * k; } },
 ];
-const TUNE_G = f => { for (const k of f) { if (k === 'fb') return null; if (k === 'zoom') return 'zoom'; if (k === 'kal' || k === 'fold') return 'kal'; if (k === 'warp') return 'warp'; if (k.startsWith('tile')) return 'tile'; if (k === 'tun') return 'tun'; if (k === 'glitch') return 'glitch'; if (k === 'rot') return 'rot'; if (k === 'strobe') return 'strobe'; } return null; };
+const TUNE_G = f => { for (const k of f) { if (k === 'fb') return null; if (k === 'kali') return 'kali'; if (k === 'julia') return 'julia'; if (k === 'zoom') return 'zoom'; if (k === 'kal' || k === 'fold') return 'kal'; if (k === 'warp') return 'warp'; if (k.startsWith('tile')) return 'tile'; if (k === 'tun') return 'tun'; if (k === 'glitch') return 'glitch'; if (k === 'rot') return 'rot'; if (k === 'strobe') return f.includes('sNeg') || f.includes('rate1') ? null : 'strobe'; } return null; };   // T161: the strobe variants play their own FX entry, not the group's plain stretch
 </script>
 <script>
 const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -199,5 +249,9 @@ document.getElementById('cards').innerHTML = EFFECTS.map(r => {
   return card(r.label, r.key, r.mood, r.mode, r.desc || (f && f.desc), f ? f.fields : (r.field ? [r.field] : []));
 }).join('');
 document.getElementById('cards2').innerHTML = FX.filter(f => !used.has(f.name)).map(f => card(f.name, '', /^(mood|strobe)/.test(f.name), '', f.desc, f.fields)).join('');
-document.getElementById('foot').textContent = EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
+document.getElementById('en').innerHTML = '<table class="t"><tr><th></th>' + EN.names.map(n => `<th>${esc(n)}</th>`).join('') + '</tr>' + ['off', 'offG', 'amp', 'big', 'strobe'].map(k => `<tr><td><code>${k}</code></td>${EN[k].map(v => `<td>${fmt(v)}</td>`).join('')}</tr>`).join('') + '</table>';
+const R = ENGINE.ramp;
+document.getElementById('ramp').innerHTML = `Generated music only. Quiet for ${R.quietFrac * 100}% of the piece (max ${R.quiet} s), then ${R.ease} s up to ${R.lv[0] * 100}% of the Energy level. Each next step (${R.lv.slice(1).map(v => v * 100 + '%').join(' → ')}) starts with the next energetic music section, at least ${R.gap} s after the previous one (scaled down for pieces shorter than 10 min). Extreme skips it.`;
+document.getElementById('mus').innerHTML = '<table class="t"><tr><th>choice</th><th>bpm</th><th>heartbeat pulse</th></tr>' + MUSICS.map(m => { const s = STYLES[m]; return `<tr><td><code>${esc(m)}</code></td><td>${s ? s.bpm.join('–') : '—'}</td><td>${s ? (s.nohb ? 'no' : 'yes') : '—'}</td></tr>`; }).join('') + '</table>';
+document.getElementById('foot').textContent = 'Built from sources of 2026-10-24 · 61e1328. ' + EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
 </script></body></html>

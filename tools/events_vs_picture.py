@@ -17,7 +17,7 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from check import make_page  # noqa: E402
 
 STYLES = ["electro", "chiptune", "chiptune2", "drone", "gamelan", "minimal", "berlin", "lofi",
-          "ambient", "gnossienne3", "tempest", "gymnopedie"]
+          "ambient", "gnossienne3", "gymnopedie"]
 WIN, STEP, PASS_S = 3.0, 0.1, 1.0
 
 JS = """([evs, win, step]) => {

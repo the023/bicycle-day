@@ -58,7 +58,7 @@ function initHomeGL(canvas) {
   const g = homeGL;
   try {
     homeProgS = khprog(g, FS_SCENE); homeProgD = khprog(g, FS_SHOW);
-    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uTileSize','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uCode','uCodeAmt']);
+    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uTileSize','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uKaliP','uJuliaP','uKalZ','uCode','uCodeAmt']);
     homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells','uGrid','uGlitch','uGSeed']);
     // blank code texture
     const ct = g.createTexture(); g.bindTexture(g.TEXTURE_2D, ct); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
@@ -151,6 +151,7 @@ function homeFrame(t) {
   g.uniform1f(homeUS.uTile, P.tile); g.uniform1f(homeUS.uTileN, P.tileN); g.uniform1f(homeUS.uTileMode, P.tileMode); g.uniform1f(homeUS.uTileSeed, homeSeedVal || 1); g.uniform1f(homeUS.uTileSize, 1);
   const qfx = QUAL[quality].fx; g.uniform1f(homeUS.uWarpN, QUAL[quality].warpN); g.uniform1f(homeUS.uFx, qfx);
   g.uniform1f(homeUS.uKali, P.kali); g.uniform1f(homeUS.uJulia, P.julia);
+  g.uniform3f(homeUS.uKaliP, 1.4, 4, 1.25); g.uniform3f(homeUS.uJuliaP, .7, 6, 1); g.uniform1f(homeUS.uKalZ, 1);   // T163: the home logo keeps the old fixed shapes (not the tuned ENGINE.kali / julia / kal.zoom)
   g.activeTexture(g.TEXTURE3); g.bindTexture(g.TEXTURE_2D, homeCodeTex); g.uniform1i(homeUS.uCode, 3); g.uniform1f(homeUS.uCodeAmt, 0);
   g.drawArrays(g.TRIANGLES, 0, 3);
   // pass2
