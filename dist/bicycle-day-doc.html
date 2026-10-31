@@ -261,5 +261,5 @@ document.getElementById('en').innerHTML = '<table class="t"><tr><th></th>' + EN.
 const R = ENGINE.ramp;
 document.getElementById('ramp').innerHTML = `Generated music only. Quiet for ${R.quietFrac * 100}% of the piece (max ${R.quiet} s), then ${R.ease} s up to ${R.lv[0] * 100}% of the Energy level. Each next step (${R.lv.slice(1).map(v => v * 100 + '%').join(' → ')}) starts with the next energetic music section, at least ${R.gap} s after the previous one (scaled down for pieces shorter than 10 min). Extreme skips it.`;
 document.getElementById('mus').innerHTML = '<table class="t"><tr><th>choice</th><th>bpm</th><th>heartbeat pulse</th></tr>' + MUSICS.map(m => { const s = STYLES[m]; return `<tr><td><code>${esc(m)}</code></td><td>${s ? s.bpm.join('–') : '—'}</td><td>${s ? (s.nohb ? 'no' : 'yes') : '—'}</td></tr>`; }).join('') + '</table>';
-document.getElementById('foot').textContent = 'Built from sources of 2026-10-31 · c75ff71. ' + EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
+document.getElementById('foot').textContent = 'Built from sources of 2026-10-31 · 71780e1. ' + EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
 </script></body></html>
