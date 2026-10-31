@@ -1,5 +1,7 @@
 # Bicycle Day
 
+[![Bicycle Day: the animated home-screen logo](assets/readme-hero.webp)](https://the023.github.io/bicycle-day/)
+
 **▶ Try it now: https://the023.github.io/bicycle-day/** — nothing to install; runs in your browser.
 
 A generative, psychedelic animation built from your images: a WebGL2 shader (warp, kaleidoscope, feedback trails, colour cycling, fractal styles) driven by sound. The sound is either music the app composes itself (Web Audio synth) or music you bring (a file, another browser tab, the microphone). Single HTML file, no dependencies, nothing is uploaded.
