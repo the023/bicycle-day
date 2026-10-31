@@ -76,11 +76,11 @@ const ARCQ = Q.get('arc') === 'hardcore' ? 'extreme' : Q.get('arc');   // old li
 let PKEY = [];   // T102: piano key/section/bridge change times (song time), filled by pianoScore*() for buildAudio's phrase events (data only)
 let arcName = ARCS[ARCQ] ? ARCQ : 'journey', ARC, KEYS, EMAX = 1, BEATS = [], PH = 0, NOTES = [], MEL = [];
 // music styles. ambient = the original engine (arc drives it, incl. bpm/drive); gnossienne/gymnopedie = piano (swap in the calm 'piano' arc); the others are standalone generators
-// that read energy(u) of the chosen arc but carry their own sections/tempo. bpm = tempo range (energy 0..1) used for BEATS (the picture's pulse); nohb = no heartbeat pulse on the picture.
-const STYLES = { electro: { bpm: [100, 138] }, chiptune: { bpm: [126, 164] }, chiptune2: { bpm: [118, 152] }, drone: { bpm: [60, 80], nohb: 1 }, gamelan: { bpm: [60, 96], nohb: 1 }, minimal: { bpm: [100, 132], nohb: 1 }, berlin: { bpm: [112, 128], nohb: 1 }, lofi: { bpm: [70, 90], nohb: 1 } };   // berlin: one constant tempo per piece, its buildAudio re-lays BEATS on it
-// T164: 'tempest' is switched off (it lags). Code and note data stay; to re-enable add it back here, as a chip in #mus (index.html), in the 15-local.js random pick and in tools/events_vs_picture.py. Not listed = ?music= / saved value / preset fall back to 'ambient'.
-const MUSICS = ['ambient', 'gnossienne', 'gnossienne3', 'gymnopedie', ...Object.keys(STYLES)];
-let MUSIC = MUSICS.includes(Q.get('music')) ? Q.get('music') : (() => { try { const m = JSON.parse(localStorage.getItem('bicycleday.music')); return MUSICS.includes(m) ? m : 'ambient'; } catch (e) { return 'ambient'; } })();
+// that read energy(u) of the chosen arc but carry their own sections/tempo. bpm = tempo range (energy 0..1) used for BEATS (the picture's pulse); nohb = no heartbeat pulse on the picture; trim = master level (buildAudio; default .8, piano 1).
+const STYLES = { electro: { bpm: [100, 138], trim: .72 }, chiptune: { bpm: [126, 164], trim: 1 }, chiptune2: { bpm: [118, 152], trim: 1 }, drone: { bpm: [60, 80], nohb: 1, trim: 1 }, gamelan: { bpm: [60, 96], nohb: 1, trim: 2 }, minimal: { bpm: [100, 132], nohb: 1, trim: .87 }, berlin: { bpm: [112, 128], nohb: 1, trim: 1 }, lofi: { bpm: [70, 90], nohb: 1, trim: .75 } };   // berlin: one constant tempo per piece, its buildAudio re-lays BEATS on it
+const PIANOS = ['gnossienne', 'gnossienne3', 'gymnopedie'];   // piano choices: setArc swaps in the calm 'piano' arc
+const MUSICS = ['ambient', ...PIANOS, ...Object.keys(STYLES)];
+let MUSIC = MUSICS.includes(Q.get('music')) ? Q.get('music') : MUSICS.includes(lsGet('music')) ? lsGet('music') : 'ambient';
 function score(u) {
   let i = 0; while (i < KEYS.length - 2 && u > KEYS[i + 1][0]) i++;
   const [u0, a] = KEYS[i], [u1, b] = KEYS[i + 1], k = smooth(u0, u1, u);
@@ -93,7 +93,7 @@ const energy = u => clamp(energyRaw(u) / EMAX);
 const bpmAt = u => { const [a, b] = Q.get('bpm') ? [BPM0, BPM1] : (STYLES[MUSIC]?.bpm || ARC.bpm || [BPM0, BPM1]); return lerp(a, b, energy(u)); };
 const hbW = u => ARC.piano || STYLES[MUSIC]?.nohb ? 0 : smooth(.05, .2, u) * (1 - smooth(.93, .97, u));
 function setArc(name, pi) {   // arcName = the user's chosen arc; a piano music choice swaps in the calm 'piano' arc (pi)
-  ARC = ARCS[pi && (MUSIC === 'gnossienne' || MUSIC === 'gnossienne3' || MUSIC === 'tempest' || MUSIC === 'gymnopedie') ? 'piano' : name]; KEYS = ARC.keys; EMAX = 1;
+  ARC = ARCS[pi && PIANOS.includes(MUSIC) ? 'piano' : name]; KEYS = ARC.keys; EMAX = 1;
   let m = 0; for (let i = 0; i <= 200; i++) m = Math.max(m, energyRaw(i / 200)); EMAX = m || 1;
   BEATS = []; for (let s = TOTAL * .06; s < TOTAL * .97; s += 60 / bpmAt(s / TOTAL)) BEATS.push(s);   // heartbeat times, shared by sound and picture
 }

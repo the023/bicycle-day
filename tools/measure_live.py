@@ -9,9 +9,10 @@ import argparse, collections, os, subprocess, sys, tempfile, time
 sys.dont_write_bytecode = True   # no __pycache__ in tools/
 HERE = os.path.dirname(os.path.abspath(__file__)); sys.path.insert(0, HERE)
 import measure as M
+from pw import GL_ARGS, NO_SANDBOX
 ROOT = os.path.dirname(HERE)
 URL = "file://" + os.path.join(ROOT, "dist", "bicycle-day.html")
-ARGS = M.ARGS + ["--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--autoplay-policy=no-user-gesture-required"]
+ARGS = GL_ARGS + [NO_SANDBOX, "--use-fake-device-for-media-stream", "--use-fake-ui-for-media-stream", "--autoplay-policy=no-user-gesture-required"]
 STATES = ["build", "drop", "breakdown", "groove", "calm"]
 ZCOLS = [("zoom<.25 %", 2), ("zoom<.5 %", 1), ("zoom>1.5 %", 4)]   # indexes into M.stats()["zoom"] = (<.7, <.5, <.25, min, >1.5)
 

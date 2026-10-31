@@ -6,16 +6,16 @@ usage: python3 tools/smoke.py     (needs playwright)
        SMOKE_HEADED=1 python3 tools/smoke.py     watch it: visible browser, slowed down (SMOKE_SLOW=ms per action, default 600)"""
 import os, sys, time
 from playwright.sync_api import sync_playwright
+from pw import capture_errors, launch
 root = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 base = 'file://' + root + '/dist/bicycle-day.html'
-args = ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--autoplay-policy=no-user-gesture-required']
 t0 = time.time(); fails = []
 def check(name, ok, detail=''):
     print(('PASS ' if ok else 'FAIL ') + name + (('  (' + str(detail) + ')') if detail != '' else '')); ok or fails.append(name)
 with sync_playwright() as p:
     HEADED = os.environ.get('SMOKE_HEADED') == '1'
-    b = p.chromium.launch(args=args, headless=not HEADED, slow_mo=int(os.environ.get('SMOKE_SLOW', 600)) if HEADED else 0); pg = b.new_context(viewport={'width': 1280, 'height': 720}).new_page(); errs = []
-    pg.on('console', lambda m: errs.append(m.text) if m.type == 'error' else None); pg.on('pageerror', lambda e: errs.append('PAGEERR ' + str(e)))
+    b = launch(p, drop=('--no-sandbox',), headless=not HEADED, slow_mo=int(os.environ.get('SMOKE_SLOW', 600)) if HEADED else 0); pg = b.new_context(viewport={'width': 1280, 'height': 720}).new_page()
+    errs = capture_errors(pg)
     pg.goto(base + '?quality=low&res=.1'); pg.wait_for_timeout(1000)
     check('home: no error', not errs, errs[:3])
     try:

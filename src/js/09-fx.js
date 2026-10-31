@@ -61,13 +61,12 @@ function showcaseParams(p, t) {   // pure function of t and the tune state: neut
   if (i !== fxShown) { fxShown = i; TUNE.i = i; const lb = $('fxlabel'); lb.className = FX[i].cls || ''; lb.textContent = (i + 1) + '/' + FX.length + ' · ' + FX[i].name; fxPanelMark(i); tuneShow(i); }
 }
 
-const GROUPS = ['zoom', 'kal', 'warp', 'tile', 'tun', 'glitch', 'rot', 'strobe', 'kali', 'julia'];
 const tq = id => document.getElementById(id);   // ($ is defined later in the file order)
 const TUNE_G = f => { for (const k of f) { if (k === 'fb') return null; if (k === 'kali') return 'kali'; if (k === 'julia') return 'julia'; if (k === 'zoom') return 'zoom'; if (k === 'kal' || k === 'fold') return 'kal'; if (k === 'warp') return 'warp'; if (k.startsWith('tile')) return 'tile'; if (k === 'tun') return 'tun'; if (k === 'glitch') return 'glitch'; if (k === 'rot') return 'rot'; if (k === 'strobe') return f.includes('sNeg') || f.includes('rate1') ? null : 'strobe'; } return null; };   // T161: the strobe variants play their own FX entry, not the group's plain stretch
 
 function tuneLeaves(g) { const o = [], d = g === 'rot' ? Object.fromEntries(['spinBase', 'spinKal', 'spinWob'].map(k => [k, ENGINE.kal[k]])) : ENGINE[g]; for (const k in d) { const src = g === 'rot' ? ENGINE.kal : d; if (Array.isArray(d[k])) d[k].forEach((_, j) => o.push([k + '[' + j + ']', src[k], j])); else o.push([k, src, k]); } return o; }
 function tuneDiff() { const out = {}; for (const g of ['zoom', 'kal', 'warp', 'tile', 'tun', 'glitch', 'strobe', 'kali', 'julia']) for (const k in ENGINE[g]) { if (JSON.stringify(ENGINE[g][k]) !== JSON.stringify(ENGINE_DEF[g][k])) (out[g] || (out[g] = {}))[k] = ENGINE[g][k]; } return out; }   // (rotation sliders live in kal.spin*; the tune-only values pause / direction / tile mode are not ENGINE leaves and are not exported)
-function tuneSave() { const d = tuneDiff(), j = JSON.stringify(d); try { if (Object.keys(d).length) localStorage.setItem('bicycleday.engine', j); else localStorage.removeItem('bicycleday.engine'); } catch (e) {} const x = tq('tuneout'); if (x) x.value = Object.keys(d).length ? j : '{}'; return j; }
+function tuneSave() { const d = tuneDiff(), j = JSON.stringify(d); if (Object.keys(d).length) lsSet('engine', d); else lsDel('engine'); const x = tq('tuneout'); if (x) x.value = Object.keys(d).length ? j : '{}'; return j; }
 // Curated sliders (plain names). p = [group, leaf(, index)] in ENGINE; pair = moves both ends of an [a, b] range (shown = the mean); arr = scales a list; ks = scales several leaves of the group together (shown = the first); o = a tune-only value on TUNE (not an ENGINE leaf); rs = timing: the loop restarts on release
 const TUNE_CUR = {
   zoom: [

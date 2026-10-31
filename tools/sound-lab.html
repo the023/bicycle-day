@@ -112,7 +112,7 @@ const V = {
   pianoLH: { name: 'Piano main gauche', xl: 'Marteau', x: .5, kind: 'bass', play(t, f, v, d, p, o) { V.piano.play(t, f, v, d, p, o, 1); } },
   pianoCh: { name: 'Piano accords', xl: 'Marteau', x: .5, kind: 'pad', play(t, f, v, d, p, o) { V.piano.play(t, f, v * .8, d, p, o); } },
 };
-// ── minimal (T22): copies of the voices of [[STYLE minimal]] in 11-sound.js. Defaults (sliders at default) = the app's constants.
+// ── minimal (T22): copies of the voices of [[STYLE minimal]] in 11f-minimal.js. Defaults (sliders at default) = the app's constants.
 const E8 = () => 60 / +$('bpm').value / 2;   // one eighth, in seconds
 let pwc = { ac: null };
 const PWV = (n, arr) => { if (pwc.ac !== ac) pwc = { ac }; return pwc[n] ||= ac.createPeriodicWave(new Float32Array(arr.length), new Float32Array(arr), { disableNormalization: false }); };
@@ -138,7 +138,7 @@ Object.assign(V, {
   mpad: { name: 'Nappe clarinette / ooh', xl: 'Désaccord', x: .5, kind: 'pad', test: { m: 53, v: .045, d: 3, ch: [48, 55, 60, 64] }, k: 0, play(t, f, v, d, p, o) { const e = t + d + 1.5, lp = flt('lowpass', o, 1500 * p.B, .4), g = sus(t, Math.min(.9, d / 3), v, d, 1.2, lp), w = V.mpad.k++ % 2 ? OOH() : CLAR(), lf = osc('sine', 4.6, t, e), lg = ac.createGain(); lg.gain.value = 5; lf.connect(lg);
     for (const z of [-1, 1]) { const x = wosc(w, f, t, e, 8 * p.x * z); lg.connect(x.detune); x.connect(g); } } },
 });
-// constants of 11-sound.js for the "Réglages" block (names as in the app; the slider factors are applied to the defaults)
+// constants of 11f-minimal.js for the "Réglages" block (names as in the app; the slider factors are applied to the defaults)
 const minExp = () => { const R = {}, g = id => { const s = vst(id), p = pOf(id); return { s, p, lv: s.lvl / .8 }; };
   for (const [id, k] of [['mar1', 'm1'], ['mar2', 'm2'], ['vib', 'vib']]) { const { s, p, lv } = g(id), V0 = V[id]; R['MI.' + k] = { A: +(V0.A * lv).toFixed(4), 'P[1] amp': +(V0.P4 * s.x / V0.x).toFixed(3), 'P[1] decay factor': V0.df4, atk: id === 'vib' ? .003 : .002, 'duration x': +p.L.toFixed(2), 'brightness x (mlp 2500+3500*bright)': +p.B.toFixed(2), pitch: s.pit }; }
   { const { s, p, lv } = g('ep'); R['MI.ep'] = { A: +(.16 * lv).toFixed(4), 'FM index (e.f*(.8+1.6*v)) x': +(2 * s.x).toFixed(2), 'duration x': +p.L.toFixed(2), 'brightness x': +p.B.toFixed(2), pitch: s.pit }; }
@@ -177,7 +177,7 @@ const VEL = { lead: .22, arp: .1, bass: .3, pad: .1, kick: .55, snare: .3, hat: 
 let st = 'electro2', S = {}, ROLE = {}, MUTE = {}, bus = {};
 try { S = JSON.parse(localStorage.getItem('soundlab.v1')) || {}; } catch (e) { }
 const save = () => { try { localStorage.setItem('soundlab.v1', JSON.stringify(S)); } catch (e) { } $('out').value = JSON.stringify({ style: st, bpm: +$('bpm').value, roles: ROLE, voices: S[st], consts: STY[st].exp && STY[st].exp() }, null, 1); };
-// owner's ear-tuned defaults (2026-10-18): reopening the lab plays these (same values as MSET in 11-sound.js)
+// owner's ear-tuned defaults (2026-10-18): reopening the lab plays these (same values as MSET in 11f-minimal.js)
 const TUNED = { minimal: { mar1: { lvl: .24, tone: .1, len: .25, x: .89, sat: .56 }, mar2: { lvl: .27, tone: .88, len: .11, x: .8, sat: .24 }, vib: { lvl: .52, tone: .83, len: .32, x: .4, sat: .08 }, ep: { lvl: .8, tone: .5, len: 1, x: .91, sat: 0 },
   pulse: { lvl: .45, tone: .5, len: .5, x: .78, sat: .14 }, mbass: { lvl: .8, tone: .5, len: .5, x: .5, sat: 0 }, mpad: { lvl: .18, tone: .21, len: .5, x: 1, sat: .54 } } };
 const vst = id => { const o = (S[st] ||= {})[id] ||= {}; for (const [k, d] of Object.entries({ lvl: .8, tone: .5, len: .5, x: V[id].x, sat: 0, pit: 0, ...(TUNED[st] || {})[id] })) if (typeof o[k] !== 'number') o[k] = d; return o; };   // fills keys missing from older saved settings

@@ -1,6 +1,6 @@
 // WebM fix (T169): MediaRecorder's WebM has no Duration, no Cues and unknown-size Segment / Clusters, so players show a broken timeline and cannot seek.
 // webmFix(arrayBuffer|Uint8Array) -> Uint8Array: rewrites it as EBML header, Segment (known size) { SeekHead, Info + Duration, Tracks, Cues (one per Cluster), Clusters (known size) }; any parse problem returns the input unchanged, never throws.
-// (File order: sorts after 12-transport.js, fine: a function declaration, only called at runtime.)
+// (File order: after the other 12* files, fine: a function declaration, only called at runtime.)
 function webmFix(buf) {
   const src = buf instanceof Uint8Array ? buf : new Uint8Array(buf);
   function vint(b, p, keepMark) {   // EBML varint at p -> { n value (id: marker kept), len, unk (all value bits 1 = unknown size) }

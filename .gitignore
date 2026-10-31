@@ -15,3 +15,9 @@ notes/
 
 # local media, never committed
 assets/midi/
+
+# Python caches
+__pycache__/
+
+# fingerprint.py baseline (tools/fingerprint.py)
+tools/.fingerprint.json

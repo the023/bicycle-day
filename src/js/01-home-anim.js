@@ -16,5 +16,4 @@ const HOME_ABER = 0.1;          // aberration (param)
 const HOME_ZOOM_WOB = 0.02;       // tiny zoom wobble factor
 const HOME_FB = 0.02;            // weak feedback trails
 const HOME_ANCHOR = 0.06;        // faint source anchor
-const HOME_ROTT = 0.0;            // very slow rotation (kept 0 to stay readable)
 

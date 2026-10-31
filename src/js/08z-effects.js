@@ -3,7 +3,7 @@
      sc: 1     the showcase baseline sets it (showcaseParams)
      quiet: v  its value in the manual-level base QUIET (only where it differs from nothing/neutral)
    min/max are deliberately loose (shader safety net, never reached in normal play); ?debug=1 warns once per field when clampP had to act.
-   EFFECTS = one row per user-facing effect (pupitre cell + key). CT_KEYS, LVK, PEFF, PMOOD, PSNAP, PMAX are derived from it (10-control.js, 12-transport.js).
+   EFFECTS = one row per user-facing effect (pupitre cell + key). CT_KEYS and LVK are derived from it in 10-control.js; PEFF, PMOOD, PSNAP, PMAX in 12d-pult.js.
    Adding an effect = one FX entry (09-fx.js, with desc + fields) + one EFFECTS row here (+ its PF fields if it needs a new one). */
 const PF = {
   t:        { neutral: 0,   min: -1e6, max: 1e8 },
@@ -54,6 +54,17 @@ const PF = {
   grid:     { neutral: 4,   min: 1,    max: 64 },
   glitch:   { neutral: 0,   min: -1,   max: 5 },
 };
+// Energy (0 calm .. 4 extreme): the ONE user setting of the picture in auto. [arc offset (old Intensity x .25), global amount (old Effects), extreme blend (old Extreme / hk)]
+// T134: big = the 'big moves' (tiles, tunnel, glitch, blaze, zoom pulses / punches, the section boost of surges), strobe = the strobe mood: both only calm / soft, generated auto only (the other sources and control levels use 1)
+// T147 (generated auto): trn = the shortest scene transition (s) at each Energy (no hard cut at calm / soft); moodRamp = the ease-in / out time (s) of the dark / bw / blaze / strobe moods.
+// T143 (generated auto, Energy 0-3): the 'light set' = which of Kali, Julia, kaleidoscope, tiles are on, drawn per scene window (lightSet() in 10b-clock.js). lsN = chance of 0 / 1 / 2 / 3 of them (max count calm 2, soft 2, normal 3; mean about 1 / 1.3 / 2);
+// lsLv = strength of a picked one as a fraction range of its `light` level (VIS: calm between visible and light, soft up to light, normal around the engine); lsFirst = this many windows share the first set (slow start);
+// lsw = 1 where the set decides alone (calm, soft: the arc no longer drives these four), 0 where it only adds a floor to the engine (normal, strong); capK x `light` = the soft cap (knee `knee`) on warp, melt, stretch, trails, glitch while lsw is 1
+// T151 (Live / Local auto): presence pr = lp[E] x lpS[E][0] in a calm section x lpS[E][1] in a breakdown / calm state, eased (down >= lpT s, up lpT / 3); it scales warp, trails (pr ** lpX[0]), melt (pr ** lpX[1]), aberration (floor included) and stretch (no floor in Live / Local auto: st = [slope, u where it starts]), so they drop below visible in quiet parts and with a low Energy (Local: only lpL of it, its loudness already follows the file) and a drop at normal / strong stays as before
+// T153 (Live / Local Extreme): hcAb = [x, +] on the aberration, the generated Extreme keeps 1.8 / .4 (the SRCGAIN gains below 1 also apply in Extreme now)
+// T150 (Live / Local auto): lsNL = lsN for them (lighter: no slow start thins the set out), lsTL = share of the scenes that draw tiles which keep them (calm .4, soft .7); a member is divided by its SRCGAIN factor so the set strength is what ends up in P
+// T157 (Live / Local auto): acc = chance per accent unit of [strobe, checkerboard, glitch rush, zoom push, warp rise] by Energy (the rest of the units get none); strobe / checkerboard only in builds and energetic grooves, never in breakdown / calm (ENGINE.acc, accUnit)
+const EN = { off: [-.25, -.12, 0, .12, .25], offG: [-.35, -.23, 0, .12, .25], amp: [.55, .8, 1, 1.15, 1.25], big: [.35, .6, 1, 1, 1], strobe: [0, .5, 1, 1, 1], hc: [0, 0, 0, 0, 1], trn: [3, 1, 0, 0, 0], moodRamp: [5, 2.5, 1.5, 1.5, 1.5], lsN: [[.05, .6, .35], [0, .4, .6], [0, .35, .55, .1], [0, .35, .55, .1], [0, .35, .55, .1]], lsTL: [.4, .7, 1, 1, 1], lsNL: [[.55, .4, .05], [.35, .5, .15], [.3, .5, .2], [.3, .5, .2], [.3, .5, .2]], lsLv: [[.4, .85], [.6, 1], [.8, 1.2], [.8, 1.2], [.8, 1.2]], lsFirst: 2, lsw: [1, 1, 0, 0, 0], capK: [1, 1.5, 1.5, 1.5, 1.5], knee: .5, lp: [.6, .7, 1, 1, 1], lpS: [[.6, .8], [.6, .8], [.5, .75], [.65, .82], [.65, .82]], lpT: 1.5, lpL: .5, hcAb: [1.1, .2], lpX: [1.3, .5], st: [1.4, .45], acc: [[0, 0, .1, 0, .1], [0, 0, .2, .1, .15], [.08, .08, .25, .15, .15], [.2, .2, .2, .1, .1], [.15, .15, .2, .05, .05]], names: ['calm', 'soft', 'normal', 'strong', 'extreme'] };
 // T110: ENGINE = the limits the generated engine plays inside (defaults = the numbers that used to be literals). Ranges are [a, b]. ENGINE.v is bumped on every change (caches keyed on PH/TOTAL also check it).
 // ?engine=<json> (testing) deep-merges a partial object at load, e.g. ?engine={"zoom":{"min":0.5}}.
 const ENGINE = {
@@ -87,6 +98,13 @@ const ENGINE = {
   // T147: picture pace follows the music (generated auto). Interval = lerp(calm, lively, smooth(e[0], e[1], energy)); energy = the plan's section energy (planE), else the arc energy(u). minor / scene = [calm, lively] seconds
   // between minor look changes / scene changes (the clock path: ambient, piano; a scene follows the plan's sections when there is one). keep x interval = the shortest gap kept between the music's own fill / phrase events (plan styles). calmAmp = minor punch strength at calm (1 at lively).
   pace: { e: [.3, .7], minor: [28, 11], scene: [70, 40], keep: .9, calmAmp: .6 },
+  // T186 scene / surge / camera literals (defaults = the old numbers). scene: TRN pools (s) the engine draws a scene's transition time from (trnRamp = slow start, trnHc = Extreme, trnEnergetic / trnCalm = by section kind), decay = scene punch decay with a fixed
+  // transition (CL / showcase), decayMin = its floor (else max(decayMin, TRN / 2)), minorDecay = minor-change envelope decay, period = scene period (s, no plan / pace), minor = minor-change period (s, no Extreme).
+  scene: { trnRamp: [5, 10], trnHc: [0, 0, 1], trnEnergetic: [0, 1, 1, 3], trnCalm: [3, 5, 10], decay: 1.4, decayMin: .6, minorDecay: 1.2, period: 45, minor: 15 },
+  // surge timeline (timelines()): rise / fall / h (peak) / gap = ranges (s; h 0..1) in normal and (hc) Extreme; firstHc = start of the first Extreme surge; evFall = fall of a surge made from a music riser; horizon = length of the surge / mood / tunnel timelines (s)
+  surge: { rise: [15, 30], fall: [6, 14], h: [.5, 1], gap: [4, 25], hc: { rise: [6, 10], fall: [4, 8], h: [.6, 1], gap: [15, 30] }, firstHc: [1, 3], evFall: [6, 15], horizon: 7200 },
+  // camera tilt amplitude: Live = (tilt energetic scene, tiltCalm) x (1 + stateK x (state[st] / stateRef - 1)), stateElse for any other state; generated / Local = tiltArc x smooth(.2, .5, arc position); tunDrop / tunBuild = Live tunnel on a drop / a strong build
+  cam: { tilt: .26, tiltCalm: .08, tiltArc: .18, stateK: .3, state: { drop: .32, groove: .26, build: .2 }, stateElse: .1, stateRef: .26, tunDrop: .85, tunBuild: .5 },
   tun: { first: [70, 110], firstRamp: [10, 40], dur: [9, 16], gap: [70, 160], easeIn: 2.5, easeOut: 3 },   // generated tunnel stretches (s)
   // T133: generated start = a stepped ramp (rampIn): quiet until min(quiet, quietFrac * TOTAL) s, then `ease` s up to lv[0], then each next level at the start of the next energetic section (e >= .4) at least `gap` s after the previous step (times x min(1, TOTAL / 600)).
   // Without a section plan (ambient, piano) the same steps run on the clock: sec / secLv = points [seconds, level] (smooth between). floor = the plan mode never falls below the no-plan curve with times x floor. strong (Energy 3) = shorter: times x k, levels lv.
@@ -99,7 +117,6 @@ const ENGINE = {
 // Not applied to zoom (pulses are normalised in T113), moods, stretch, ab, glitch; not in showcase or manual level. T153: Extreme (hcOn, Energy 4) takes the gains below 1 too (Local / Live warp .6, kal .67, fb .5, tun .5 were dropped there, so warp jumped x1.67 from strong to Extreme); generated has no entries, so generated Extreme is unchanged.
 // Derivation (tools/measure.py): gain = (generated mean at Energy 2) / (source mean at Energy 2), clamped to [0.5, 4]; means over 3 seeds (generated, ambient, t=600) and over Local test tracks
 // (a 600 s synthetic 14-25 scene track, a 600 s cut of a real DJ set, a 97 s real track). gen = 1 by definition (its picture must not change). Live has no measurement: it uses Local's gains.
-const SRCGAIN_FIELDS = ['warp', 'kal', 'fb', 'melt', 'tile', 'kali', 'julia', 'tun'];
 const SRCGAIN = {
   gen:  {},
   loc:  { warp: .6, kal: .67, fb: .5, melt: .87, tile: 3.7, tun: .5 },   // measured Energy 2, mean of 3 tracks: warp .52 kal .06 fb .41 melt .17 tile .09 tun .17 vs generated .31 / .04 / .21 / .15 / .32 / .06 (tun wants ×.35, held by the floor)
@@ -116,7 +133,7 @@ function srcGainMul(src, k) { const m = srcGainTable(src)[k]; if (m === undefine
 function srcGainText(src) { const g = srcGainTable(src), o = []; for (const k in g) { const m = Math.min(SRCGAIN_MAX, Math.max(SRCGAIN_MIN, g[k])); if (m !== 1) o.push(k + ' \u00d7' + +m.toFixed(2)); } return o.join(' '); }
 const ENGINE_DEF = JSON.parse(JSON.stringify(ENGINE));   // T111: the code defaults (the tuning panel exports the diff against these)
 const engMerge = (d, s) => { for (const k in s) { if (s[k] && typeof s[k] === 'object' && !Array.isArray(s[k]) && d[k] && typeof d[k] === 'object') engMerge(d[k], s[k]); else d[k] = s[k]; } };
-if (Q.get('tune') || Q.get('showcase')) { try { const m = localStorage.getItem('bicycleday.engine'); if (m) { engMerge(ENGINE, JSON.parse(m)); ENGINE.v++; } } catch (e) {} }   // T111: only with ?tune=1 (the normal app keeps the code defaults); ?engine= below wins
+if (Q.get('tune') || Q.get('showcase')) { try { const m = lsGet('engine'); if (m) { engMerge(ENGINE, m); ENGINE.v++; } } catch (e) {} }   // T111: only with ?tune=1 (the normal app keeps the code defaults); ?engine= below wins
 { const m = Q.get('engine'); if (m) { try { engMerge(ENGINE, JSON.parse(m)); ENGINE.v++; } catch (e) { console.warn('?engine: bad JSON', e); } } }
 const PFK = Object.keys(PF), PFWARNED = {};
 function pfNeutral(p) { for (const q of PFK) if (q !== 't' && q !== 'grid') { const d = PF[q].neutral; p[q] = Array.isArray(d) ? d.slice() : d; } }   // the PF neutral baseline (plain image): showcaseParams and the ?neutral=1 test hook
@@ -124,7 +141,7 @@ function pfNeutral(p) { for (const q of PFK) if (q !== 't' && q !== 'grid') { co
 const PNEUTRAL = Q.get('neutral') === '1', PSET = (() => { const o = {}, s = Q.get('pset'); if (s) for (const kv of s.split(',')) { const [k, v] = kv.split(':'); if (k in PF && v !== undefined && isFinite(+v)) o[k] = +v; } return o; })(), PSETN = Object.keys(PSET).length;
 function pfWarn(k, v) { if (PFWARNED[k]) return; PFWARNED[k] = 1; console.warn('P.' + k + ' out of range or NaN:', v, '(allowed ' + PF[k].min + '..' + PF[k].max + ')'); }
 function clampP(P) {   // once per frame at the end of render(); no allocation
-  const dbg = Q.has('debug');
+  const dbg = TQ.debug;
   for (let i = 0; i < PFK.length; i++) {
     const k = PFK[i], d = PF[k], v = P[k];
     if (typeof d.neutral === 'number') {

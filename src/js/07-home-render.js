@@ -44,12 +44,6 @@ function homeBase(t) {   // gentle-level multiplier for the background motion
 }
 function homeGlitch(t) { return homeReduced || t >= HOME_INTRO + 1 ? 0 : (.05 + .2 * smooth(0, HOME_INTRO, t)) * (1 - smooth(HOME_INTRO - 2, HOME_INTRO + 1, t)); }
 function homeTimelineTable(upTo) { homeSegs(upTo); return HOME_SEGS.filter(s => s.a < upTo).map(s => `${s.a.toFixed(1)}-${s.b.toFixed(1)} ${s.strong ? 'STRONG ' + s.fx.map(f => HOME_GEO[f[0]][0]).concat(HOME_COL[s.col][0]).join(' + ') : 'calm'}`); }
-function khprog(g, fs) {
-  const mk = (type, src) => { const sh = g.createShader(type); g.shaderSource(sh, src); g.compileShader(sh); if (!g.getShaderParameter(sh, g.COMPILE_STATUS)) throw new Error(g.getShaderInfoLog(sh)); return sh; };
-  const p = g.createProgram(); g.attachShader(p, mk(g.VERTEX_SHADER, VS)); g.attachShader(p, mk(g.FRAGMENT_SHADER, fs)); g.linkProgram(p);
-  if (!g.getProgramParameter(p, g.LINK_STATUS)) throw new Error(g.getProgramInfoLog(p)); return p;
-}
-function homeLocs(g, p, names) { const u = {}; names.forEach(n => u[n] = g.getUniformLocation(p, n)); return u; }
 function initHomeGL(canvas) {
   if (!canvas) return;
   homeCanvas = canvas;
@@ -57,12 +51,11 @@ function initHomeGL(canvas) {
   if (!homeGL) { console.log('home: WebGL2 unavailable'); return; }
   const g = homeGL;
   try {
-    homeProgS = khprog(g, FS_SCENE); homeProgD = khprog(g, FS_SHOW);
-    homeUS = homeLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uTileSize','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uKaliP','uJuliaP','uKalZ','uCode','uCodeAmt']);
-    homeUD = homeLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells','uGrid','uGlitch','uGSeed']);
+    homeProgS = glProg(g, FS_SCENE); homeProgD = glProg(g, FS_SHOW);
+    homeUS = glLocs(g, homeProgS, ['uTex','uTex2','uImgMix','uPrev','uRes','uT','uWarp','uKal','uKalN','uFb','uFbHue','uHue','uPal','uSide','uBreath','uMelt','uZoom','uRot','uAber','uPulse','uBright','uAspect','uAnchor','uTile','uTileN','uTileMode','uTileSeed','uTileSize','uMono','uCenter','uRip','uPalC','uPalD','uHueAmt','uTilt','uTT','uSrcZ','uSrcRot','uStretch','uTunnel','uWarpN','uFx','uKali','uJulia','uKaliP','uJuliaP','uKalZ','uCode','uCodeAmt']);
+    homeUD = glLocs(g, homeProgD, ['uTex','uRes','uT','uAber','uPulse','uHi','uFx','uDark','uBlaze','uStrobe','uRate','uCells','uGrid','uGlitch','uGSeed']);
     // blank code texture
-    const ct = g.createTexture(); g.bindTexture(g.TEXTURE_2D, ct); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
+    const ct = glTex(g, g.CLAMP_TO_EDGE); g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, 1, 1, 0, g.RGBA, g.UNSIGNED_BYTE, new Uint8Array(4));
     // store on a global-ish via homeCodeTex
     homeCodeTex = ct;
     makeHomeTargets();
@@ -71,31 +64,20 @@ function initHomeGL(canvas) {
 let homeCodeTex = null;
 function makeHomeTargets() {
   const g = homeGL; if (!g) return;
-  homeTex.forEach(t => g.deleteTexture(t)); homeFbo.forEach(f => g.deleteFramebuffer(f)); homeTex.length = 0; homeFbo.length = 0;
+  homeTex.forEach(t => g.deleteTexture(t)); homeFbo.forEach(f => g.deleteFramebuffer(f));
   homeCur = 0;
   const res = parseFloat(Q.get('res')) || QUAL[quality].res;
   homeW = Math.max(16, Math.round(640 * res)); homeH = Math.max(16, Math.round(homeW / homeAspect));
-  const half = !!g.getExtension('EXT_color_buffer_float');
-  for (let i = 0; i < 2; i++) {
-    const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
-    g.texImage2D(g.TEXTURE_2D, 0, half ? g.RGBA16F : g.RGBA8, homeW, homeH, 0, g.RGBA, half ? g.HALF_FLOAT : g.UNSIGNED_BYTE, null);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.CLAMP_TO_EDGE); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.CLAMP_TO_EDGE);
-    const f = g.createFramebuffer(); g.bindFramebuffer(g.FRAMEBUFFER, f); g.framebufferTexture2D(g.FRAMEBUFFER, g.COLOR_ATTACHMENT0, g.TEXTURE_2D, t, 0);
-    g.clearColor(0, 0, 0, 1); g.clear(g.COLOR_BUFFER_BIT); homeTex.push(t); homeFbo.push(f);
-  }
-  g.bindFramebuffer(g.FRAMEBUFFER, null);
+  ({ tex: homeTex, fbo: homeFbo } = pingPong(g, homeW, homeH));
 }
 function loadHomeLogo(src, done) {
   if (!homeGL) { done && done(); return; }
   const g = homeGL;
   const img = new Image();
   img.onload = () => {
-    const t = g.createTexture(); g.bindTexture(g.TEXTURE_2D, t);
+    const t = glTex(g, g.MIRRORED_REPEAT, true);
     g.pixelStorei(g.UNPACK_FLIP_Y_WEBGL, true);
     g.texImage2D(g.TEXTURE_2D, 0, g.RGBA, g.RGBA, g.UNSIGNED_BYTE, img); g.generateMipmap(g.TEXTURE_2D);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MIN_FILTER, g.LINEAR_MIPMAP_LINEAR); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_MAG_FILTER, g.LINEAR);
-    g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_S, g.MIRRORED_REPEAT); g.texParameteri(g.TEXTURE_2D, g.TEXTURE_WRAP_T, g.MIRRORED_REPEAT);
     homeTexImg = t; homeAspect = img.naturalWidth / img.naturalHeight;
     if (homeCanvas) { homeCanvas.width = 960; homeCanvas.height = Math.round(960 / homeAspect); }
     makeHomeTargets();

@@ -61,7 +61,7 @@
 <p class="lead" id="ramp"></p>
 
 <h2>Music</h2>
-<p class="lead">Piano pieces (calm arc) and generated synth styles. Each style is a branch of <code>buildAudio</code>; <code>bpm</code> is its tempo range, <code>nohb</code> = no heartbeat pulse in the picture.</p>
+<p class="lead">Piano pieces (calm arc) and generated synth styles. Each style is its own file (<code>src/js/11a-electro.js</code> … <code>11h-lofi.js</code>, <code>STYLE_FN</code> called by <code>buildAudio</code>); <code>bpm</code> is its tempo range, <code>nohb</code> = no heartbeat pulse in the picture.</p>
 <div id="mus"></div>
 
 <h2>Invariants</h2>
@@ -74,8 +74,9 @@
 <p class="small" id="foot"></p>
 </main>
 <script>
-const STYLES = { electro: { bpm: [100, 138] }, chiptune: { bpm: [126, 164] }, chiptune2: { bpm: [118, 152] }, drone: { bpm: [60, 80], nohb: 1 }, gamelan: { bpm: [60, 96], nohb: 1 }, minimal: { bpm: [100, 132], nohb: 1 }, berlin: { bpm: [112, 128], nohb: 1 }, lofi: { bpm: [70, 90], nohb: 1 } };   // berlin: one constant tempo per piece, its buildAudio re-lays BEATS on it
-const MUSICS = ['ambient', 'gnossienne', 'gnossienne3', 'gymnopedie', ...Object.keys(STYLES)];
+const STYLES = { electro: { bpm: [100, 138], trim: .72 }, chiptune: { bpm: [126, 164], trim: 1 }, chiptune2: { bpm: [118, 152], trim: 1 }, drone: { bpm: [60, 80], nohb: 1, trim: 1 }, gamelan: { bpm: [60, 96], nohb: 1, trim: 2 }, minimal: { bpm: [100, 132], nohb: 1, trim: .87 }, berlin: { bpm: [112, 128], nohb: 1, trim: 1 }, lofi: { bpm: [70, 90], nohb: 1, trim: .75 } };   // berlin: one constant tempo per piece, its buildAudio re-lays BEATS on it
+const PIANOS = ['gnossienne', 'gnossienne3', 'gymnopedie'];   // piano choices: setArc swaps in the calm 'piano' arc
+const MUSICS = ['ambient', ...PIANOS, ...Object.keys(STYLES)];
 const EN = { off: [-.25, -.12, 0, .12, .25], offG: [-.35, -.23, 0, .12, .25], amp: [.55, .8, 1, 1.15, 1.25], big: [.35, .6, 1, 1, 1], strobe: [0, .5, 1, 1, 1], hc: [0, 0, 0, 0, 1], trn: [3, 1, 0, 0, 0], moodRamp: [5, 2.5, 1.5, 1.5, 1.5], lsN: [[.05, .6, .35], [0, .4, .6], [0, .35, .55, .1], [0, .35, .55, .1], [0, .35, .55, .1]], lsTL: [.4, .7, 1, 1, 1], lsNL: [[.55, .4, .05], [.35, .5, .15], [.3, .5, .2], [.3, .5, .2], [.3, .5, .2]], lsLv: [[.4, .85], [.6, 1], [.8, 1.2], [.8, 1.2], [.8, 1.2]], lsFirst: 2, lsw: [1, 1, 0, 0, 0], capK: [1, 1.5, 1.5, 1.5, 1.5], knee: .5, lp: [.6, .7, 1, 1, 1], lpS: [[.6, .8], [.6, .8], [.5, .75], [.65, .82], [.65, .82]], lpT: 1.5, lpL: .5, hcAb: [1.1, .2], lpX: [1.3, .5], st: [1.4, .45], acc: [[0, 0, .1, 0, .1], [0, 0, .2, .1, .15], [.08, .08, .25, .15, .15], [.2, .2, .2, .1, .1], [.15, .15, .2, .05, .05]], names: ['calm', 'soft', 'normal', 'strong', 'extreme'] };
 const PF = {
   t:        { neutral: 0,   min: -1e6, max: 1e8 },
@@ -157,6 +158,13 @@ const ENGINE = {
   // T147: picture pace follows the music (generated auto). Interval = lerp(calm, lively, smooth(e[0], e[1], energy)); energy = the plan's section energy (planE), else the arc energy(u). minor / scene = [calm, lively] seconds
   // between minor look changes / scene changes (the clock path: ambient, piano; a scene follows the plan's sections when there is one). keep x interval = the shortest gap kept between the music's own fill / phrase events (plan styles). calmAmp = minor punch strength at calm (1 at lively).
   pace: { e: [.3, .7], minor: [28, 11], scene: [70, 40], keep: .9, calmAmp: .6 },
+  // T186 scene / surge / camera literals (defaults = the old numbers). scene: TRN pools (s) the engine draws a scene's transition time from (trnRamp = slow start, trnHc = Extreme, trnEnergetic / trnCalm = by section kind), decay = scene punch decay with a fixed
+  // transition (CL / showcase), decayMin = its floor (else max(decayMin, TRN / 2)), minorDecay = minor-change envelope decay, period = scene period (s, no plan / pace), minor = minor-change period (s, no Extreme).
+  scene: { trnRamp: [5, 10], trnHc: [0, 0, 1], trnEnergetic: [0, 1, 1, 3], trnCalm: [3, 5, 10], decay: 1.4, decayMin: .6, minorDecay: 1.2, period: 45, minor: 15 },
+  // surge timeline (timelines()): rise / fall / h (peak) / gap = ranges (s; h 0..1) in normal and (hc) Extreme; firstHc = start of the first Extreme surge; evFall = fall of a surge made from a music riser; horizon = length of the surge / mood / tunnel timelines (s)
+  surge: { rise: [15, 30], fall: [6, 14], h: [.5, 1], gap: [4, 25], hc: { rise: [6, 10], fall: [4, 8], h: [.6, 1], gap: [15, 30] }, firstHc: [1, 3], evFall: [6, 15], horizon: 7200 },
+  // camera tilt amplitude: Live = (tilt energetic scene, tiltCalm) x (1 + stateK x (state[st] / stateRef - 1)), stateElse for any other state; generated / Local = tiltArc x smooth(.2, .5, arc position); tunDrop / tunBuild = Live tunnel on a drop / a strong build
+  cam: { tilt: .26, tiltCalm: .08, tiltArc: .18, stateK: .3, state: { drop: .32, groove: .26, build: .2 }, stateElse: .1, stateRef: .26, tunDrop: .85, tunBuild: .5 },
   tun: { first: [70, 110], firstRamp: [10, 40], dur: [9, 16], gap: [70, 160], easeIn: 2.5, easeOut: 3 },   // generated tunnel stretches (s)
   // T133: generated start = a stepped ramp (rampIn): quiet until min(quiet, quietFrac * TOTAL) s, then `ease` s up to lv[0], then each next level at the start of the next energetic section (e >= .4) at least `gap` s after the previous step (times x min(1, TOTAL / 600)).
   // Without a section plan (ambient, piano) the same steps run on the clock: sec / secLv = points [seconds, level] (smooth between). floor = the plan mode never falls below the no-plan curve with times x floor. strong (Energy 3) = shorter: times x k, levels lv.
@@ -253,5 +261,5 @@ document.getElementById('en').innerHTML = '<table class="t"><tr><th></th>' + EN.
 const R = ENGINE.ramp;
 document.getElementById('ramp').innerHTML = `Generated music only. Quiet for ${R.quietFrac * 100}% of the piece (max ${R.quiet} s), then ${R.ease} s up to ${R.lv[0] * 100}% of the Energy level. Each next step (${R.lv.slice(1).map(v => v * 100 + '%').join(' → ')}) starts with the next energetic music section, at least ${R.gap} s after the previous one (scaled down for pieces shorter than 10 min). Extreme skips it.`;
 document.getElementById('mus').innerHTML = '<table class="t"><tr><th>choice</th><th>bpm</th><th>heartbeat pulse</th></tr>' + MUSICS.map(m => { const s = STYLES[m]; return `<tr><td><code>${esc(m)}</code></td><td>${s ? s.bpm.join('–') : '—'}</td><td>${s ? (s.nohb ? 'no' : 'yes') : '—'}</td></tr>`; }).join('') + '</table>';
-document.getElementById('foot').textContent = 'Built from sources of 2026-10-31 · 3da094b. ' + EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
+document.getElementById('foot').textContent = 'Built from sources of 2026-10-31 · c75ff71. ' + EFFECTS.length + ' key effects, ' + FX.length + ' showcase entries, ' + Object.keys(PF).length + ' P fields.';
 </script></body></html>

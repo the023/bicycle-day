@@ -101,10 +101,10 @@ def main():
     ap.add_argument("--pixels", action="store_true")
     a = ap.parse_args()
     from playwright.sync_api import sync_playwright
-    from check import CHROME_ARGS
+    from pw import launch
     rows, summary = [], []
     with sync_playwright() as pw:
-        browser = pw.chromium.launch(args=CHROME_ARGS)
+        browser = launch(pw)
         for st in a.styles.split(","):
             qs = f"t=1&res=.1&quality=low&seed={a.seed}&music={st}&debug=1&min=5"
             ctx, page, errs = make_page(browser, qs)

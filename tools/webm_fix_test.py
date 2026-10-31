@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-"""T169: record canvas + oscillator with MediaRecorder in Chrome, run webmFix (src/js/12a-webm.js), check raw vs fixed with ffprobe / ffmpeg.
+"""T169: record canvas + oscillator with MediaRecorder in Chrome, run webmFix (src/js/12z-webm.js), check raw vs fixed with ffprobe / ffmpeg.
 Usage: flock /tmp/bd-browser.lock nice -n 10 python3 tools/webm_fix_test.py [seconds=8] [outdir=/tmp/bd-webm]"""
 import base64, os, subprocess, sys
 from playwright.sync_api import sync_playwright
+from pw import launch
 
 SEC = float(sys.argv[1]) if len(sys.argv) > 1 else 8
 OUT = sys.argv[2] if len(sys.argv) > 2 else "/tmp/bd-webm"
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 os.makedirs(OUT, exist_ok=True)
-lib = open(os.path.join(ROOT, "src/js/12a-webm.js")).read()
+lib = open(os.path.join(ROOT, "src/js/12z-webm.js")).read()
 JS = """async (sec) => {
   const cv = document.createElement('canvas'); cv.width = 640; cv.height = 360; document.body.append(cv);
   const g = cv.getContext('2d'), ac = new AudioContext(), o = ac.createOscillator(), d = ac.createMediaStreamDestination();
@@ -25,7 +26,7 @@ JS = """async (sec) => {
   return { raw: b64(raw), fixed: b64(fixed), junkOk: junk.length === 4 };
 }"""
 with sync_playwright() as p:
-    br = p.chromium.launch(channel="chrome", args=["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox", "--autoplay-policy=no-user-gesture-required"])
+    br = launch(p, channel="chrome")
     pg = br.new_page(); pg.goto("about:blank"); pg.add_script_tag(content=lib)
     r = pg.evaluate(JS, SEC); br.close()
 for k in ("raw", "fixed"):

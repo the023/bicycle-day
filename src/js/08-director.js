@@ -3,29 +3,18 @@
 const METER = { db: -90 };
 let micGain = null, TD = null, MICDB = 0, clipT = 0, MICAUTO = true;
 // user tweaks (sliders, buttons, mouse): persistent state on top of the score, independent of seek
-// Energy (0 calm .. 4 extreme): the ONE user setting of the picture in auto. [arc offset (old Intensity x .25), global amount (old Effects), extreme blend (old Extreme / hk)]
-// T134: big = the 'big moves' (tiles, tunnel, glitch, blaze, zoom pulses / punches, the section boost of surges), strobe = the strobe mood: both only calm / soft, generated auto only (the other sources and control levels use 1)
-// T147 (generated auto): trn = the shortest scene transition (s) at each Energy (no hard cut at calm / soft); moodRamp = the ease-in / out time (s) of the dark / bw / blaze / strobe moods.
-// T143 (generated auto, Energy 0-3): the 'light set' = which of Kali, Julia, kaleidoscope, tiles are on, drawn per scene window (lightSet() in 10-control.js). lsN = chance of 0 / 1 / 2 / 3 of them (max count calm 2, soft 2, normal 3; mean about 1 / 1.3 / 2);
-// lsLv = strength of a picked one as a fraction range of its `light` level (VIS: calm between visible and light, soft up to light, normal around the engine); lsFirst = this many windows share the first set (slow start);
-// lsw = 1 where the set decides alone (calm, soft: the arc no longer drives these four), 0 where it only adds a floor to the engine (normal, strong); capK x `light` = the soft cap (knee `knee`) on warp, melt, stretch, trails, glitch while lsw is 1
-// T151 (Live / Local auto): presence pr = lp[E] x lpS[E][0] in a calm section x lpS[E][1] in a breakdown / calm state, eased (down >= lpT s, up lpT / 3); it scales warp, trails (pr ** lpX[0]), melt (pr ** lpX[1]), aberration (floor included) and stretch (no floor in Live / Local auto: st = [slope, u where it starts]), so they drop below visible in quiet parts and with a low Energy (Local: only lpL of it, its loudness already follows the file) and a drop at normal / strong stays as before
-// T153 (Live / Local Extreme): hcAb = [x, +] on the aberration, the generated Extreme keeps 1.8 / .4 (the SRCGAIN gains below 1 also apply in Extreme now)
-// T150 (Live / Local auto): lsNL = lsN for them (lighter: no slow start thins the set out), lsTL = share of the scenes that draw tiles which keep them (calm .4, soft .7); a member is divided by its SRCGAIN factor so the set strength is what ends up in P
-// T157 (Live / Local auto): acc = chance per accent unit of [strobe, checkerboard, glitch rush, zoom push, warp rise] by Energy (the rest of the units get none); strobe / checkerboard only in builds and energetic grooves, never in breakdown / calm (ENGINE.acc, accUnit)
-const EN = { off: [-.25, -.12, 0, .12, .25], offG: [-.35, -.23, 0, .12, .25], amp: [.55, .8, 1, 1.15, 1.25], big: [.35, .6, 1, 1, 1], strobe: [0, .5, 1, 1, 1], hc: [0, 0, 0, 0, 1], trn: [3, 1, 0, 0, 0], moodRamp: [5, 2.5, 1.5, 1.5, 1.5], lsN: [[.05, .6, .35], [0, .4, .6], [0, .35, .55, .1], [0, .35, .55, .1], [0, .35, .55, .1]], lsTL: [.4, .7, 1, 1, 1], lsNL: [[.55, .4, .05], [.35, .5, .15], [.3, .5, .2], [.3, .5, .2], [.3, .5, .2]], lsLv: [[.4, .85], [.6, 1], [.8, 1.2], [.8, 1.2], [.8, 1.2]], lsFirst: 2, lsw: [1, 1, 0, 0, 0], capK: [1, 1.5, 1.5, 1.5, 1.5], knee: .5, lp: [.6, .7, 1, 1, 1], lpS: [[.6, .8], [.6, .8], [.5, .75], [.65, .82], [.65, .82]], lpT: 1.5, lpL: .5, hcAb: [1.1, .2], lpX: [1.3, .5], st: [1.4, .45], acc: [[0, 0, .1, 0, .1], [0, 0, .2, .1, .15], [.08, .08, .25, .15, .15], [.2, .2, .2, .1, .1], [.15, .15, .2, .05, .05]], names: ['calm', 'soft', 'normal', 'strong', 'extreme'] };
-// col / src / style only apply in assisted and manual (no UI now); kept so old presets still load.
+// style only applies in assisted and manual. Old presets with col / src still load (the keys are ignored).
 const USER = { grid: 0, morph: 1, auto: -1, trans: 3, hold: 0, calm: 100, style: null, energy: 2, lv: { warp: 1, melt: 1, kali: 1, julia: 1, tun: 1, stretch: 1 },   // auto -1 = change on some scene changes (seeded, ~2 in 5), only with 2+ images; style null = default: auto (Kali/Julia) for generated pieces, off for live/local
-   kal: 1, tile: 1, fb: 1, col: 0, src: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
+   kal: 1, tile: 1, fb: 1, force: -1, zoom: 1, rot: 0, cx: 0, cy: 0, tx: 0, ty: 0, rip: { x: 0, y: 0, t0: -1e9 } };
 // transition time (USER.trans seconds, 0 = instant): key presses / buttons set the TARGET (USER.*, what the sliders show); render() reads these eased copies (UE) that follow it along a smoothstep of that length.
 // Slider drags snap (a dragged slider already moves smoothly). Persistent state like USER: seek never touches it.
-const UE = { off4: .5, off: 0, amp: 1, kal: 1, tile: 1, fb: 1, wp: 1, mt: 1, ka: 1, ju: 1, tn: 1, st: 1, monoK: 0, hueK: 1, calm: 1, rs: 0, big: 1, strb: 1, lsw: 0, capK: 1 }, UR = {}, HCr = {};let TRN = 3;   // auto: the transition time (s) the ENGINE picked for the current scene (render() sets it, trPick); assisted / manual / showcase use USER.trans
+const UE = { off4: .5, off: 0, amp: 1, kal: 1, tile: 1, fb: 1, wp: 1, mt: 1, ka: 1, ju: 1, tn: 1, st: 1, calm: 1, rs: 0, big: 1, strb: 1, lsw: 0, capK: 1 }, UR = {}, HCr = {};let TRN = 3;   // auto: the transition time (s) the ENGINE picked for the current scene (render() sets it, trPick); assisted / manual / showcase use USER.trans
 const transT = () => CL || SHOW ? USER.trans : TRN;
 // T138: assisted = the auto engine (same Energy calm taming, same ramp) + the keys; only manual (CL 2) has its own base (EN.off, no calm taming)
 // auto: only Energy counts; the sliders (kal, tile, fb + the per-effect lv) and Colour apply in assisted / manual (USER values stay intact, switching level gets them back)
 const UT = { off4: () => USER.energy / 4, off: () => (LIVE || LOC || SHOW || CL === 2 ? EN.off : EN.offG)[USER.energy], amp: () => EN.amp[USER.energy], big: () => SHOW || CL === 2 ? 1 : EN.big[USER.energy], strb: () => SHOW || CL === 2 ? 1 : EN.strobe[USER.energy], lsw: () => SHOW || CL === 2 || hcOn() ? 0 : EN.lsw[USER.energy], capK: () => EN.capK[USER.energy], kal: () => CL ? USER.kal : 1, tile: () => CL ? USER.tile : 1, fb: () => CL ? USER.fb : 1,
   wp: () => CL === 1 ? USER.lv.warp : 1, mt: () => CL === 1 ? USER.lv.melt : 1, ka: () => CL === 1 ? USER.lv.kali : 1, ju: () => CL === 1 ? USER.lv.julia : 1, tn: () => CL === 1 ? USER.lv.tun : 1, st: () => CL === 1 ? USER.lv.stretch : 1,
-  monoK: () => CL && USER.col === 2 ? 1 : 0, hueK: () => CL && USER.col === 1 ? 0 : 1, calm: () => USER.calm / 100, rs: () => USER.energy === 3 ? 1 : 0 };   // rs = T133 ramp: 1 = the shorter 'strong' ramp   // colour: frozen hue / b&w fade too
+  calm: () => USER.calm / 100, rs: () => USER.energy === 3 ? 1 : 0 };   // rs = T133 ramp: 1 = the shorter 'strong' ramp
 function ramp(r, to, dt, T) {   // r = {v, from, to, age, on}: a new target restarts a smoothstep from the current value (frame-rate independent: age advances by dt)
   if (r.to === undefined) { r.v = r.to = to; r.on = false; }
   else if (to !== r.to) { r.from = r.v; r.to = to; r.age = 0; r.on = !r.snap && T > 0; }
@@ -49,7 +38,7 @@ const TLc = {};   // seeded timelines, cached per hardcore flag (a toggle blends
 // hardcore (Energy 4 / key N, or ?hc=1): no calm start, scenes every 8 s, minor changes every 2 s, frequent surges / moods, strobe grid at the peaks
 // the look works with every source (generated, local, stream, mic) and control level auto / assisted (manual replaces the engine's look, so it doesn't apply there);
 // Extreme = Energy level 4 (or ?hc=1). It only changes the look factors, never the music or the arc.
-const hcOn = () => !CTRL && !SHOW && (EN.hc[USER.energy] > 0 || Q.get('hc') === '1');
+const hcOn = () => !CTRL && !SHOW && (EN.hc[USER.energy] > 0 || TQ.hc);
 const HCspin = t => .7 + .5 * Math.sin(t * .9 + PH);   // hardcore spin speed (rad/s), a pure function of t (mirrored in integrateTo / integrateLocal)
 const opening = u => LIVE || hcOn() ? 1 : smooth(.02, .35, u) ** 2;   // generated mode: deformation (warp, breath, pulse, spin, zoom wobble, fringing, melt, stretch) ramps up over the first 35 % of the arc
 const rampT = (hc = hcOn()) => hc ? 3 : LOC ? clamp(TOTAL * .25, 20, 180) : clamp(TOTAL * .5, 20, 300);   // generated: 50 % of the piece (5 min = 2.5 min); local file: 25 % (timelines() only, Local has no clock ramp)
@@ -57,13 +46,14 @@ const calm = t => LIVE || hcOn() ? 1 : Math.pow(clamp((t - 5) / (rampT() - 5)), 
 // T133: generated start = a stepped ramp (0 -> 15 % -> 30 % -> 50 % -> Energy), a pure function of t; replaces the old 13-18 % gate (g15) and calm(t) in generated pieces (render() / __pic use it only there; Local, Live, manual / assisted, showcase and Extreme keep their own gates).
 // With a section plan (vplan()) each step starts at the next energetic section (e >= .4, as kindOf) that begins >= gap s after the previous step and eases in over that scene's transition time (5 or 10 s while ramping: the same pick as render()'s TRN);
 // without one (ambient, piano) the steps run on the clock (ENGINE.ramp.sec / secLv); the plan mode never falls below that clock curve with times x floor. All times x min(1, TOTAL / 600). Data: ENGINE.ramp.
-const RAMPC = [null, null];
+const RAMPC = [{}, {}];
 function rampCfg(strong) {
   const R = ENGINE.ramp, C = strong ? R.strong : R, k = strong ? C.k : 1, VP = vplan(), pl = VP.length ? VP : null, sc = Math.min(1, TOTAL / 600), key = ENGINE.v + ':' + TOTAL + ':' + PH, c = RAMPC[+strong];
-  if (c && c.key === key && c.pl === pl) return c;
+  return memo(c, [key, pl], () => {
   const S = Math.min(R.quiet, R.quietFrac * TOTAL) * k, E = R.ease * k, G = R.gap * sc * k, L = C.lv, st = [];
   if (pl) { let prev = S + E; for (let i = 1; i < L.length; i++) { const j = pl.findIndex(x => x.e >= .4 && x.a >= prev + G); if (j < 0) break; const x = Math.sin((j + PH) * 12.9898 + 9 * 78.233) * 43758.5453; st.push({ a: pl[j].a, d: [5, 10][Math.floor((x - Math.floor(x)) * 2)], dl: L[i] - L[i - 1] }); prev = pl[j].a; } }
-  return RAMPC[+strong] = { key, pl, C, L, S, E, st, m: sc * k };
+  return { key, pl, C, L, S, E, st, m: sc * k };
+  });
 }
 function rampLv(t, strong) {
   const c = rampCfg(strong), C = c.C, m = c.m * (c.pl ? ENGINE.ramp.floor : 1), X = C.sec, V = C.secLv;   // the clock curve (the floor in plan mode)
@@ -79,15 +69,13 @@ const rampIn = (t, rs = UE.rs) => hcOn() ? 1 : rs <= 0 ? rampLv(t, false) : rs >
 // t is the variable the audio starts from (never a rounded window.*PLAN value). buildAudio resets it; ambient and piano publish none.
 let EVT = [];
 const evtSet = list => { EVT = list.slice().sort((a, b) => a.t - b.t); };
-const evtAt = (t, ks) => { let r; for (const x of EVT) { if (x.t > t) break; if (ks.includes(x.k)) r = x; } return r; };   // last event of kind in ks with t <= t
-const evtNext = (t, ks) => EVT.find(x => x.t > t && ks.includes(x.k));   // first event of kind in ks with t > t
 // T103: EVTM = the music EVT was built for (LOC / LIVE never call buildAudio, so EVT can be stale); evOK() = the event consumers may run; evtIdx(t, ks) = {i: how many events of ks have t <= t, e: the last one} (binary search, filtered lists cached per EVT)
 let EVTM = null;
 const evOK = () => !(LIVE || LOC || SHOW || CTRL || hcOn()) && EVTM === MUSIC;
 const EVC = {};
 function evtIdx(t, ks) {
-  const key = ks.join(); let c = EVC[key]; if (!c || c.src !== EVT) c = EVC[key] = { src: EVT, a: EVT.filter(x => ks.includes(x.k)) };
-  const a = c.a; let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m].t <= t) lo = m + 1; else hi = m; }
+  const key = ks.join(), c = EVC[key] ??= {}, a = memo(c, [EVT], () => c.a = EVT.filter(x => ks.includes(x.k)));   // c.a is also read by evSnap (10b-clock.js)
+  let lo = 0, hi = a.length; while (lo < hi) { const m = (lo + hi) >> 1; if (a[m].t <= t) lo = m + 1; else hi = m; }
   return { i: lo, e: lo ? a[lo - 1] : null };
 }
 const evtSec = (t, sec, e) => ({ t, k: 'section', s: .8, d: 0, sec, e });
@@ -110,14 +98,15 @@ const evtPhr = (B, skip, tot) => { const r = []; for (let k = 8; 4 * k < B.lengt
 const PLAN_K = { intro: .25, build: .55, drop: .9, break: .3, outro: .2 };
 // energy of one window.*PLAN entry, exactly as vplan() has always computed it
 const planEnergy = x => x.e ?? (x.kind ? PLAN_K[x.kind] ?? .5 : clamp(energy(clamp((x.from + x.to) / 2 / TOTAL)) + (x.eo || 0)));
-let VPC = null;
+const VPC = {};
 function vplan() {
   if (LIVE || LOC || SHOW || CTRL || EVTM !== MUSIC) return [];
   const gn = gridNb();
-  if (VPC && VPC.src === EVT && VPC.tot === TOTAL && VPC.gn === gn) return VPC.p;
+  return memo(VPC, [EVT, TOTAL, gn], () => {
   const S = EVT.filter(x => x.k === 'section'), st = S.map((x, i) => i ? Math.max(x.t, 0) : 0);   // exact music times: the sections already sit on the music's own bars (snapping to the picture's grid put them seconds off)
   const p = S.map((x, i) => ({ a: st[i], b: i < S.length - 1 ? Math.max(st[i + 1], st[i]) : TOTAL, e: x.e }));
-  VPC = { src: EVT, tot: TOTAL, gn, p }; return p;
+  return p;
+  });
 }
 // energy of the music's current section (smoothed 4 s at each boundary), null without a plan; pure function of t
 function planE(t) {
@@ -126,10 +115,9 @@ function planE(t) {
   return lerp(pe, c.e, smooth(0, 4, t - c.a));
 }
 // arc position whose energy matches e (first one on the rise, 0..0.88): lets the picture's base look follow the section energy instead of the clock
-let UFE = null;
+const UFE = {};
 function uForE(e) {
-  if (!UFE || UFE.arc !== ARC) { const tab = []; for (let i = 0; i <= 44; i++) tab.push(energy(i / 50)); UFE = { arc: ARC, tab }; }
-  const T = UFE.tab, lo = Math.min(...T), hi = Math.max(...T), g = lerp(lo, hi, clamp(e));
+  const T = memo(UFE, [ARC], () => { const tab = []; for (let i = 0; i <= 44; i++) tab.push(energy(i / 50)); return tab; }), lo = Math.min(...T), hi = Math.max(...T), g = lerp(lo, hi, clamp(e));
   for (let i = 1; i < T.length; i++) if (T[i] > g) return (i - 1 + (g - T[i - 1]) / Math.max(1e-6, T[i] - T[i - 1])) / 50;
   return .88;
 }
@@ -153,10 +141,10 @@ const glitchLive = t => {
 // T157 (Live + Local): build accents. A unit = a stretch of drop / build / groove in an energetic scene (a new one starts on a new scene, when a build starts, and every ENGINE.acc.unit s); each unit draws ONE accent
 // from the seed + its number, weighted by Energy (EN.acc; a unit that starts with a build x ENGINE.acc.kBuild on strobe / checkerboard / glitch). Local: the units come from the timeline (LOC.accA / accB / accBld), a pure function of t; Live: causal tracker.
 // T161 strobe variants: strobe 0 plain / 1 accelerating / 2 negative, checkerboard 0 plain / 1 accelerating / 2 coloured. Drawn per launch from the seed (ENGINE.strobe.vw / cw; ?svar=0..2 forces one, testing).
-// The source of a stretch (generated mood, build accent) writes { v, t0, D } into SVAR each frame; a launch that does not know itself (held G / J, Extreme peaks) is drawn at its rising edge (strobeVars, 10-control.js).
+// The source of a stretch (generated mood, build accent) writes { v, t0, D } into SVAR each frame; a launch that does not know itself (held G / J, Extreme peaks) is drawn at its rising edge (strobeVars, 10a-codelog.js).
 const SVAR = { s: null, c: null }, SV_NAMES = ['plain', 'accelerating', 'negative'], CV_NAMES = ['plain', 'accelerating', 'colour'];
 function svDraw(kind, key) {
-  if (Q.has('svar')) return +Q.get('svar');
+  if (TQ.svar !== null) return TQ.svar;
   const w = ENGINE.strobe[kind === 's' ? 'vw' : 'cw'], r = gHash(key, PH + (kind === 's' ? 31 : 32)) * (w[0] + w[1] + w[2]);
   return r < w[0] ? 0 : r < w[0] + w[1] ? 1 : 2;
 }
@@ -167,7 +155,7 @@ function rampPhase(s, r0, r1, D) {   // cycles since the start of a stretch whos
 function strobePhase(P) { const r = P.rate1 > 0 && P.sD > 0 ? rampPhase(P.t - P.sT0, P.rate, P.rate1, P.sD) : P.t * P.rate; return r - Math.floor(r); }   // the strobe phase (cycles, 0..1) the shader flashes on
 function cellPhase(P) { return P.cD > 0 ? rampPhase(P.t - P.cT0, ENGINE.strobe.acc[0], ENGINE.strobe.acc[1], P.cD) : 0; }
 function moodRun(t, hc) {   // the seeded mood stretch running at t (the forced ?mood= one is an endless one from 0), for the strobe variant
-  const f = Q.get('mood'); if (f) return { k: f, a: 0, b: ENGINE.strobe.dur[1], rate: 8, v: svDraw('s', 0) };
+  const f = TQ.mood; if (f) return { k: f, a: 0, b: ENGINE.strobe.dur[1], rate: 8, v: svDraw('s', 0) };
   return timelines(hc).moods.find(x => t >= x.a && t < x.b) || null;
 }
 const ACC_NAMES = ['strobe', 'checkerboard', 'glitch rush', 'zoom push', 'warp rise'], ACC = { name: '', k: -1, n: 0 };   // ACC = the accent of the current frame (code log, debug)
@@ -195,7 +183,7 @@ function accGate(t, dt) {   // 0..1: strobe and checkerboard are off in breakdow
 }
 function liveAccents(P, t, dt) {   // called from render() in Live / Local (not showcase / manual); writes the accent and the gate into P (strobe / cells / glitch / zoom / warp)
   const A = ENGINE.acc, g = accGate(t, dt), u = accUnit(t), d = u && accDraw(u.n, u.bld, USER.energy), m = [0, 0, 0, 0, 0];
-  if (!hcOn() && !Q.has('mood')) P.strobe = 0;   // the random strobe mood gives way to the build accents (Extreme keeps its own stretches and peaks, gated)
+  if (!hcOn() && TQ.mood === null) P.strobe = 0;   // the random strobe mood gives way to the build accents (Extreme keeps its own stretches and peaks, gated)
   P.strobe *= g; P.cells *= g; ACC.name = ''; ACC.k = -1; ACC.n = u ? u.n : 0;
   const x = d && d.k >= 0 ? u.age - d.d0 : -1, D = d ? d.D : 0;
   if (x >= 0 && x <= D + A.fade) {
@@ -219,7 +207,7 @@ function accInfo(t) {   // __pic: the unit and its accent at t (Local: a pure fu
 }
 // intro glitch amount 0..1 (display pass only): generated mode, from gs = min(10 s, 8 % of the piece) to 22 %, rising slowly; the last third of that window fades it out; after that, glitchBurst(). Pure function of t.
 const glitchAmt = t => {
-  if (Q.has('glitch')) return clamp(+Q.get('glitch') || 0);   // test override ?glitch=0..1
+  if (TQ.glitch !== null) return clamp(TQ.glitch || 0);   // test override ?glitch=0..1
   if (LIVE || LOC) return CTRL || SHOW ? 0 : glitchLive(t);   // T152: Live and Local (LOC sets LIVE); T153: Extreme too (glitchLive)
   if (CTRL) return 0;
   const gs = Math.min(10, .08 * TOTAL), ge = .22 * TOTAL;
@@ -228,30 +216,32 @@ const glitchAmt = t => {
   return .8 * Math.pow(smooth(gs, ge, t), .7) * (1 - smooth(ge - (ge - gs) / 3, ge, t));   // peak .8, earlier rise (^.7): visible from ~20 s, never a strobe
 };
 function timelines(hc = hcOn()) {
-  const c = TLc[hc ? 1 : 0]; if (c && c.ph === PH && c.tot === TOTAL && c.v === ENGINE.v) return c.tl;
+  return memo(TLc[hc ? 1 : 0] ??= {}, [PH, TOTAL, ENGINE.v, LOC], () => {
   const r = mulberry32(Math.floor(PH * 1e5) + 77), rr = (a, b) => a + (b - a) * r(), sur = [], moods = [], tun = [];
-  let t = hc ? rr(1, 3) : rampT(hc) * (LOC ? .5 : .6) + rr(LOC ? 5 : 10, LOC ? 20 : 25);   // first surge: past half of the ramp, so it never lands on the ramp's steep part
-  while (t < 7200) { const rise = hc ? rr(6, 10) : rr(15, 30), fall = hc ? rr(4, 8) : rr(6, 14); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: hc ? rr(.6, 1) : rr(.5, 1) }); t += rise + fall + (hc ? rr(15, 30) : rr(4, 25)); }
+  const SU = ENGINE.surge; let t = hc ? rr(SU.firstHc[0], SU.firstHc[1]) : rampT(hc) * (LOC ? .5 : .6) + rr(LOC ? 5 : 10, LOC ? 20 : 25);   // first surge: past half of the ramp, so it never lands on the ramp's steep part
+  const SR = hc ? SU.hc : SU; while (t < SU.horizon) { const rise = rr(SR.rise[0], SR.rise[1]), fall = rr(SR.fall[0], SR.fall[1]); sur.push({ a: t, b: t + rise, c: t + rise + fall, h: rr(SR.h[0], SR.h[1]) }); t += rise + fall + rr(SR.gap[0], SR.gap[1]); }
   t = hc ? rr(4, 8) : rampT(hc) + rr(15, 40);
-  while (t < 7200) {
+  while (t < SU.horizon) {
     const MW = hc ? ENGINE.mood.wHc : ENGINE.mood.w, MS = MW[0] + MW[1] + MW[2] + MW[3], MR = r() * MS, k = MR < MW[0] ? 'dark' : MR < MW[0] + MW[1] ? 'bw' : MR < MW[0] + MW[1] + MW[2] ? 'strobe' : 'blaze', d = hc ? (k === 'blaze' ? rr(3, 5) : rr(4, 8)) : k === 'blaze' ? rr(3, 6) : k === 'strobe' ? rr(ENGINE.strobe.dur[0], ENGINE.strobe.dur[1]) : k === 'dark' ? rr(ENGINE.mood.darkDur[0], ENGINE.mood.darkDur[1]) : rr(10, 25);   // T160: weights from ENGINE.mood
     moods.push({ k, a: t, b: t + d, rate: hc ? rr(8, 14) : rr(ENGINE.strobe.rate[0], ENGINE.strobe.rate[1]), v: k === 'strobe' ? svDraw('s', t) : 0 }); t += d + (hc ? rr(25, 50) : rr(20, 50));
   }
   const TU = ENGINE.tun;
   t = Math.max(rr(TU.first[0], TU.first[1]), rampT(hc) + rr(TU.firstRamp[0], TU.firstRamp[1]));   // tunnel stretches: first one after the calm start, then one every ~1.5-3 min, 9-16 s each
-  while (t < 7200) { const d = rr(TU.dur[0], TU.dur[1]); tun.push({ a: t, b: t + d }); t += d + rr(TU.gap[0], TU.gap[1]); }
-  const tl = { sur, moods, tun }; TLc[hc ? 1 : 0] = { ph: PH, tot: TOTAL, v: ENGINE.v, tl }; return tl;
+  while (t < SU.horizon) { const d = rr(TU.dur[0], TU.dur[1]); tun.push({ a: t, b: t + d }); t += d + rr(TU.gap[0], TU.gap[1]); }
+  return { sur, moods, tun };
+  });
 }
 // T103: the surge list. ev (generated, events on): each riser makes a surge that rises over the riser and peaks at its hit (the first hit within 10 s of the riser's end, else the riser's end), then falls over a seeded 6-15 s;
 // the seeded surges stay where no event surge lies within 30 s. Without ev / with Extreme: the seeded list untouched.
-let SLC = null;
+const SLC = {};
 function surList(hc, ev) {
   if (hc || !ev) return timelines(hc).sur;
-  if (SLC && SLC.src === EVT && SLC.ph === PH && SLC.tot === TOTAL && SLC.v === ENGINE.v) return SLC.l;
+  return memo(SLC, [EVT, PH, TOTAL, ENGINE.v], () => {
   const R = EVT.filter(x => x.k === 'riser'), H = EVT.filter(x => x.k === 'hit'), E = [];
-  R.forEach((r, j) => { const re = r.t + r.d, h = H.find(x => x.t >= re - .05), tP = h && h.t <= re + 10 ? h.t : re; E.push({ a: r.t, b: tP, c: tP + 6 + 9 * gHash(j, PH + 5), h: r.s }); });
+  R.forEach((r, j) => { const re = r.t + r.d, h = H.find(x => x.t >= re - .05), tP = h && h.t <= re + 10 ? h.t : re; E.push({ a: r.t, b: tP, c: tP + ENGINE.surge.evFall[0] + (ENGINE.surge.evFall[1] - ENGINE.surge.evFall[0]) * gHash(j, PH + 5), h: r.s }); });
   const l = E.concat(timelines(false).sur.filter(c => !E.some(e => c.a < e.c + 30 && e.a < c.c + 30)));
-  SLC = { src: EVT, ph: PH, tot: TOTAL, v: ENGINE.v, l }; return l;
+  return l;
+  });
 }
 function surgeAt(t, hc, ev = false) {
   let r = 0;
@@ -262,7 +252,7 @@ function tunnelAt(t) {   // EFFECT tunnel timeline (generated mode): 0..1, pure 
   const s = timelines().tun.find(x => t >= x.a && t < x.b); return s ? smooth(s.a, s.a + ENGINE.tun.easeIn, t) * (1 - smooth(s.b - ENGINE.tun.easeOut, s.b, t)) : 0;
 }
 function moodAt(t, hc = hcOn(), ev = false) {
-  const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { moods } = timelines(hc), sur = surList(hc, ev), f = Q.get('mood');
+  const m = { dark: 0, blaze: 0, bw: 0, strobe: 0, rate: 8 }, { moods } = timelines(hc), sur = surList(hc, ev), f = TQ.mood;
   const s = f ? { k: f, a: -1e9, b: 1e9, rate: 8 } : moods.find(x => t >= x.a && t < x.b);
   const rp = hc ? .4 : f || LIVE || LOC || SHOW || CTRL ? 1.5 : s && s.k === 'blaze' ? 1.5 : Math.min(EN.moodRamp[USER.energy], s ? (s.b - s.a) / 2 : 9);   // T147: generated auto eases dark / bw / strobe in and out over EN.moodRamp (calm 5 s, soft 2.5 s; never past half the stretch); blaze keeps its flash
   if (s) { m[s.k] = smooth(s.a, s.a + rp, t) * (1 - smooth(s.b - rp, s.b, t)); m.rate = s.rate; if (s.k === 'strobe') m.strobe *= ENGINE.strobe.amount; }
@@ -281,12 +271,13 @@ function moodAt(t, hc = hcOn(), ev = false) {
  let TUNE_ZL = null;   // T117: tune mode (09-fx.js) swaps the pulse list for the one pulse of its loop
  function zoomPulseList() {
    if (TUNE_ZL) return TUNE_ZL();
-   const c = ZLc; if (c && c.ph === PH && c.tot === TOTAL && c.v === ENGINE.v) return c.list;
+   return memo(ZLc, [PH, TOTAL, ENGINE.v], () => {
    const Z = ENGINE.zoom, r = mulberry32(Math.floor(PH * 1e5) + 12345), rr = (a, b) => a + (b - a) * r();
    const list = [];
    let t = rr(Z.first[0], Z.first[1]);
    while (t < TOTAL) { const d = zoomDraw(r, rr); list.push({ a: t, b: t + d.dur, f: d.f, e: d.e, e2: d.e2 }); t += d.dur + rr(Z.gap[0], Z.gap[1]); }
-   ZLc.ph = PH; ZLc.tot = TOTAL; ZLc.v = ENGINE.v; ZLc.list = list; return list;
+   return list;
+   });
  }
  function zoomPulseListLocal() {   // Local: scene starts (LOC.sceneT) that fall outside the previous pulse + its gap start a pulse; seeded by the track's own seed PH
    const c = LOC.zl; if (c && c.ph === PH && c.v === ENGINE.v) return c.list;

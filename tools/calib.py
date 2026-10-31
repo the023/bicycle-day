@@ -9,9 +9,9 @@ Run without -I (playwright is in the user site-packages)."""
 import argparse, io, json, math, os, sys, threading, time
 import numpy as np
 from PIL import Image, ImageDraw
+from pw import AUTOPLAY, capture_errors, launch, nice
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URL = "file://" + os.path.join(ROOT, "dist", "bicycle-day.html")
-ARGS = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox"]
 # field, ref (gauge full scale: EFFECTS.ref; ab 1, glitch .6 = above its engine range), companion P fields (see docstring)
 FIELDS = [("warp", 2, ""), ("kal", 1, ""), ("fb", .9, "warp:.5"), ("melt", 1.3, ""), ("tile", 1, ""), ("kali", 1, ""), ("julia", 1, ""),
           ("tun", 1, ""), ("stretch", 1, "anchor:.8"), ("ab", 1, ""), ("glitch", .6, "")]
@@ -66,7 +66,7 @@ def main():
     ap.add_argument("--t", default="20"); ap.add_argument("--res", default=".3"); ap.add_argument("--quality", default="high"); ap.add_argument("--step", default=".5")
     ap.add_argument("--images", default="0,1"); ap.add_argument("--only", default=""); ap.add_argument("--levels", default=".08,.25,.5"); ap.add_argument("--sheet", default="", help="file name of the contact sheet (one image only; default <out>/sheet-img<N>.png)"); ap.add_argument("--out", default="/tmp/T144")
     ap.add_argument("--w", type=int, default=640); ap.add_argument("--h", type=int, default=360); ap.add_argument("--seed", default="1")
-    a = ap.parse_args(); os.nice(10); t0 = time.time(); mem = Mem(); os.makedirs(a.out, exist_ok=True)
+    a = ap.parse_args(); nice(10); t0 = time.time(); mem = Mem(); os.makedirs(a.out, exist_ok=True)
     imgs = [int(x) for x in a.images.split(",")]; levels = [float(x) for x in a.levels.split(",")]
     fields = [f for f in FIELDS if not a.only or f[0] in a.only.split(",")]
     from playwright.sync_api import sync_playwright
@@ -81,8 +81,7 @@ def main():
     res = {}   # image -> field -> [(v, 1-ssim)]
     frames = {}   # image -> field -> (neutral frame for the row, [frames])
     with sync_playwright() as pw:
-        b = pw.chromium.launch(args=ARGS); ctx = b.new_context(viewport={"width": a.w, "height": a.h}); page = ctx.new_page(); errs = []
-        page.on("pageerror", lambda e: errs.append(str(e)))
+        b = launch(pw, drop=(AUTOPLAY,)); ctx = b.new_context(viewport={"width": a.w, "height": a.h}); page = ctx.new_page(); errs = capture_errors(page, console=False)
         page.add_init_script("{const g = new URLSearchParams(location.search).get('g'); if (g) window.__sharedImgs = [{g: +g}];}")   # test only: pick the gallery image for the still
         for g in imgs:
             res[g] = {}; frames[g] = {}; base_cache = {}

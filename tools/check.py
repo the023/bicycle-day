@@ -10,17 +10,11 @@ import json
 import os
 import sys
 
+from pw import capture_errors, launch, nice
+
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 DIST = os.path.join(ROOT, "dist", "bicycle-day.html")
 URL_BASE = "file://" + DIST
-
-CHROME_ARGS = [
-    "--use-gl=angle",
-    "--use-angle=swiftshader",
-    "--enable-unsafe-swiftshader",
-    "--no-sandbox",
-    "--autoplay-policy=no-user-gesture-required",
-]
 
 N_CHECKS = 5
 # Software GL renders every frame on the CPU. These checks test the UI and the key logic, not the picture, so the
@@ -57,9 +51,7 @@ def make_page(browser, qs="", vp=None, init_local_storage=None):
         vp = {"width": 1280, "height": 720}
     ctx = browser.new_context(viewport=vp)
     page = ctx.new_page()
-    errs = []
-    page.on("console", lambda m: errs.append(m.text) if m.type == "error" else None)
-    page.on("pageerror", lambda e: errs.append("PAGEERR: " + str(e)))
+    errs = capture_errors(page)
     if init_local_storage:
         for k, v in init_local_storage.items():
             page.add_init_script(
@@ -79,7 +71,7 @@ def main(only=None):
         return only is None or only == n
 
     with sync_playwright() as p:
-        browser = p.chromium.launch(args=CHROME_ARGS)
+        browser = launch(p)
 
         # ---------- 1. no console/page errors across modes ----------
         if want(1):
@@ -281,7 +273,7 @@ if __name__ == "__main__":
                     help="run only check N (1..%d) in this process" % N_CHECKS)
     args = ap.parse_args()
     try:
-        os.nice(15)   # software GL uses every core: stay out of the way of the desktop
+        nice(15)   # software GL uses every core: stay out of the way of the desktop
         if args.only is None:
             sys.exit(main(None))
         sys.exit(main(args.only))

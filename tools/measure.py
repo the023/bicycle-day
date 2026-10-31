@@ -7,9 +7,9 @@ One page at a time, nice 10; time and peak memory (sum of PSS of the whole proce
 Active (T144) = |value| above the effect's `visible` level (VIS in 08z-effects.js, from tools/calib.py; read from the page); the moods (dark mono blaze strobe cells) have no level and keep value / 1 > .15.
 "light set at once" = how many of kali, julia, kal, tile are above `visible` in the same sample (max / mean over the samples). "first visible" = first sample where a big effect (not warp/fb/melt/ab) is active. Zoom: % of time < .7, < .5, < .25, > 1.5, min. Markdown on stdout."""
 import argparse, itertools, os, subprocess, sys, time, threading, statistics
+from pw import AUTOPLAY, capture_errors, launch, nice
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 URL = "file://" + os.path.join(ROOT, "dist", "bicycle-day.html")
-ARGS = ["--use-gl=angle", "--use-angle=swiftshader", "--enable-unsafe-swiftshader", "--no-sandbox"]
 FX = [("warp", 2), ("kal", 1), ("fb", .9), ("melt", 1.3), ("tile", 1), ("kali", 1), ("julia", 1), ("tun", 1), ("stretch", 1),
       ("ab", 1), ("dark", 1), ("mono", 1), ("blaze", 1), ("strobe", 1), ("cells", 1), ("glitch", 1)]
 BIG = [(k, r) for k, r in FX if k not in ("warp", "fb", "melt", "ab")]   # "first visible effect": the baseline ones (warp, fb, melt, ab) are on from the start
@@ -56,8 +56,7 @@ def stats(log):
     return r
 
 def run(browser, qs, T, need_local=False):
-    ctx = browser.new_context(viewport={"width": 640, "height": 360}); page = ctx.new_page(); errs = []
-    page.on("pageerror", lambda e: errs.append(str(e)))
+    ctx = browser.new_context(viewport={"width": 640, "height": 360}); page = ctx.new_page(); errs = capture_errors(page, console=False)
     page.goto(URL + "?" + qs, wait_until="load", timeout=120000)
     page.wait_for_function("() => window.__plog && window.__plog.length && window.__plog[window.__plog.length-1].t >= %s" % (T - .6), timeout=1800000)
     log = page.evaluate("() => window.__plog.map(x => Object.assign({}, x))")
@@ -95,13 +94,13 @@ def main():
     ap.add_argument("--local", action="store_true", help="also measure a wav as the Local source (Energy / level from the lists, --local-t seconds)")
     ap.add_argument("--local-wav", default=None, help="the wav for --local (default /tmp/sections.wav, made by tools/make_sections_wav.py)"); ap.add_argument("--local-t", type=float, default=80, help="song seconds to measure the Local wav")
     ap.add_argument("--no-gen", action="store_true", help="skip the generated runs")
-    a = ap.parse_args(); os.nice(10); t0 = time.time(); mem = Mem()
+    a = ap.parse_args(); nice(10); t0 = time.time(); mem = Mem()
     from playwright.sync_api import sync_playwright
     L = lambda x: [y for y in x.split(",") if y != ""]
     base = "res=%s&step=.5&quality=low&debug=1" % a.res
     seeds = L(a.seeds); rows, local_rows, per_run = [], [], []; runs = 0
     with sync_playwright() as pw:
-        b = pw.chromium.launch(args=ARGS)
+        b = launch(pw, drop=(AUTOPLAY,))
         if not a.no_gen:
             for m, arc, e, lv, mn in itertools.product(L(a.music), L(a.arc), L(a.energy), L(a.level), L(a.min)):
                 ss = []
