@@ -1,0 +1,467 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>Bicycle Day — morph lab</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+  :root { color-scheme: dark; }
+  body { margin: 0; font: 14px/1.4 system-ui, sans-serif; background: #15151c; color: #e8e6df; }
+  header { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; padding: 10px 16px; background: #1d1d27; border-bottom: 1px solid #33333f; }
+  header label { display: flex; gap: 6px; align-items: center; }
+  header .t { font-variant-numeric: tabular-nums; color: #b8b6c4; min-width: 150px; }
+  main { padding: 14px 16px 60px; display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 16px; align-items: start; }
+  @media (max-width: 1000px) { main { grid-template-columns: 1fr; } }
+  h2 { font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #9a98a8; margin: 16px 0 8px; }
+  h2:first-child { margin-top: 0; }
+  button, select, .btn { background: #2a2a38; color: inherit; border: 1px solid #44445a; border-radius: 6px; padding: 5px 10px; font: inherit; cursor: pointer; }
+  button:hover, .btn:hover { background: #34344a; }
+  button.on { background: #3b7a57; border-color: #5cf08a; }
+  .stage { position: relative; width: 100%; aspect-ratio: 16 / 9; background: #000; border-radius: 8px; overflow: hidden; }
+  canvas#cv { width: 100%; height: 100%; display: block; }
+  .drop { position: absolute; inset: 0; display: none; grid-template-columns: 1fr 1fr; background: rgba(21, 21, 28, .55); }
+  .drop.on { display: grid; }
+  .drop div { display: flex; align-items: center; justify-content: center; font-size: 28px; border: 2px dashed #5a5a74; margin: 12px; border-radius: 10px; }
+  .drop div.hot { background: rgba(92, 240, 138, .18); border-color: #5cf08a; }
+  .scrub { display: flex; gap: 10px; align-items: center; margin-top: 8px; }
+  .scrub input { flex: 1; }
+  canvas#chart { width: 100%; height: 90px; display: block; margin-top: 6px; background: #101016; border: 1px solid #2c2c3a; border-radius: 6px; cursor: pointer; }
+  .panel { background: #1d1d27; border: 1px solid #2c2c3a; border-radius: 10px; padding: 12px 14px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .chips button { padding: 4px 9px; }
+  .durs { margin: -2px 0 8px 120px; }
+  .durs button { flex: 1; padding: 4px 0; }
+  .sl { display: grid; grid-template-columns: 112px 1fr 44px; gap: 8px; align-items: center; font-size: 12px; color: #b8b6c4; margin: 4px 0; }
+  .sl input { width: 100%; margin: 0; }
+  .sl b { font-weight: normal; text-align: right; color: #e8e6df; font-variant-numeric: tabular-nums; }
+  .ck { display: flex; gap: 8px; align-items: center; font-size: 12px; color: #b8b6c4; margin: 6px 0; }
+  .ck select { padding: 3px 6px; font-size: 12px; }
+  .img { display: grid; grid-template-columns: 22px 1fr auto; gap: 8px; align-items: center; margin: 5px 0; }
+  .img b { color: #9a98a8; }
+  .img select { min-width: 0; width: 100%; font-size: 12px; padding: 4px 6px; }
+  .btn { font-size: 12px; padding: 4px 9px; }
+  .btn input { display: none; }
+  .row { display: flex; gap: 6px; margin-top: 8px; }
+  textarea { width: 100%; box-sizing: border-box; height: 120px; background: #101016; color: #cfd; border: 1px solid #33333f; border-radius: 6px; font: 12px monospace; }
+  .hint { color: #8a889a; font-size: 12px; margin: 6px 0 0; }
+  .hint.warn { color: #e8b86a; }
+  #msl, #csl, #ssl { margin-top: 8px; }
+  .sub { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: #8a889a; margin: 12px 0 2px; }
+</style>
+<header>
+  <button id="play">▶ Play</button>
+  <button id="loop" class="on">Loop</button>
+  <button id="swap">⇄ Swap A/B</button>
+  <span class="chips" id="views"></span>
+  <span class="t" id="tl"></span>
+</header>
+<main>
+  <section>
+    <div class="stage" id="stage"><canvas id="cv" width="1280" height="720"></canvas>
+      <div class="drop" id="drop"><div id="dA">A</div><div id="dB">B</div></div></div>
+    <div class="scrub"><span class="hint" style="margin:0">time</span><input id="scrub" type="range" min="0" max="1000" step="1" value="0"></div>
+    <canvas id="chart" width="1280" height="90"></canvas>
+    <p class="hint">m = share of B over the loop (white line = playhead, dashed = stage levels). Click the chart or drag the slider to scrub. Drop images on the canvas: left half = A, right half = B.</p>
+    <p class="hint" id="hint"></p>
+  </section>
+  <aside>
+    <div class="panel">
+      <h2>Images</h2>
+      <div class="img"><b>A</b><select id="selA"></select><label class="btn">File…<input type="file" accept="image/*" id="fA"></label></div>
+      <div class="img"><b>B</b><select id="selB"></select><label class="btn">File…<input type="file" accept="image/*" id="fB"></label></div>
+      <h2>Mask</h2>
+      <div class="chips" id="modes"></div>
+      <div id="msl"></div>
+      <h2>Common</h2>
+      <div id="csl"></div>
+      <h2>Stages</h2>
+      <div class="chips" id="nst"></div>
+      <div id="ssl"></div>
+      <h2>Settings</h2>
+      <textarea id="json" spellcheck="false"></textarea>
+      <div class="row"><button id="copy">Copy JSON</button><button id="imp">Import</button><button id="rst">Reset</button></div>
+    </div>
+  </aside>
+</main>
+<script>
+// Morph lab (T165): tune a two-image morph by eye. Standalone, not part of the build.
+// Modes (chip number = id): 1 Focus pull, 2 Organic dissolve, 3 Shape-guided, 4 Colour first, 5 Liquid morph, 6 Iris, 7 Cells. (Old settings without v:2 had 1 = Light wipe, removed: it loads as 2.)
+// Test hook: ?m=<0..1>&mode=<1..7>&view=<0..2>&clk=<s>&a=<file>&b=<file> freeze the progress; window.__lab.set({...}) does the same at run time.
+const $ = id => document.getElementById(id), cl = (x, a, b) => Math.min(b, Math.max(a, x)), ss = x => x * x * (3 - 2 * x);
+const W = 1280, H = 720, LW = 320, LH = 180, LN = 1024;
+const GAL = ['poster.jpg', 'manet-dejeuner-sur-lherbe.jpg', 'bosch-garden-of-earthly-delights.jpg', 'bruegel-fall-of-the-rebel-angels.jpg', 'hirschl-souls-at-the-acheron.jpg', 'huys-temptation-of-saint-anthony.jpg'];
+const MODES = ['Focus pull', 'Organic dissolve', 'Shape-guided', 'Colour first', 'Liquid morph', 'Iris', 'Cells'], VIEWS = ['Normal', 'Mask s', 'Switch k'];
+const DEF = { mode: 2, soft: .25, nmix: .15, motion: .3, dur: 60, eq: 1, cal: 1, v: 2, eblur: 24, scale: 3.5, oct: 4, seed: 7, drift: .2, split: .4, amt: .5, flow: 18, uni: 0,
+  fblur: 18, fzoom: .02, funi: 1, icx: .5, icy: .5, inum: 1, iwob: .3, isoft: .5, csize: .14, cjit: .8, cbord: .5, cseam: 0, cord: 0,
+  nst: 3, stages: [{ lvl: .3, move: 3, hold: 2 }, { lvl: .6, move: 3, hold: 2 }, { lvl: 1, move: 3, hold: 2 }], endHold: 2, back: 3, endMode: 'back', loop: 1, a: 'poster.jpg', b: 'manet-dejeuner-sur-lherbe.jpg' };
+let S = JSON.parse(JSON.stringify(DEF));
+// [key, label, min, max, step, decimals, modes (null = all)]
+const NZK = ['scale', 'oct', 'seed', 'drift'];   // noise-mask sliders: hidden while the mask is uniform
+const PM = [['eblur', 'Edge blur (px)', 1, 40, 1, 0, [3]], ['scale', 'Scale', 1, 16, .1, 1, [1, 2, 4, 5]], ['oct', 'Octaves', 1, 6, 1, 0, [1, 2, 4, 5]],
+  ['seed', 'Seed', 0, 99, 1, 0, [1, 2, 4, 5, 6, 7]], ['drift', 'Drift', 0, 1, .01, 2, [1, 2, 4, 5]], ['split', 'Colour split', .05, .95, .01, 2, [4]], ['amt', 'Amount', 0, 1, .01, 2, [5]], ['flow', 'Flow blur (px)', 2, 60, 1, 0, [5]],
+  ['fblur', 'Max blur (px)', 0, 60, 1, 0, [1]], ['fzoom', 'Zoom amount', 0, .08, .005, 3, [1]],
+  ['icx', 'Centre x', 0, 1, .01, 2, [6]], ['icy', 'Centre y', 0, 1, .01, 2, [6]], ['inum', 'Openings', 1, 4, 1, 0, [6]], ['iwob', 'Edge wobble', 0, 1, .01, 2, [6]], ['isoft', 'Edge softness ×', .2, 3, .05, 2, [6]],
+  ['csize', 'Cell size', .04, .4, .005, 3, [7]], ['cjit', 'Jitter', 0, 1, .01, 2, [7]], ['cbord', 'Border softness', 0, 1, .01, 2, [7]], ['cseam', 'Dark seam', 0, 1, .01, 2, [7]]];
+const PC = [['soft', 'Softness', .02, .5, .01, 2], ['nmix', 'Noise mix', 0, 1, .01, 2], ['motion', 'Motion', 0, 1, .01, 2], ['dur', 'Duration (s)', 5, 180, 1, 0]];
+const ctl = [];   // {inp, val, o, key, dec, vis}
+function sl(par, label, o, key, min, max, step, dec, vis) {
+  const d = document.createElement('div'); d.className = 'sl';
+  d.innerHTML = `<span>${label}</span><input type="range" min="${min}" max="${max}" step="${step}"><b></b>`;
+  const c = { inp: d.children[1], val: d.children[2], o, key, dec, d, vis }; ctl.push(c);
+  c.inp.oninput = () => { o()[key] = +c.inp.value; c.val.textContent = (+c.inp.value).toFixed(dec); touch(); };
+  par.append(d); return c;
+}
+function ck(par, label, key, vis) {
+  const d = document.createElement('label'); d.className = 'ck'; d.innerHTML = `<input type="checkbox"><span>${label}</span>`;
+  const c = { inp: d.children[0], key, d, vis, chk: 1 }; ctl.push(c); c.inp.onchange = () => { S[key] = c.inp.checked ? 1 : 0; touch(); }; par.append(d);
+}
+function sel(par, label, key, opts, vis) {
+  const d = document.createElement('label'); d.className = 'ck'; d.innerHTML = `<span>${label}</span><select>${opts.map((o, i) => `<option value="${i}">${o}</option>`).join('')}</select>`;
+  const c = { inp: d.children[1], key, d, vis, sel: 1 }; ctl.push(c); c.inp.onchange = () => { S[key] = +c.inp.value; touch(); }; par.append(d);
+}
+function chips(par, names, get, set, first = 0) {
+  par.innerHTML = ''; names.forEach((n, i) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => { set(i + first); syncUI(); touch(); }; par.append(b); });
+  return () => [...par.children].forEach((b, i) => b.classList.toggle('on', get() === i + first));
+}
+let upChips = [];
+function setDur(v) { const o = S.dur; if (v !== o) { S.dur = v; if (o > 0) tp = tp * v / o; } dirty = true; touch(); }
+function build() {
+  upChips = [chips($('modes'), MODES.map((n, i) => (i + 1) + ' ' + n), () => S.mode, v => S.mode = v, 1), chips($('views'), VIEWS, () => view, v => view = v), chips($('nst'), ['1', '2', '3'], () => S.nst, v => S.nst = v, 1)];
+  const m = $('msl'), c = $('csl'), s = $('ssl');
+  ck(m, 'Uniform mask (no noise)', 'uni', () => S.mode === 5); ck(m, 'Whole picture together (uniform mask)', 'funi', () => S.mode === 1);
+  for (const [k, l, a, b, st, dec, md] of PM) {
+    sl(m, l, () => S, k, a, b, st, dec, () => md.includes(S.mode) && !(uniNow() && NZK.includes(k)));
+    if (k === 'cseam') sel(m, 'Order', 'cord', ['Random', 'From centre', 'Top-down'], () => S.mode === 7);
+  }
+  for (const [k, l, a, b, st, dec] of PC) sl(c, l, () => S, k, a, b, st, dec);
+  // duration: slider and chips both go through setDur (keeps the playhead at the same relative position)
+  const dc = ctl.find(x => x.key === 'dur'); dc.inp.oninput = () => setDur(+dc.inp.value);
+  const dr = document.createElement('div'); dr.className = 'chips durs'; c.append(dr);
+  const DURS = [5, 10, 30, 60];
+  for (const v of DURS) { const b = document.createElement('button'); b.textContent = v + ' s'; b.onclick = () => setDur(v); dr.append(b); }
+  upChips.push(() => [...dr.children].forEach((b, i) => b.classList.toggle('on', S.dur === DURS[i])));
+  ck(c, 'Equalise mask (spread s evenly)', 'eq'); ck(c, 'Calibrate m (stage .3 = ~30 % of B)', 'cal');
+  const e = document.createElement('label'); e.className = 'ck'; e.innerHTML = `<span>At the end</span><select id="endm"><option value="back">Morph back B to A</option><option value="swap">Swap A/B, restart</option><option value="cut">Hard restart</option></select>`;
+  c.append(e); $('endm').onchange = () => { S.endMode = $('endm').value; touch(); };
+  for (let i = 0; i < 3; i++) {
+    const g = () => S.stages[i], v = () => i < S.nst;
+    const h = document.createElement('div'); h.className = 'sub'; h.textContent = 'Stage ' + (i + 1); s.append(h); ctl.push({ d: h, vis: v });
+    sl(s, 'Level', g, 'lvl', 0, 1, .01, 2, v); sl(s, 'Move', g, 'move', 0, 10, .1, 1, v); sl(s, 'Hold', g, 'hold', 0, 10, .1, 1, v);
+  }
+  const h = document.createElement('div'); h.className = 'sub'; h.textContent = 'End (weights; the loop is spread over the duration)'; s.append(h);
+  sl(s, 'Hold at 1', () => S, 'endHold', 0, 10, .1, 1); sl(s, 'Back to A', () => S, 'back', 0, 10, .1, 1, () => S.endMode === 'back');
+}
+function syncUI() {
+  for (const c of ctl) {
+    if (c.sel) c.inp.value = S[c.key];
+    else if (c.inp && !c.chk) { const v = c.o()[c.key]; c.inp.value = v; c.val.textContent = (+v).toFixed(c.dec); }
+    if (c.chk) c.inp.checked = !!S[c.key];
+    if (c.vis) c.d.style.display = c.vis() ? '' : 'none';
+  }
+  // last stage always ends at 1
+  for (const c of ctl) if (c.key === 'lvl') { const i = ctl.filter(x => x.key === 'lvl').indexOf(c); if (i === S.nst - 1) { c.inp.value = 1; c.val.textContent = '1.00'; c.inp.disabled = true; } else c.inp.disabled = false; }
+  $('endm').value = S.endMode; $('loop').classList.toggle('on', !!S.loop); upChips.forEach(f => f());
+  $('selA').value = S.a || ''; $('selB').value = S.b || '';
+}
+// ── time curve
+function segs() {
+  const st = S.stages.slice(0, S.nst), L = []; let prev = 0;
+  st.forEach((s, i) => { const lv = i === st.length - 1 ? 1 : cl(s.lvl, 0, 1); L.push({ w: s.move, a: prev, b: lv }, { w: s.hold, a: lv, b: lv }); prev = lv; });
+  L.push({ w: S.endHold, a: 1, b: 1 }); if (S.endMode === 'back') L.push({ w: S.back, a: 1, b: 0 });
+  const tot = L.reduce((a, x) => a + x.w, 0) || 1; let t = 0; for (const x of L) { x.t0 = t; t += x.w / tot * S.dur; x.t1 = t; }
+  return L.filter(x => x.w > 0);
+}
+function mAt(L, t) { for (const g of L) if (t < g.t1) return g.a + (g.b - g.a) * ss(cl((t - g.t0) / (g.t1 - g.t0), 0, 1)); return L.length ? L[L.length - 1].b : 0; }
+// ── GL
+const cv = $('cv'), gl = cv.getContext('webgl2', { preserveDrawingBuffer: true, antialias: false });
+const VS = `#version 300 es
+void main(){ vec2 p = vec2(gl_VertexID & 1, gl_VertexID >> 1) * 4. - 1.; gl_Position = vec4(p, 0, 1); }`;
+const FS_C = `#version 300 es
+precision highp float; uniform sampler2D uS; uniform vec2 uFit, uRes; out vec4 o;
+void main(){ vec2 q = (gl_FragCoord.xy / uRes - .5) / uFit + .5; o = (q.x < 0. || q.y < 0. || q.x > 1. || q.y > 1.) ? vec4(0, 0, 0, 1) : vec4(texture(uS, q).rgb, 1); }`;
+const FS_M = `#version 300 es
+precision highp float;
+uniform sampler2D uA, uB, uLut;
+uniform vec2 uRes, uFit, uPan;
+uniform float uZoom, uT, uM, uK, uSoft, uNmix, uEq, uEblur, uScale, uOct, uSeed, uDrift, uSplit, uAmt, uFlow, uUni;
+uniform float uFblur, uFzoom, uIcx, uIcy, uInum, uIwob, uCsize, uCjit, uCbord, uCseam, uCord;
+uniform vec3 uMuA, uSdA, uMuB, uSdB;
+uniform int uMode, uView, uLutPass;
+out vec4 o;
+const float AS = 16. / 9.; const vec2 PX = vec2(1280., 720.);
+float h3(vec3 p){ p = fract(p * .1031); p += dot(p, p.zyx + 31.32); return fract((p.x + p.y) * p.z); }
+float vn(vec3 p){ vec3 i = floor(p), f = fract(p); f = f * f * (3. - 2. * f);
+  return mix(mix(mix(h3(i), h3(i + vec3(1,0,0)), f.x), mix(h3(i + vec3(0,1,0)), h3(i + vec3(1,1,0)), f.x), f.y),
+             mix(mix(h3(i + vec3(0,0,1)), h3(i + vec3(1,0,1)), f.x), mix(h3(i + vec3(0,1,1)), h3(i + vec3(1,1,1)), f.x), f.y), f.z); }
+float fbm(vec2 p, float z, float oct){ float a = .5, s = 0., n = 0.;
+  for (int i = 0; i < 6; i++){ if (float(i) >= oct) break; s += a * vn(vec3(p, z)); n += a; p = p * 2.02 + vec2(5.2, 1.3); z = z * 1.5 + .7; a *= .5; } return s / n; }
+float L(vec3 c){ return dot(c, vec3(.299, .587, .114)); }
+float lodL(sampler2D t, vec2 uv, float lod){ return L(textureLod(t, uv, lod).rgb); }
+float edgeS(vec2 uv){   // Sobel on a blurred B
+  float d = max(uEblur, 1.), lod = log2(d); vec2 e = vec2(d) / PX;
+  float a = lodL(uB, uv + vec2(-e.x, e.y), lod), b = lodL(uB, uv + vec2(0, e.y), lod), c = lodL(uB, uv + e, lod), dd = lodL(uB, uv + vec2(-e.x, 0), lod),
+        f = lodL(uB, uv + vec2(e.x, 0), lod), g = lodL(uB, uv - e, lod), h = lodL(uB, uv - vec2(0, e.y), lod), i = lodL(uB, uv + vec2(e.x, -e.y), lod);
+  return length(vec2((c + 2. * f + i) - (a + 2. * dd + g), (a + 2. * b + c) - (g + 2. * h + i))); }
+float edgeR(vec2 uv){   // spread: average the Sobel on a hex ring so edges become bands, not speckle
+  vec2 r = vec2(max(uEblur, 1.) * 1.5) / PX; float s = edgeS(uv);
+  for (int i = 0; i < 6; i++){ float a = float(i) * 1.0472; s += edgeS(uv + r * vec2(cos(a), sin(a))); } return s / 7.; }
+vec2 grad(sampler2D t, vec2 uv){
+  float d = uFlow, lod = log2(max(d, 1.)); vec2 e = vec2(d) / PX;
+  vec2 g = 3. * vec2(lodL(t, uv + vec2(e.x, 0), lod) - lodL(t, uv - vec2(e.x, 0), lod), lodL(t, uv + vec2(0, e.y), lod) - lodL(t, uv - vec2(0, e.y), lod));
+  return g / max(1., length(g)); }
+// Iris: s = distance to the nearest of up to 4 openings (smooth union), radius wobbled by slow angular noise
+vec2 irisC(int i){ return i == 0 ? vec2(uIcx, uIcy) : vec2(.3 + .4 * h3(vec3(float(i), uSeed, 1.7)), .15 + .7 * h3(vec3(float(i), uSeed, 5.3))); }
+float smin(float a, float b, float k){ float h = max(k - abs(a - b), 0.) / k; return min(a, b) - h * h * k * .25; }
+float irisF(vec2 uv){
+  vec2 p = uv * vec2(AS, 1.), cr[4] = vec2[4](vec2(0., 0.), vec2(AS, 0.), vec2(0., 1.), vec2(AS, 1.)); float d = 9., dn = 0.;
+  for (int j = 0; j < 4; j++){ float m = 9.; for (int i = 0; i < 4; i++){ if (float(i) >= uInum) break; m = min(m, length(cr[j] - irisC(i) * vec2(AS, 1.))); } dn = max(dn, m); }
+  for (int i = 0; i < 4; i++){ if (float(i) >= uInum) break;
+    vec2 v = p - irisC(i) * vec2(AS, 1.); float l = length(v); vec2 dir = v / max(l, 1e-4);
+    float n = fbm(dir * 1.4 + float(i) * 3.7 + uSeed * .9, uSeed * .31 + uT * .05, 2.);
+    float di = l * (1. + uIwob * .6 * (2. * n - 1.)); d = d > 8. ? di : smin(d, di, .12); }
+  return clamp(d / (dn * 1.15), 0., 1.); }
+// Cells: jittered Voronoi, each cell has its own switch time; times are blended near borders (compact kernel) so s is continuous
+// .x = smooth switch time, .y = d2 - d1 in cell units (0 on a border)
+vec2 cpt(vec2 id){ return id + .5 + (vec2(h3(vec3(id, uSeed + 3.1)), h3(vec3(id, uSeed + 8.7))) - .5) * uCjit; }
+float ctime(vec2 id, vec2 p){
+  float r = h3(vec3(id, uSeed + 14.3)); if (uCord < .5) return r;
+  vec2 u = p * uCsize / vec2(AS, 1.);
+  float x = uCord < 1.5 ? length((u - .5) * vec2(AS, 1.)) / .95 : 1. - u.y;
+  return clamp(.85 * clamp(x, 0., 1.) + .15 * r, 0., 1.); }
+vec2 cellsF(vec2 uv){
+  vec2 q = uv * vec2(AS, 1.) / uCsize, i0 = floor(q); float d1 = 9., d2 = 9.;
+  for (int j = -1; j <= 1; j++) for (int i = -1; i <= 1; i++){ float d = length(cpt(i0 + vec2(i, j)) - q); if (d < d1){ d2 = d1; d1 = d; } else d2 = min(d2, d); }
+  float bw = .03 + uCbord * .57, sw = 0., sv = 0.; int R = bw > .27 ? 2 : 1;
+  for (int j = -2; j <= 2; j++) for (int i = -2; i <= 2; i++){ if (abs(i) > R || abs(j) > R) continue;
+    vec2 id = i0 + vec2(i, j), p = cpt(id); float w = max(0., 1. - (length(p - q) - d1) / bw); w *= w; sw += w; sv += w * ctime(id, p); }
+  return vec2(sv / sw, d2 - d1); }
+// Focus pull: disc of mip-mapped taps (fractional lod = trilinear blend of adjacent mips), image scaled around the centre
+vec3 focusT(sampler2D t, vec2 uv, float rpx, float z){
+  vec2 u = (uv - .5) / z + .5;
+  if (rpx < .05) return textureLod(t, u, 0.).rgb;
+  float lod = log2(max(rpx * .55, 1.)); vec3 s = vec3(0.);
+  for (int i = 0; i < 24; i++){ float r = rpx * sqrt((float(i) + .5) / 24.), a = float(i) * 2.39996; s += textureLod(t, u + r * vec2(cos(a), sin(a)) / PX, lod).rgb; }
+  return s / 24.; }
+vec2 np(vec2 uv){ return uv * vec2(AS, 1.) * uScale + uSeed * vec2(7.13, 3.71); }
+float rawS(vec2 uv){
+  if (uMode == 3){ float g = 1. - exp(-edgeR(uv) * 5.); return .75 * (1. - g) + .25 * fbm(uv * vec2(AS, 1.) * 2.5 + 9., 1.7, 3.); }
+  if (uMode == 6) return irisF(uv);
+  if (uMode == 7) return cellsF(uv).x;
+  return fbm(np(uv), uSeed * 1.37 + uT * uDrift * .1, uOct); }
+bool inB(vec2 uv){ vec2 q = abs(uv - .5); return q.x <= uFit.x * .5 && q.y <= uFit.y * .5; }
+float lut(float v){ return texture(uLut, vec2(v * (float(${LN}) - 1.) / float(${LN}) + .5 / float(${LN}), .5)).r; }
+float nzF(vec2 uv){ return smoothstep(.3, .7, fbm(uv * vec2(AS, 1.) * 5. + 31., 3.3 + uT * .01, 3.)); }
+float maskS(vec2 uv){
+  float s, n = nzF(uv);
+  if (uUni > .5){ if (uMode == 1) return .5; s = .5; }
+  else if (!inB(uv) && uMode < 6) s = n;   // outside B's picture: plain noise order
+  else { float r = rawS(uv); s = uEq > .5 ? lut(clamp(r, 0., 1.)) : r; }
+  return clamp(mix(s, n, uNmix), 0., 1.); }
+float kOf(float s, float m){ if (m <= 0.) return 0.; if (m >= 1.) return 1.; float w = max(uSoft, .005); return smoothstep(s - w, s + w, m * (1. + 2. * w) - w); }
+void main(){
+  vec2 uv0 = gl_FragCoord.xy / uRes;
+  if (uLutPass == 1){ float q = clamp(rawS(uv0), 0., 1.) * 255.; o = vec4(floor(q) / 255., fract(q), 0., inB(uv0) ? 1. : 0.); return; }
+  vec2 uv = (uv0 - .5 - uPan) / uZoom + .5;
+  vec3 A = texture(uA, uv).rgb, B = texture(uB, uv).rgb, cA = A, cB = B; float s = maskS(uv), k;
+  if (uMode == 4){   // colours first (A's stats move to B's), then B's shapes
+    float m1 = smoothstep(0., 1., clamp(uM / uSplit, 0., 1.));
+    vec3 r = clamp(uSdB / max(uSdA, vec3(.02)), .4, 2.5); cA = mix(A, clamp((A - uMuA) * r + uMuB, 0., 1.), m1); k = kOf(s, uK);
+  } else if (uMode == 5){   // liquid: each picture is pushed along the other's luminance gradient, most at k = .5
+    k = kOf(s, uK); float e = sin(3.14159 * k) * uAmt * .1;
+    if (e > 0.){ vec2 gB = grad(uB, uv), gA = grad(uA, uv); cA = texture(uA, uv - gB * e).rgb; cB = texture(uB, uv + gA * e).rgb; }
+  } else if (uMode == 1){   // focus pull: A leaves focus (and grows a little), B settles into focus
+    k = uUni > .5 ? uK : kOf(s, uK); cA = focusT(uA, uv, k * uFblur, 1. + uFzoom * k); cB = focusT(uB, uv, (1. - k) * uFblur, 1. + uFzoom * (1. - k));
+  } else k = kOf(s, uK);
+  vec3 c = mix(cA, cB, k);
+  if (uMode == 7 && uCseam > 0.) c *= 1. - uCseam * .5 * (1. - smoothstep(0., .08, cellsF(uv).y)) * 4. * k * (1. - k);
+  if (uView == 1) c = vec3(s); else if (uView == 2) c = vec3(k); else if (uView == 3) c = A; else if (uView == 4) c = B;
+  o = vec4(c, 1); }`;
+let ok = false;
+function prog(fs) {
+  const p = gl.createProgram();
+  for (const [ty, src] of [[gl.VERTEX_SHADER, VS], [gl.FRAGMENT_SHADER, fs]]) { const s = gl.createShader(ty); gl.shaderSource(s, src); gl.compileShader(s); if (!gl.getShaderParameter(s, gl.COMPILE_STATUS)) throw new Error(gl.getShaderInfoLog(s)); gl.attachShader(p, s); }
+  gl.linkProgram(p); if (!gl.getProgramParameter(p, gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(p)); p.u = {}; return p;
+}
+const loc = (p, n) => p.u[n] ?? (p.u[n] = gl.getUniformLocation(p, n));
+const U = (p, n, v) => { const l = loc(p, n); if (Array.isArray(v)) gl['uniform' + v.length + 'f'](l, ...v); else gl.uniform1f(l, v); };
+const U1i = (p, n, v) => gl.uniform1i(loc(p, n), v);
+let PC_, PM_;
+function tex(w, h, data) {
+  const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+  if (w) gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+  return t;
+}
+function fbo(t) { const f = gl.createFramebuffer(); gl.bindFramebuffer(gl.FRAMEBUFFER, f); gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, t, 0); return f; }
+let slot = [null, null], lutT, fbL, lutBuf = new Uint8Array(LW * LH * 4), lutKey = '', lutAt = 0, imgVer = 0;
+function initGL() {
+  if (!gl) throw new Error('WebGL2 not available');
+  PC_ = prog(FS_C); PM_ = prog(FS_M);
+  lutT = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, lutT); setLut(Uint8Array.from({ length: LN }, (_, i) => i * 255 / (LN - 1)));
+  const lt = tex(LW, LH); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); fbL = fbo(lt);
+  ok = true;
+}
+function setLut(a) {
+  gl.bindTexture(gl.TEXTURE_2D, lutT); gl.pixelStorei(gl.UNPACK_ALIGNMENT, 1); gl.texImage2D(gl.TEXTURE_2D, 0, gl.R8, LN, 1, 0, gl.RED, gl.UNSIGNED_BYTE, a);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+  gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+}
+// image slot: source texture, letterboxed 16:9 copy (contain, mipmapped), mean/std per channel from a 64x64 copy
+function stats(src) {
+  const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.drawImage(src, 0, 0, 64, 64);
+  let d; try { d = x.getImageData(0, 0, 64, 64).data; } catch (e) { return { mu: [.5, .5, .5], sd: [.2, .2, .2] }; }
+  const mu = [0, 0, 0], sd = [0, 0, 0], n = 4096;
+  for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) mu[c] += d[i * 4 + c] / 255 / n;
+  for (let i = 0; i < n; i++) for (let c = 0; c < 3; c++) sd[c] += (d[i * 4 + c] / 255 - mu[c]) ** 2 / n;
+  return { mu, sd: sd.map(Math.sqrt) };
+}
+function setImage(i, src, name, key) {
+  const w = src.naturalWidth || src.width, h = src.naturalHeight || src.height, s = slot[i] || (slot[i] = { tc: tex(W, H) });
+  if (!s.fb) s.fb = fbo(s.tc);
+  if (!s.ts) s.ts = tex();
+  gl.bindTexture(gl.TEXTURE_2D, s.ts); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+  try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, src); } catch (e) { gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); throw e; }
+  gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, false); gl.generateMipmap(gl.TEXTURE_2D);
+  const ia = w / h, ca = W / H; s.fit = ia > ca ? [1, ca / ia] : [ia / ca, 1]; s.st = stats(src); s.name = name; s.key = key;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, s.fb); gl.viewport(0, 0, W, H); gl.useProgram(PC_);
+  gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, s.ts); U1i(PC_, 'uS', 0); U(PC_, 'uFit', s.fit); U(PC_, 'uRes', [W, H]); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  gl.bindTexture(gl.TEXTURE_2D, s.tc); gl.generateMipmap(gl.TEXTURE_2D); imgVer++; dirty = true;
+}
+function placeholder(kind) {
+  const c = document.createElement('canvas'); c.width = 640; c.height = 360; const x = c.getContext('2d'), g = x.createLinearGradient(0, 0, 640, 360);
+  g.addColorStop(0, kind ? '#1f4e79' : '#8a3b12'); g.addColorStop(1, kind ? '#9fd6c8' : '#f2c14e'); x.fillStyle = g; x.fillRect(0, 0, 640, 360);
+  for (let i = 0; i < 14; i++) { x.fillStyle = `hsla(${kind ? 180 + i * 12 : 10 + i * 14},70%,${35 + i * 3}%,.7)`; x.beginPath(); x.arc(60 + i * 40, 180 + Math.sin(i * 1.3 + kind) * 110, 22 + (i % 4) * 14, 0, 7); x.fill(); }
+  return c;
+}
+const loadURL = url => new Promise((res, rej) => { const im = new Image(); im.onload = () => res(im); im.onerror = () => rej(new Error('cannot load ' + url)); im.src = url; });
+function hint(t, warn) { $('hint').textContent = t; $('hint').classList.toggle('warn', !!warn); }
+const HINT = 'Gallery images load over http: run `python3 -m http.server` in the repo root and open http://localhost:8000/tools/morph-lab.html. Over file:// use File… or drop images.';
+async function loadGal(i, name) {   // gallery file -> slot i; on failure keep a placeholder and say why
+  try { if (location.protocol === 'file:') throw 0; setImage(i, await loadURL('../assets/gallery/' + name), name, name); return true; }
+  catch (e) { setImage(i, placeholder(i), 'placeholder', ''); hint('Gallery image not available (' + name + '). ' + HINT, 1); return false; }
+}
+async function loadFile(i, f) {
+  if (!f || !f.type.startsWith('image/')) return;
+  const u = URL.createObjectURL(f);
+  try { setImage(i, await loadURL(u), f.name, ''); } catch (e) { hint('Cannot read ' + f.name, 1); }
+  URL.revokeObjectURL(u); i ? S.b = '' : S.a = ''; $(i ? 'selB' : 'selA').value = ''; save(); syncUI();
+}
+function swapImgs() { slot.reverse(); [S.a, S.b] = [S.b, S.a]; imgVer++; dirty = true; syncUI(); save(); }
+// ── mask LUT: histogram-equalise the mask on a 320x180 render of itself (so stage .3 reveals ~30 % of B)
+const uniNow = () => S.mode === 5 ? S.uni : S.mode === 1 ? S.funi : 0;   // uniform mask (Liquid option, Focus pull default)
+const softNow = () => Math.max(S.mode === 6 ? S.soft * S.isoft : S.soft, .005);   // Iris: its edge softness scales the common one
+const lutKeyNow = () => [S.mode, S.eq, S.eblur, S.scale, S.oct, S.seed, uniNow(), S.icx, S.icy, S.inum, S.iwob, S.csize, S.cjit, S.cbord, S.cord, imgVer].join();
+function camU(p, zoom, pan) { U(p, 'uZoom', zoom); U(p, 'uPan', pan); }
+// the share of B (mean k over a uniform mask) as a function of the eased input, and its inverse, so stage .3 really shows ~30 %
+function cover(x, w, nm) { let a = 0; const n = 48, y = x * (1 + 2 * w) - w;   // mask = (1 - nm) u + nm v, u and v uniform
+  for (let i = 0; i < n; i++) for (let j = 0; j < 12; j++) { const s = (1 - nm) * (i + .5) / n + nm * (j + .5) / 12, t = cl((y - (s - w)) / (2 * w), 0, 1); a += t * t * (3 - 2 * t); } return a / n / 12; }
+function invCover(m, w, nm) { if (m <= 0 || m >= 1) return m; let lo = 0, hi = 1; for (let i = 0; i < 30; i++) { const c = (lo + hi) / 2; cover(c, w, nm) < m ? lo = c : hi = c; } return (lo + hi) / 2; }
+function setMain(res, lutPass, m, zoom, pan, t) {
+  const p = PM_; gl.useProgram(p); U(p, 'uRes', res);
+  const A = slot[0], B = slot[1];
+  for (const [i, n, s] of [[0, 'uA', A.tc], [1, 'uB', B.tc], [2, 'uLut', lutT]]) { gl.activeTexture(gl.TEXTURE0 + i); gl.bindTexture(gl.TEXTURE_2D, s); U1i(p, n, i); }
+  U(p, 'uFit', B.fit); camU(p, zoom, pan); U(p, 'uT', t); U(p, 'uM', m);
+  const km = S.mode === 4 ? cl((m - S.split) / (1 - S.split), 0, 1) : m; U(p, 'uK', S.cal && !(S.mode === 1 && S.funi) ? invCover(km, softNow(), S.nmix) : km);
+  for (const k of ['nmix', 'eq', 'eblur', 'scale', 'oct', 'seed', 'drift', 'split', 'amt', 'flow', 'fblur', 'fzoom', 'icx', 'icy', 'inum', 'iwob', 'csize', 'cjit', 'cbord', 'cseam', 'cord']) U(p, 'u' + k[0].toUpperCase() + k.slice(1), +S[k]);
+  U(p, 'uSoft', softNow()); U(p, 'uUni', +uniNow());
+  U(p, 'uMuA', A.st.mu); U(p, 'uSdA', A.st.sd); U(p, 'uMuB', B.st.mu); U(p, 'uSdB', B.st.sd);
+  U1i(p, 'uMode', S.mode); U1i(p, 'uView', lutPass ? 0 : view); U1i(p, 'uLutPass', lutPass);
+}
+function buildLut() {
+  lutKey = lutKeyNow(); lutAt = performance.now();
+  if (!S.eq || uniNow()) return;
+  gl.bindFramebuffer(gl.FRAMEBUFFER, fbL); gl.viewport(0, 0, LW, LH); setLut(Uint8Array.from({ length: LN }, (_, i) => i * 255 / (LN - 1)));
+  setMain([LW, LH], 1, 0, 1, [0, 0], 0); gl.drawArrays(gl.TRIANGLES, 0, 3); gl.readPixels(0, 0, LW, LH, gl.RGBA, gl.UNSIGNED_BYTE, lutBuf);
+  const hist = new Float64Array(LN); let n = 0;
+  for (let i = 0; i < LW * LH; i++) if (lutBuf[i * 4 + 3] > 127) { hist[Math.min(LN - 1, Math.floor((lutBuf[i * 4] + lutBuf[i * 4 + 1] / 255) / 255 * (LN - 1) + .5))]++; n++; }
+  const a = new Uint8Array(LN); let c = 0;
+  for (let i = 0; i < LN; i++) { a[i] = n ? Math.round(255 * (c + hist[i] / 2) / n) : i * 255 / (LN - 1); c += hist[i]; }
+  setLut(a);
+}
+// ── time
+let playing = true, tp = 0, clk = 0, view = 0, forceM = null, dirty = true, last = 0, curM = 0, scrubbing = false;
+function render(force) {
+  if (!ok || !slot[0] || !slot[1]) return;
+  const L = segs(), m = forceM ?? mAt(L, tp); curM = m;
+  if (lutKeyNow() !== lutKey && (force || performance.now() - lutAt > 120)) buildLut();
+  const mo = S.motion, zoom = 1 + mo * (.04 + .05 * (.5 - .5 * Math.cos(clk * 6.2832 / 80))), pan = [mo * .015 * Math.sin(clk * 6.2832 / 110), mo * .012 * Math.cos(clk * 6.2832 / 140)];
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null); gl.viewport(0, 0, W, H); setMain([W, H], 0, m, zoom, pan, clk); gl.drawArrays(gl.TRIANGLES, 0, 3);
+  dirty = false; chart(L); $('scrub').value = scrubbing ? $('scrub').value : Math.round(tp / S.dur * 1000);
+  $('tl').textContent = `${tp.toFixed(1)} / ${S.dur} s · m ${m.toFixed(2)}`;
+}
+function chart(L) {
+  const c = $('chart'), x = c.getContext('2d'), w = c.width, h = c.height, px = 8, py = 10, X = t => px + t / S.dur * (w - 2 * px), Y = v => h - py - v * (h - 2 * py);
+  x.clearRect(0, 0, w, h); x.setLineDash([4, 4]); x.strokeStyle = '#4a4a60'; x.lineWidth = 1;
+  for (const v of [0, ...new Set(L.filter(g => g.a === g.b).map(g => g.a))]) { x.beginPath(); x.moveTo(px, Y(v)); x.lineTo(w - px, Y(v)); x.stroke(); }
+  x.setLineDash([]); x.strokeStyle = '#5cf08a'; x.lineWidth = 2.5; x.beginPath();
+  for (let i = 0; i <= 400; i++) { const t = i / 400 * S.dur; i ? x.lineTo(X(t), Y(mAt(L, t))) : x.moveTo(X(t), Y(mAt(L, t))); } x.stroke();
+  x.strokeStyle = '#fff'; x.lineWidth = 1.5; x.beginPath(); x.moveTo(X(tp), 2); x.lineTo(X(tp), h - 2); x.stroke();
+}
+function frame(ts) {
+  requestAnimationFrame(frame); const dt = Math.min(.1, (ts - last) / 1000); last = ts;
+  if (playing && !scrubbing && forceM == null) {
+    clk += dt; tp += dt;
+    if (tp >= S.dur) { if (S.loop) { tp -= S.dur; if (S.endMode === 'swap') swapImgs(); } else { tp = S.dur; playing = false; updPlay(); } }
+    dirty = true;
+  }
+  if (dirty) render();
+}
+const updPlay = () => { $('play').textContent = playing ? '❚❚ Pause' : '▶ Play'; $('play').classList.toggle('on', playing); };
+// ── settings
+function save() { try { localStorage.setItem('bicycleday.morphlab', JSON.stringify(S)); } catch (e) { } $('json').value = '{\n' + Object.entries(S).map(([k, v]) => ' ' + JSON.stringify(k) + ': ' + JSON.stringify(v)).join(',\n') + '\n}'; }
+function touch() { dirty = true; syncUI(); save(); }
+function load(o) {
+  const n = JSON.parse(JSON.stringify(DEF)); for (const k in n) if (o[k] != null && typeof o[k] === typeof n[k]) n[k] = o[k];
+  if (Array.isArray(o.stages)) n.stages = DEF.stages.map((d, i) => ({ ...d, ...(o.stages[i] || {}) }));
+  n.mode = o.v !== 2 && Math.round(n.mode) === 1 ? 2 : cl(Math.round(n.mode), 1, MODES.length); n.v = 2; n.nst = cl(Math.round(n.nst), 1, 3); S = n;
+}
+async function applyImages() {
+  for (const [i, k] of [[0, 'a'], [1, 'b']]) { if (!S[k] && !slot[i]) S[k] = DEF[k]; if (S[k] && slot[i]?.key !== S[k]) await loadGal(i, S[k]); }
+  syncUI();
+}
+$('play').onclick = () => { playing = !playing; if (playing && !S.loop && tp >= S.dur) tp = 0; updPlay(); dirty = true; };
+$('loop').onclick = () => { S.loop = S.loop ? 0 : 1; touch(); };
+$('swap').onclick = swapImgs;
+$('scrub').oninput = e => { scrubbing = true; tp = +e.target.value / 1000 * S.dur; dirty = true; };
+$('scrub').onchange = () => { scrubbing = false; };
+$('chart').onclick = e => { const r = e.target.getBoundingClientRect(); tp = cl((e.clientX - r.left) / r.width * 1280 - 8, 0, 1264) / 1264 * S.dur; dirty = true; };
+$('copy').onclick = async () => { const t = $('json').value; try { await navigator.clipboard.writeText(t); } catch (e) { $('json').select(); document.execCommand('copy'); } $('copy').textContent = 'Copied ✓'; setTimeout(() => $('copy').textContent = 'Copy JSON', 1200); };
+$('imp').onclick = async () => { try { load(JSON.parse($('json').value)); } catch (e) { hint('Import failed: ' + e.message, 1); return; } await applyImages(); touch(); hint('Imported.'); };
+$('rst').onclick = async () => { load({}); await applyImages(); touch(); };
+for (const [id, i] of [['selA', 0], ['selB', 1]]) {
+  $(id).innerHTML = '<option value="">(custom)</option>' + GAL.map(g => `<option>${g}</option>`).join('');
+  $(id).onchange = async e => { if (!e.target.value) return; S[i ? 'b' : 'a'] = e.target.value; await loadGal(i, e.target.value); touch(); };
+}
+$('fA').onchange = e => loadFile(0, e.target.files[0]); $('fB').onchange = e => loadFile(1, e.target.files[0]);
+const st = $('stage'), dz = $('drop');
+st.ondragover = e => { e.preventDefault(); dz.classList.add('on'); const r = st.getBoundingClientRect(), b = e.clientX - r.left > r.width / 2; $('dA').classList.toggle('hot', !b); $('dB').classList.toggle('hot', b); };
+st.ondragleave = e => { if (!st.contains(e.relatedTarget)) dz.classList.remove('on'); };
+st.ondrop = e => { e.preventDefault(); dz.classList.remove('on'); const f = [...e.dataTransfer.files].filter(x => x.type.startsWith('image/')), r = st.getBoundingClientRect(), b = e.clientX - r.left > r.width / 2;
+  if (f.length > 1) { loadFile(0, f[0]); loadFile(1, f[1]); } else if (f.length) loadFile(b ? 1 : 0, f[0]); };
+// ── test hook (headless screenshots): set({m, mode, view, clk, a, b, ...settings}) renders at once; exact() compares m=0 with A and m=1 with B per mode
+window.__lab = {
+  ready: false,
+  async set(o) {
+    const { m, view: v, clk: c, a, b, ...rest } = o; if (m !== undefined) forceM = m; if (v !== undefined) view = v; if (c !== undefined) clk = c;
+    load({ ...S, ...rest, ...(a ? { a } : {}), ...(b ? { b } : {}) }); await applyImages(); syncUI(); save(); render(true); return curM;
+  },
+  px() { const a = new Uint8Array(W * H * 4); gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, a); return a; },
+  exact() {
+    const out = {}, f0 = forceM, v0 = view, m0 = S.mode, mo = S.motion; S.motion = 0;
+    const diff = (a, b) => { let d = 0; for (let i = 0; i < a.length; i++) d = Math.max(d, Math.abs(a[i] - b[i])); return d; };
+    view = 3; forceM = 0; render(true); const A = this.px(); view = 4; render(true); const B = this.px();
+    for (let md = 1; md <= MODES.length; md++) { S.mode = md; view = 0; forceM = 0; render(true); const d0 = diff(this.px(), A); forceM = 1; render(true); out[md] = [d0, diff(this.px(), B)]; }
+    forceM = f0; view = v0; S.mode = m0; S.motion = mo; render(true); return out;
+  },
+};
+// ── start
+(async () => {
+  try { initGL(); } catch (e) { hint('WebGL2 failed: ' + e.message, 1); console.error(e); return; }
+  try { load(JSON.parse(localStorage.getItem('bicycleday.morphlab') || '{}')); } catch (e) { }
+  const q = new URLSearchParams(location.search);
+  if (q.has('mode')) S.mode = cl(+q.get('mode'), 1, MODES.length); if (q.has('a')) S.a = q.get('a'); if (q.has('b')) S.b = q.get('b');
+  if (q.has('view')) view = +q.get('view'); if (q.has('clk')) clk = +q.get('clk'); if (q.has('m')) { forceM = +q.get('m'); playing = false; }
+  build(); updPlay(); hint(location.protocol === 'file:' ? 'file:// : gallery images are not available here, using placeholders. ' + HINT : HINT, location.protocol === 'file:');
+  await applyImages(); if (location.protocol !== 'file:' && slot[0].name !== 'placeholder' && slot[1].name !== 'placeholder') hint(HINT);
+  syncUI(); save(); render(true); requestAnimationFrame(frame); window.__lab.ready = true;
+})();
+</script>

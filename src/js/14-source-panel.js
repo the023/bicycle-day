@@ -5,7 +5,7 @@ function switchSource(kind, stream) {   // kind: 'gen' | 'file' (localData decod
   if (wasLive) {   // old source: Live (stopLive() without its homeGate / exitFullscreen)
     liveOn = false; LIVE = null;
     if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
-    if (ac) ac.close().catch(() => {}); ac = null; analyser = null; micGain = null; METER.db = -90;
+    if (ac) ac.close().catch(() => {}); ac = null; analyser = null; micGain = null; liveSrc = null; METER.db = -90;
     resetFx(); applyArc();
   } else {   // old source: Generated / Audio file (stopPlay() without its homeGate / exitFullscreen)
     playing = false; clearInterval(pumpId); if (ac) ac.close().catch(() => {}); ac = null; analyser = null;

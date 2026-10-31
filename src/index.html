@@ -266,6 +266,22 @@
   body.help-open #home-intro{visibility:hidden}
   #phelp .phtext{position:fixed;left:50%;bottom:calc(var(--pult-h) + 24px);transform:translateX(-50%);width:min(1248px,calc(100vw - 32px));text-align:center;color:#f4f1ea;font:600 13px/1.4 "Helvetica Neue",Arial,sans-serif;letter-spacing:.02em}
   #phelp .pult{opacity:1;pointer-events:auto}
+  /* T170: Tools block (links + debug URL params), top of the Help view; max-height set by fitHelpTools() */
+  #phelp .phtools{position:fixed;top:16px;left:16px;right:64px;overflow-y:auto;display:flex;gap:28px;box-sizing:border-box;padding:12px 16px;border:1px solid #5d5d74;border-radius:10px;background:#0b0b12e8;color:#d8d6cf;font:400 12px/1.4 "Helvetica Neue",Arial,sans-serif}
+  #phelp .ptcol{flex:1 1 0;min-width:0}
+  #phelp .ptcol:first-child{flex:0 0 31%}
+  #phelp .phtools h4{margin:0 0 8px;font:700 11px/1 "Helvetica Neue",Arial,sans-serif;letter-spacing:.14em;text-transform:uppercase;color:#f4f1ea}
+  #phelp .phtools a{color:#4fe0ff;text-decoration:none}
+  #phelp .phtools a:hover,#phelp .phtools a:focus-visible{text-decoration:underline;color:#9af0ff}
+  #phelp .ptcol:first-child a{display:flex;gap:10px;align-items:baseline;margin-bottom:3px}
+  #phelp .ptcol:first-child a b{font-weight:600;white-space:nowrap}
+  #phelp .ptcol:first-child a span{color:#a9a7b4}
+  #phelp .ptp span:nth-of-type(odd){margin-right:14px}
+  #phelp .phtools p{margin:8px 0 0;color:#a9a7b4;font-size:11px}
+  #phelp .phtools code{font:600 11px ui-monospace,Menlo,Consolas,monospace;color:#d8d6cf}
+  #phelp .ptp{display:grid;grid-template-columns:max-content 1fr max-content 1fr;column-gap:12px;row-gap:3px;align-items:baseline}
+  #phelp .ptp a{font:600 11px ui-monospace,Menlo,Consolas,monospace}
+  #phelp .ptp span{color:#a9a7b4}
   #phelp .pk{opacity:1}
   /* T78: auto = a separate minimal pupitre (#mpult), centred at the bottom, sized to its content. The full #pult is hidden in auto only; assisted / manual / the Help demo are unchanged */
   body.lv0 #pult{display:none}
@@ -323,7 +339,7 @@
   body.playing:not(.side-ui):not(.tuning) #settings,body.live:not(.side-ui):not(.tuning) #settings{visibility:hidden}
   body.playing:not(.side-ui):not(.tuning) #fullscreen,body.live:not(.side-ui):not(.tuning) #fullscreen{visibility:hidden}
 body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.tuning) #shareplay{visibility:hidden}
-  body.playing:not(.side-ui):not(.tuning):not(.recording) #rec,body.playing:not(.side-ui):not(.tuning) #recpick,body.live:not(.side-ui):not(.tuning) #rec{visibility:hidden}  body.live #rec{display:none}  #recpick{display:flex;gap:8px}  #recpick[hidden]{display:none}  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
+  body.playing:not(.side-ui):not(.tuning):not(.recording) #rec,body.playing:not(.side-ui):not(.tuning) #recpick,body.live:not(.side-ui):not(.tuning):not(.recording) #rec,body.live:not(.side-ui):not(.tuning) #recpick{visibility:hidden}  #recpick{display:flex;gap:8px}  #recpick[hidden]{display:none}  #actions #xclose{display:none;visibility:hidden;width:44px;padding:10px 0!important}
   body.playing #actions #xclose,body.live #actions #xclose{display:block}
   body.side-ui #actions #xclose,body.tuning #actions #xclose,#actions #xclose:focus-visible{visibility:visible}
   .tpanel label{display:flex;flex-direction:column;gap:5px}
@@ -361,9 +377,9 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   .tpanel>*{flex:none}
   #tune #tgen{display:flex;flex-direction:column;gap:6px}
   #tune #tgen .field{margin:6px 0 0;font:700 10px/1.2 "Helvetica Neue",Arial,sans-serif;letter-spacing:.15em;text-transform:uppercase;color:#a8b1ab}
-  #tune #tgen .trow,#tune #tgrid .trow,#tune #tthemes .trow{gap:4px}
-  #tune #tgen .chip,#tune #tgrid .chip,#tune #tthemes .chip{font:400 11px/1.2 "Helvetica Neue",Arial,sans-serif;letter-spacing:0;text-transform:none;padding:4px 9px;min-height:0;height:23px;box-sizing:border-box;border:1px solid #f4f1ea55;border-radius:99px}
-  #tune #tgen .chip.on,#tune #tgrid .chip.on,#tune #tthemes .chip.on{background:#ffd60a;border-color:#ffd60a;color:#0a0a0a;font-weight:700}
+  #tune #tgen .trow,#tune #tgrid .trow,#tune #tmorph .trow,#tune #tthemes .trow{gap:4px}
+  #tune #tgen .chip,#tune #tgrid .chip,#tune #tmorph .chip,#tune #tthemes .chip{font:400 11px/1.2 "Helvetica Neue",Arial,sans-serif;letter-spacing:0;text-transform:none;padding:4px 9px;min-height:0;height:23px;box-sizing:border-box;border:1px solid #f4f1ea55;border-radius:99px}
+  #tune #tgen .chip.on,#tune #tgrid .chip.on,#tune #tmorph .chip.on,#tune #tthemes .chip.on{background:#ffd60a;border-color:#ffd60a;color:#0a0a0a;font-weight:700}
   .tpanel .tfoot{display:flex;gap:14px;flex-wrap:wrap;border-top:1px solid #ffffff1c;padding-top:9px}
   .tpanel .tlink{border:0;border-radius:0;padding:0;color:#9aa39d;font-size:10px}
   .tpanel .tlink:hover{color:#ffd60a}
@@ -373,6 +389,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   .pult{background:#09090bf0;border:1px solid var(--u-bd);border-radius:12px;box-shadow:0 0 0 1px #00000080,0 16px 48px #000b;color:var(--u-fg)}
   .pult .pk{background:var(--u-surf);border:1px solid var(--u-bd2);border-radius:5px;box-shadow:0 1px 0 var(--u-bd2);font-weight:600;line-height:14px;padding:1px 3px 0}
   .pult .pkg{border:1px solid var(--u-bd);border-radius:7px;background:var(--u-surf)}
+  body.pultH .pult .pmeta .pk.kH{background:#ffd60a;border-color:#ffd60a;color:#0a0a0a}   /* T168: H lit while the pupitre is pinned (every theme) */
   .pult .pkg .pk{background:var(--u-surf2);box-shadow:none;border:0;padding:2px 5px 0;line-height:14px}
   .pult .pkg>.pk:first-child{border-right:1px solid var(--u-bd)}.pult .pkg>.pk:last-child{border-left:1px solid var(--u-bd)}
   .pult .pkg .enb button,.pult .pkg .plvl button{border-left:0;color:#a1a1aa;border-radius:5px;margin:2px 1px;height:calc(100% - 4px);padding:0 7px}
@@ -401,13 +418,14 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   .tpanel .tcard.pend{border-color:#a1a1aa}
   .tpanel button:where(:not(.im):not(.gal)){border-color:var(--u-bd2);border-radius:7px;background:var(--u-surf);color:var(--u-fg)}
   .tpanel button:where(:not(.im):not(.gal)):hover{border-color:var(--u-dim)}
-  #tune #tgen .chip,#tune #tgrid .chip,#tune #tthemes .chip{border-color:var(--u-bd2);border-radius:7px}
-  #tune #tgen .chip.on,#tune #tgrid .chip.on,#tune #tthemes .chip.on,.tpanel button:where(:not(.im):not(.gal)).on{background:var(--u-sel);color:var(--u-sel-fg);border-color:var(--u-sel)}
+  #tune #tgen .chip,#tune #tgrid .chip,#tune #tmorph .chip,#tune #tthemes .chip{border-color:var(--u-bd2);border-radius:7px}
+  #tune #tgen .chip.on,#tune #tgrid .chip.on,#tune #tmorph .chip.on,#tune #tthemes .chip.on,.tpanel button:where(:not(.im):not(.gal)).on{background:var(--u-sel);color:var(--u-sel-fg);border-color:var(--u-sel)}
   .tpanel .tlink{background:none;border:0;color:var(--u-dim)}.tpanel .tlink:hover{color:var(--u-fg)}
   .tpanel input{accent-color:var(--u-acc)}
   #mauto.on{background:var(--u-sel);border-color:var(--u-sel)}
   #actions button{background:#09090bd9;border:1px solid var(--u-bd);border-radius:8px;min-height:36px;font-weight:600;color:var(--u-fg)}
   #actions button:hover{border-color:var(--u-dim)}
+  #actions button.on,body.th-classic #actions button.on{background:var(--u-sel,#c5e1ad);color:var(--u-sel-fg,#0a130d);border-color:var(--u-sel,#c5e1ad)}  #recpick button[data-s="15"]{margin-left:8px}
   /* Classic: brushed metal, 4 screws, cream raised keys, amber accent */
   body.th-classic{--u-acc:#ffb84d;--u-acc-fg:#1a1000;--u-acc-soft:#ffb84d;--u-sel:#ffb84d;--u-sel-fg:#1a1000;--u-fg:#e9e4d8;--u-dim:#a59f90;--u-bd:#000;--u-bd2:#111;--u-surf:#171718;--u-surf2:#171718;--u-font:"Helvetica Neue",Arial,sans-serif;--metal:repeating-linear-gradient(90deg,#ffffff05 0 1px,transparent 1px 3px),linear-gradient(180deg,#2c2c2e,#1d1d1f);--cap:linear-gradient(180deg,#f2efe6,#cfcabd);--amber:linear-gradient(180deg,#ffb84d,#e08a1e)}
   body.th-classic .pult{position:fixed;background:var(--metal);border-color:#444;border-radius:8px;box-shadow:0 1px 0 #ffffff14 inset,0 10px 30px #000c;padding-left:18px;padding-right:18px}
@@ -439,8 +457,8 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   body.th-classic .tpanel .tcard{border-color:#000;border-radius:4px;box-shadow:0 1px 0 #ffffff12;color:#cfc9bb}
   body.th-classic .tpanel .tcard.on{border-color:#e08a1e;background:#ffb84d14;box-shadow:0 0 10px #ffa63333}
   body.th-classic .tpanel button:where(:not(.im):not(.gal)){background:linear-gradient(180deg,#3a3a3c,#2a2a2c);border-color:#000;border-radius:4px;box-shadow:0 1px 0 #ffffff1a inset,0 1px 0 #000;color:#e9e4d8}
-  body.th-classic #tune #tgen .chip,body.th-classic #tune #tgrid .chip,body.th-classic #tune #tthemes .chip{border-radius:4px}
-  body.th-classic #tune #tgen .chip.on,body.th-classic #tune #tgrid .chip.on,body.th-classic #tune #tthemes .chip.on,body.th-classic .tpanel button:where(:not(.im):not(.gal)).on{background:var(--amber);color:#1a1000;border-color:#000}
+  body.th-classic #tune #tgen .chip,body.th-classic #tune #tgrid .chip,body.th-classic #tune #tmorph .chip,body.th-classic #tune #tthemes .chip{border-radius:4px}
+  body.th-classic #tune #tgen .chip.on,body.th-classic #tune #tgrid .chip.on,body.th-classic #tune #tmorph .chip.on,body.th-classic #tune #tthemes .chip.on,body.th-classic .tpanel button:where(:not(.im):not(.gal)).on{background:var(--amber);color:#1a1000;border-color:#000}
   body.th-classic .tpanel .tlink{background:none;border:0;box-shadow:none;color:#a59f90}
   body.th-classic #actions button{background:var(--cap);color:#222;border:1px solid #111;border-radius:4px;box-shadow:0 2px 0 #000a}
   /* Geek: monospace, phosphor green, solid borders, segmented gauges, [key] brackets */
@@ -475,8 +493,8 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   body.th-geek .tpanel .tcard{background:#030805;color:#7fcf98;font-family:inherit}
   body.th-geek .tpanel .tcard b{color:#b8f5c9}
   body.th-geek .tpanel .tcard.on{border-color:#39ff88;background:#39ff8814}body.th-geek .tpanel .tcur,body.th-geek .tpanel .tbusy{color:#39ff88}
-  body.th-geek .tpanel button:where(:not(.im):not(.gal)),body.th-geek #tune #tgen .chip,body.th-geek #tune #tgrid .chip,body.th-geek #tune #tthemes .chip{background:none;border-color:#1f6b3a;color:#b8f5c9;font-family:inherit}
-  body.th-geek #tune #tgen .chip.on,body.th-geek #tune #tgrid .chip.on,body.th-geek #tune #tthemes .chip.on,body.th-geek .tpanel button:where(:not(.im):not(.gal)).on{background:#39ff88;color:#001a08;border-color:#39ff88}
+  body.th-geek .tpanel button:where(:not(.im):not(.gal)),body.th-geek #tune #tgen .chip,body.th-geek #tune #tgrid .chip,body.th-geek #tune #tmorph .chip,body.th-geek #tune #tthemes .chip{background:none;border-color:#1f6b3a;color:#b8f5c9;font-family:inherit}
+  body.th-geek #tune #tgen .chip.on,body.th-geek #tune #tgrid .chip.on,body.th-geek #tune #tmorph .chip.on,body.th-geek #tune #tthemes .chip.on,body.th-geek .tpanel button:where(:not(.im):not(.gal)).on{background:#39ff88;color:#001a08;border-color:#39ff88}
   body.th-geek .tpanel .tlink{background:none;border:0;color:#2f7a48}
   body.th-geek #actions button{background:#020403e6;border-color:#39ff88;color:#39ff88;text-transform:lowercase}
   @media (max-width:600px),(max-height:600px){
@@ -591,7 +609,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
 </main>
 
 <div id="live"><span id="lstate">listening…</span><span id="lbar"><i></i></span><span id="mlev" title="Input level (what the app hears)"><i></i></span><span id="mtxt"></span><button id="lstop">■ stop</button></div>
-<div id="actions"><button class="action" id="settings" aria-controls="tune" aria-expanded="false" aria-label="Source">Source</button><button class="action" id="shareplay" type="button" aria-label="Copy a link that reproduces this trip">Share</button><button class="action" id="rec" type="button" aria-label="Record a short clip" title="Record a 15, 30 or 60 s clip">Record</button><span id="recpick" hidden><button class="action" type="button" data-s="15">15 s</button><button class="action" type="button" data-s="30">30 s</button><button class="action" type="button" data-s="60">60 s</button></span><button class="action" id="recshare" type="button" hidden>Share clip</button><button class="action" id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button class="action" id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
+<div id="actions"><button class="action" id="settings" aria-controls="tune" aria-expanded="false" aria-label="Source">Source</button><button class="action" id="shareplay" type="button" aria-label="Copy a link that reproduces this trip">Share</button><button class="action" id="rec" type="button" aria-label="Record a short clip" title="Record a 15, 30 or 60 s clip">Record</button><span id="recpick" hidden><button class="action" type="button" data-q="hd" title="HD: up to 1080p, ~60 MB/min">HD</button><button class="action" type="button" data-q="small" title="Small: 720p for phones, ~23 MB/min">Small</button><button class="action" type="button" data-s="15">15 s</button><button class="action" type="button" data-s="30">30 s</button><button class="action" type="button" data-s="60">60 s</button></span><button class="action" id="recshare" type="button" hidden>Share clip</button><button class="action" id="fullscreen" aria-label="Enter fullscreen">Fullscreen</button><button class="action" id="xclose" aria-label="Stop and close (Esc)" title="Esc">✕</button></div>
 <div class="tpanel" id="tune" hidden>
   <section class="tsec" aria-labelledby="tpic">
     <h3 class="th" id="tpic">Picture</h3>
@@ -600,6 +618,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
     <div class="urlrow"><input id="timgurl" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="Paste an image link (https://…)" aria-label="Image link"><button class="chip" id="timgurlgo" type="button">Load</button></div>
     <small class="urlmsg" id="timgurlmsg" role="status"></small>
     <button class="chip" id="twebcam" type="button" style="margin-top:6px">Webcam</button>
+    <div id="tmorph" title="How the picture changes when you switch image (keys V [ ], thumbnails, auto image). Morph = a slow masked transition (10-60 s at calm / soft Energy, 4-12 s at normal, 1.5 s above) in a random style; Off = the plain 1.5 s crossfade."><div class="trow"><small>Image change</small><button type="button" class="chip" data-morph="1">Morph</button><button type="button" class="chip" data-morph="0">Off</button></div></div>
   </section>
   <section class="tsec" aria-labelledby="tsnd">
     <h3 class="th" id="tsnd">Sound</h3>
@@ -683,7 +702,7 @@ body.playing:not(.side-ui):not(.tuning) #shareplay,body.live:not(.side-ui):not(.
   <div id="prow4" class="prow4">
     <div id="ctl" class="pctl"><button id="pp" title="Space">❚❚</button><button id="stopb" title="Esc">■</button><div id="bar"><canvas id="prof" width="1200" height="40"></canvas><div id="head"></div></div><span id="tm">0:00</span><input id="vol" type="range" min="0" max="1" step=".01" value="1" title="Volume"></div>
     <span id="pnow" class="pnow"></span>
-    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span><span class="phint">⇧ less · Alt more</span></div>
+    <div id="pmeta" class="pmeta"><span><kbd class="pk gT">Space</kbd>pause</span><span><kbd class="pk gT">Esc</kbd>stop</span><span><kbd class="pk gT">⇧←→</kbd>±10 s</span><span><kbd class="pk gT">←→↑↓</kbd>camera</span><span><kbd class="pk gX">1-8</kbd>preset</span><span><kbd class="pk gG" data-code="KeyB" data-shift="1">⇧B</kbd>mark</span><span><kbd class="pk gG">L</kbd>code</span><span><kbd class="pk gG kH">H</kbd>pin</span><span><kbd class="pk gG">F</kbd>full</span><span class="phint">⇧ less · Alt more</span></div>
     <button id="pexp" class="pk gG pexpb" title="Explain" aria-controls="pxt" aria-expanded="false">▾</button>
   </div>
 </div>

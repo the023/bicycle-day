@@ -11,9 +11,34 @@ uniform float uWarpN,uFx,uKali,uJulia,uKalZ;
 uniform vec3 uKaliP,uJuliaP;   // T163 shape of the styles (ENGINE.kali / ENGINE.julia): x = input zoom (smaller = closer = bigger shapes), y = iterations, z = fold scale (Kali) / c drift (Julia); uKalZ = ENGINE.kal.zoom
 uniform float uMono,uT,uTile,uTileN,uTileMode,uTileSeed,uTileSize,uWarp,uKal,uKalN,uFb,uFbHue,uHue,uPal,uSide,uBreath,uMelt,uZoom,uRot,uAber,uPulse,uBright,uAspect,uAnchor;
 vec2 gX=vec2(0.),gY=vec2(0.); bool gOn=false;   // tunnel only: analytic screen gradients of the sampling coordinate, so the mip level never sees the ring wrap
+// T167 image change = masked morph: uImgMix = m (B's share, 0..1, staged on the CPU); the per-sample share k comes from a switch map s(uv) of the style uMo.x
+// (0 crossfade, 1 organic dissolve, 2 iris, 3 colour first), evaluated on the (mirrored) image uv so the mask follows the kaleidoscope / warp; m = 0 is exactly A, m = 1 exactly B
+uniform vec4 uMo,uMi,uMj; uniform vec3 uMuA,uMr,uMuB;   // uMo = style, seed, softness w, colour shift 0..1 | uMi = iris centres 0 and 1 | uMj = iris centre 2, iris count, iris norm
+float mh(vec3 p){ p=fract(p*.1031); p+=dot(p,p.zyx+31.32); return fract((p.x+p.y)*p.z); }
+float mn(vec3 p){ vec3 i=floor(p),f=fract(p); f=f*f*(3.-2.*f);
+  return mix(mix(mix(mh(i),mh(i+vec3(1,0,0)),f.x),mix(mh(i+vec3(0,1,0)),mh(i+vec3(1,1,0)),f.x),f.y),
+             mix(mix(mh(i+vec3(0,0,1)),mh(i+vec3(1,0,1)),f.x),mix(mh(i+vec3(0,1,1)),mh(i+vec3(1,1,1)),f.x),f.y),f.z); }
+float mfbm(vec2 p,float z,int oct){ float a=.5,s=0.,n=0.; for(int i=0;i<4;i++){ if(i>=oct) break; s+=a*mn(vec3(p,z)); n+=a; p=p*2.02+vec2(5.2,1.3); z=z*1.5+.7; a*=.5; } return s/n; }
+float morphS(vec2 q){   // switch map 0..1: a pixel turns to B when m passes s
+  vec2 p=q*vec2(uAspect,1.);
+  if(uMo.x<1.5) return smoothstep(.25,.75,mfbm(p*2.6+uMo.y*vec2(7.13,3.71),uMo.y*1.37+uT*.02,3));   // organic: seeded fbm, slow drift (stretched so the share of B follows m)
+  float d=9.;   // iris: distance to the nearest opening (soft union), the radius wobbled by low-frequency noise around each centre
+  for(int i=0;i<3;i++){ if(float(i)>=uMj.z) break;
+    vec2 c=(i==0?uMi.xy:i==1?uMi.zw:uMj.xy)*vec2(uAspect,1.), v=p-c; float l=length(v); vec2 dir=v/max(l,1e-4);
+    float w=mfbm(dir*1.4+float(i)*3.7+uMo.y*.9,uMo.y*.31+uT*.03,2);
+    float di=l*(1.+.35*(2.*w-1.)); if(d>8.) d=di; else { float h=max(.12-abs(d-di),0.)/.12; d=min(d,di)-h*h*.03; } }
+  return clamp(d/uMj.w,0.,1.); }
+float morphK(vec2 uv){
+  float m=uImgMix; if(uMo.x<.5) return m;
+  float w=uMo.z; if(uMo.x>2.5) m=clamp((m-.3)/.7,0.,1.);   // colour first: the reveal starts after the colours have begun to move
+  vec2 q=1.-abs(1.-mod(uv,vec2(2.)));   // mirrored like the texture wrap, so the reveal front crosses the image edge without a seam (no letterbox: A and B both fill the frame)
+  float sv=morphS(q); return smoothstep(sv-w,sv+w,m*(1.+2.*w)-w); }
 vec4 texI(sampler2D t,vec2 uv){
-  if(gOn){ vec2 ax=gX*vec2(1./uAspect,1.), ay=gY*vec2(1./uAspect,1.); return uImgMix<=0.?textureGrad(t,uv,ax,ay):mix(textureGrad(t,uv,ax,ay),textureGrad(uTex2,uv,ax,ay),uImgMix); }
-  return uImgMix<=0.?texture(t,uv):mix(texture(t,uv),texture(uTex2,uv),uImgMix); }   // crossfade between two source images (display pass of the source only, not the feedback)
+  vec4 a,b;
+  if(gOn){ vec2 ax=gX*vec2(1./uAspect,1.), ay=gY*vec2(1./uAspect,1.); a=textureGrad(t,uv,ax,ay); if(uImgMix<=0.) return a; b=textureGrad(uTex2,uv,ax,ay); }
+  else { a=texture(t,uv); if(uImgMix<=0.) return a; b=texture(uTex2,uv); }   // display pass of the source only, not the feedback
+  if(uMo.x>2.5) a.rgb=mix(a.rgb,clamp((a.rgb-uMuA)*uMr+uMuB,0.,1.),smoothstep(0.,1.,uMo.w));   // colour first: A's per-channel mean / std move toward B's
+  return mix(a,b,morphK(uv)); }
 out vec4 o;
 const float TAU=6.28318530718;
 vec3 hueRot(vec3 c,float a){float s=sin(a),co=cos(a);const vec3 k=vec3(.57735);return c*co+cross(k,c)*s+k*dot(k,c)*(1.-co);}

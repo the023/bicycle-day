@@ -12,7 +12,7 @@ function prog(fs) {
 function locs(p, names) { const u = {}; names.forEach(n => u[n] = gl.getUniformLocation(p, n)); return u; }
 function initGL() {
   progS = prog(FS_SCENE); progD = prog(FS_SHOW);
-  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uGhostA', 'uGhostB', 'uGhostMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uTileSize', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia', 'uKaliP', 'uJuliaP', 'uKalZ', 'uCode', 'uCodeAmt']);
+  uS = locs(progS, ['uTex', 'uTex2', 'uImgMix', 'uMo', 'uMi', 'uMj', 'uMuA', 'uMr', 'uMuB', 'uGhostA', 'uGhostB', 'uGhostMix', 'uPrev', 'uRes', 'uT', 'uWarp', 'uKal', 'uKalN', 'uFb', 'uFbHue', 'uHue', 'uPal', 'uSide', 'uBreath', 'uMelt', 'uZoom', 'uRot', 'uAber', 'uPulse', 'uBright', 'uAspect', 'uAnchor', 'uTile', 'uTileN', 'uTileMode', 'uTileSeed', 'uTileSize', 'uMono', 'uCenter', 'uRip', 'uPalC', 'uPalD', 'uHueAmt', 'uTilt', 'uTT', 'uSrcZ', 'uSrcRot', 'uStretch', 'uTunnel', 'uWarpN', 'uFx', 'uKali', 'uJulia', 'uKaliP', 'uJuliaP', 'uKalZ', 'uCode', 'uCodeAmt']);
   uD = locs(progD, ['uTex', 'uRes', 'uT', 'uAber', 'uPulse', 'uHi', 'uFx', 'uDark', 'uBlaze', 'uStrobe', 'uRate', 'uCells', 'uGrid', 'uGlitch', 'uGSeed', 'uNeg', 'uPh', 'uCol', 'uCacc', 'uCph']);
   CODE.tex = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, CODE.tex); gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array(4));
   gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
@@ -38,6 +38,17 @@ function makeTargets() {
 }
 let ASPECT = 1; let cellPrev = 0, cellGrid = 4;   // strobe grid: size of the current launch (N x N, N in 3..10), drawn at each launch
 const GALLERY = __GALLERY__;   // [{id, title, src}] inlined by build.mjs; a picture is decoded only when its thumb is clicked (galPick)
+// T167 colour-first morph: per-channel mean / std (0..1) of a 64x64 copy, taken once when an image loads (a tainted canvas gives the neutral default)
+const MSTAT0 = { mu: [.5, .5, .5], sd: [.2, .2, .2] };
+function imgStats(img) {
+  try {
+    const c = document.createElement('canvas'); c.width = c.height = 64; const x = c.getContext('2d'); x.drawImage(img, 0, 0, 64, 64);
+    const d = x.getImageData(0, 0, 64, 64).data, mu = [0, 0, 0], sd = [0, 0, 0], n = 4096;
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) mu[k] += d[i * 4 + k] / 255 / n;
+    for (let i = 0; i < n; i++) for (let k = 0; k < 3; k++) sd[k] += (d[i * 4 + k] / 255 - mu[k]) ** 2 / n;
+    return { mu, sd: sd.map(Math.sqrt) };
+  } catch (e) { return MSTAT0; }
+}
 function loadImg(src, ok, fail, maxPx) {
   const bad = () => { if (fail) fail(); else hint.textContent = 'Could not load that image'; };
   const give = (img, url) => {
@@ -47,7 +58,7 @@ function loadImg(src, ok, fail, maxPx) {
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, img); gl.generateMipmap(gl.TEXTURE_2D);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR_MIPMAP_LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
-    ok({ tex: t, aspect: img.naturalWidth / img.naturalHeight, url });
+    ok({ tex: t, aspect: img.naturalWidth / img.naturalHeight, url, st: imgStats(img) });
   };
   const img = new Image();
   img.onload = () => { try { give(img, src); } catch (e) { retry(); } };   // a tainted cross-origin image throws SecurityError in texImage2D
@@ -66,12 +77,37 @@ function loadImg(src, ok, fail, maxPx) {
   img.src = src;
 }
 function loadPoster(src, done, fail) { loadImg(src, e => { if (src === GALLERY[0].src) e.gid = GALLERY[0].id; IM[0] = e; imFrom = imTo = 0; imMix = 1; ASPECT = e.aspect; done && done(); }, fail); }
-// several images: #1 is the default picture (the 1943 poster), #2..#5 are the user's; switching crossfades over ~1.5 s without touching clock or sound
+// several images: #1 is the default picture (the 1943 poster), #2..#5 are the user's. T167: a change is a masked morph (USER.morph; styles in the 05-shaders.js texI block), drawn once per change from the play seed + the change counter
+// MORPH.n; imMix = progress through MORPH.dur (0..1, `imMix += dt / dur` in render()), MORPH.m = B's share after the stages (morphM). Off = the plain 1.5 s crossfade of old.
+const MSTY = ['crossfade', 'organic dissolve', 'iris', 'colour first'];
+const MORPH = { n: 0, st: 0, seed: 0, dur: 1.5, l: 0, h: 0, a0: 1, m: 0, from: 0, to: 0, c: [[.5, .5], [.5, .5], [.5, .5]], ni: 1 };
+function morphM(x) {   // stages: one smoothstep move, or (l > 0) a move to the level l, a hold of h of the duration, then on to 1
+  if (!MORPH.l) return smooth(0, 1, x);
+  const h = MORPH.h, a = (1 - h) / 2;
+  return x < a ? MORPH.l * smooth(0, a, x) : x < a + h ? MORPH.l : MORPH.l + (1 - MORPH.l) * smooth(a + h, 1, x);
+}
+function morphDraw(on) {
+  const n = ++MORPH.n, r = k => seedHash(n, 50 + k), E = USER.energy;
+  MORPH.st = on ? Math.floor(r(0) * 4) : 0; MORPH.seed = r(2) * 40; MORPH.l = MORPH.h = 0; MORPH.dur = 1.5;
+  if (!on) return;
+  if (hcOn()) MORPH.st = 0;   // Extreme: the plain crossfade (duration as strong)
+  if (!SHOW) MORPH.dur = E <= 1 ? 10 + 50 * r(1) : E === 2 ? 4 + 26 * r(1) : 3 + 12 * r(1);   // calm / soft 10-60 s, normal 4-30 s, strong / Extreme 3-15 s, every control level (showcase: 1.5 s, style still drawn)
+  if (MORPH.dur >= 4 && r(3) < .5) { MORPH.l = .3 + .2 * r(4); MORPH.h = .2 + .15 * r(5); }   // half of the long ones: two stages
+  MORPH.ni = 1 + Math.floor(r(6) * 3); for (let i = 0; i < 3; i++) MORPH.c[i] = [.2 + .6 * r(7 + 2 * i), .15 + .7 * r(8 + 2 * i)];
+}
 function showImg(n, quiet, auto) {
   if (n < 0 || n >= IM.length || (n === imTo && imMix >= 1)) return;
   if (!auto) AI.acc = 0;   // a manual switch restarts the auto-image timer
-  if (imMix < 1) { imFrom = imTo; imMix = 0; } else imFrom = imTo;   // a switch mid-fade restarts from the target it was heading to
-  imTo = n; imMix = 0; markThumbs(); markCopy(); if (!quiet) toast('Image ' + (n + 1) + ' / ' + IM.length, 1500); codeAdd(null, 'a', 'image ' + (n + 1) + ' / ' + IM.length, 'img');
+  const on = !!USER.morph, mid = imMix < 1, a0 = ASPECT;
+  if (on && mid) {   // a switch mid-morph starts from the image with the larger share (no jump back to the old one); asking for that one again just shows it
+    if (n === imTo) return;
+    imFrom = MORPH.m >= .5 ? imTo : imFrom;
+    if (imFrom === n) { imTo = n; imMix = 1; ASPECT = IM[n].aspect; markThumbs(); markCopy(); return; }
+  } else imFrom = imTo;   // (off: a switch mid-fade restarts from the target it was heading to, as before)
+  imTo = n; imMix = 0; morphDraw(on); MORPH.from = imFrom; MORPH.to = n; MORPH.m = 0; MORPH.a0 = on ? a0 : IM[imFrom].aspect;
+  markThumbs(); markCopy(); if (!quiet) toast('Image ' + (n + 1) + ' / ' + IM.length, 1500);
+  const nm = on ? MSTY[MORPH.st] : 'crossfade', ds = MORPH.dur < 10 ? +MORPH.dur.toFixed(1) : Math.round(MORPH.dur);
+  codeAdd('image -> ' + (n + 1) + '  // ' + nm + ', ' + ds + ' s', 'a', 'morph: image ' + (imFrom + 1) + ' -> ' + (n + 1) + ' · ' + nm + ' · ' + ds + ' s', 'img');
 }
 function markThumbs() { document.querySelectorAll('#thumbs button,.imgs .im').forEach(b => b.classList.toggle('on', +b.dataset.k === imTo)); }
 // "Copy link" is only offered for the image currently shown when it came from an https link (IM[imTo].remote); gallery / file / poster images have none
@@ -125,12 +161,12 @@ function autoImg(dt, scene) {
 }
 // image manager: the same strip on the home card (#gimgs) and in Settings (#timgs): click = show, ✕ = remove, + = add; #thumbs = bottom row while playing
 function renderImgs() {
-  const bg = u => u ? 'url("' + u + '")' : 'none';
-  $('thumbs').replaceChildren(...IM.map((e, k) => { const b = document.createElement('button'); b.dataset.k = k; b.style.backgroundImage = bg(e.url); if (e.cam) b.textContent = 'Cam'; b.title = 'Image ' + (k + 1) + '  (Shift+' + (k + 1) + ')'; return b; }));
+  const bg = e => e.url && !e.vid ? 'url("' + e.url + '")' : 'none', lab = e => e.vid ? 'Video' : e.cam ? 'Cam' : '';   // a video / the webcam has no picture to use as a CSS background: a text label
+  $('thumbs').replaceChildren(...IM.map((e, k) => { const b = document.createElement('button'); b.dataset.k = k; b.style.backgroundImage = bg(e); b.textContent = lab(e); b.title = 'Image ' + (k + 1) + '  (Shift+' + (k + 1) + ')'; return b; }));
   ['gimgs', 'timgs'].forEach(id => {
-    const tiles = IM.map((e, k) => { const b = document.createElement('div'); b.className = 'im'; b.dataset.k = k; b.style.backgroundImage = bg(e.url); if (e.cam) { b.textContent = 'Cam'; b.style.display = 'flex'; b.style.alignItems = 'center'; b.style.justifyContent = 'center'; } b.title = 'Image ' + (k + 1) + ': click to show'; b.tabIndex = 0; b.setAttribute('role', 'button'); b.setAttribute('aria-label', 'Show image ' + (k + 1));
+    const tiles = IM.map((e, k) => { const b = document.createElement('div'); b.className = 'im'; b.dataset.k = k; b.style.backgroundImage = bg(e); if (e.cam) { b.textContent = lab(e); b.style.display = 'flex'; b.style.alignItems = 'center'; b.style.justifyContent = 'center'; } b.title = 'Image ' + (k + 1) + ': click to show'; b.tabIndex = 0; b.setAttribute('role', 'button'); b.setAttribute('aria-label', 'Show image ' + (k + 1));
       if (IM.length > 1) { const x = document.createElement('i'); x.textContent = '✕'; x.title = 'Remove'; x.setAttribute('aria-label', 'Remove image ' + (k + 1)); b.appendChild(x); } return b; });
-    if (IM.length < 5) { const l = document.createElement('label'); l.title = 'Add images (or drop them on the page)'; l.tabIndex = 0; l.setAttribute('role', 'button'); l.setAttribute('aria-label', 'Add images'); l.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); l.querySelector('input').click(); } }); l.innerHTML = '+<input type="file" accept="image/*" multiple hidden>'; tiles.push(l); }
+    if (IM.length < 5) { const l = document.createElement('label'); l.title = 'Add images or short videos (MP4 H.264, WebM)'; l.tabIndex = 0; l.setAttribute('role', 'button'); l.setAttribute('aria-label', 'Add images'); l.addEventListener('keydown', e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); l.querySelector('input').click(); } }); l.innerHTML = '+<input type="file" accept="image/*,video/*" multiple hidden>'; tiles.push(l); }
     $(id).replaceChildren(...tiles);
   });
   document.body.classList.toggle('multi', IM.length > 1); markThumbs(); renderGallery(); markCopy();
@@ -156,20 +192,44 @@ function galPick(gid) {
 function removeImg(k) {
   if (IM.length < 2 || k >= IM.length) return;
   const cur = imTo, [e] = IM.splice(k, 1);
-  if (e && e.cam && e.stream) { try { e.stream.getTracks().forEach(t => t.stop()); } catch (err) {} e.cam.srcObject = null; }
+  if (e && e.vid) { try { e.cam.pause(); e.cam.removeAttribute('src'); e.cam.load(); } catch (err) {} }   // a video file: release the decoder (its blob URL is revoked below), no stream
+  else if (e && e.cam && e.stream) { try { e.stream.getTracks().forEach(t => t.stop()); } catch (err) {} e.cam.srcObject = null; }
   gl.deleteTexture(e.tex); if (e && e.url && String(e.url).startsWith('blob:')) URL.revokeObjectURL(e.url);
   imTo = imFrom = cur > k ? cur - 1 : Math.min(cur, IM.length - 1); imMix = 1; ASPECT = IM[imTo].aspect;   // removing the shown image cuts to its neighbour
   renderImgs();
 }
 function addImages(files) {
-  const fs = [...files].filter(f => f.type.startsWith('image/')).slice(0, 5 - IM.length);
+  const fs = [...files].filter(f => f.type.startsWith('image/') || f.type.startsWith('video/')).slice(0, 5 - IM.length);
   if (!fs.length) { if (IM.length >= 5) toast('5 images max: remove one first', 2000); return; }
   let first = -1, n = 0;
-  fs.forEach(f => { const url = URL.createObjectURL(f); loadImg(url, e => {
-    if (IM.length >= 5) { gl.deleteTexture(e.tex); URL.revokeObjectURL(url); return; }
-    IM.push(e); if (first < 0) first = IM.length - 1; renderImgs();
-    if (++n === fs.length) showImg(first, true), hint.textContent = IM.length + ' images loaded';
-  }); });
+  const fin = () => { if (++n === fs.length && first >= 0) showImg(first, true), hint.textContent = IM.length + ' images loaded'; };
+  fs.forEach(f => { const url = URL.createObjectURL(f), put = e => {
+    if (IM.length >= 5) { if (e.vid) dropVideo(e); else { gl.deleteTexture(e.tex); URL.revokeObjectURL(url); } return; }
+    IM.push(e); if (first < 0) first = IM.length - 1; renderImgs(); fin();
+  };
+    if (f.type.startsWith('video/')) loadVideo(url, put, () => { URL.revokeObjectURL(url); toast('Cannot play that video: use MP4 (H.264) or WebM (VP8/VP9). iPhone HEVC / .mov: convert first', 5000); fin(); });
+    else loadImg(url, put);
+  });
+}
+// T172 short video file as an image source: the webcam path (a <video> in e.cam, uploaded by render()'s "webcam source textures" loop) with a file instead of a stream; muted, looped, never a pure function of t (its own clock)
+function dropVideo(e) { try { e.cam.pause(); e.cam.removeAttribute('src'); e.cam.load(); } catch (err) {} gl.deleteTexture(e.tex); URL.revokeObjectURL(e.url); }
+function vidPause(p) { for (const e of IM) if (e && e.vid) { try { p ? e.cam.pause() : e.cam.play().catch(() => {}); } catch (err) {} } }
+function loadVideo(url, ok, fail) {
+  const v = document.createElement('video');
+  v.muted = true; v.defaultMuted = true; v.loop = true; v.playsInline = true; v.setAttribute('playsinline', ''); v.setAttribute('muted', ''); v.autoplay = true; v.src = url;
+  v.addEventListener('error', () => fail(), { once: true });
+  v.addEventListener('loadeddata', () => {   // first decoded frame: texture, aspect, colour stats; only now does the entry exist (an undecodable file never gets one)
+    if (!v.videoWidth || !v.videoHeight) return fail();
+    const t = gl.createTexture(); gl.bindTexture(gl.TEXTURE_2D, t); gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+    try { gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, v); } catch (e) { gl.deleteTexture(t); return fail(); }
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.MIRRORED_REPEAT); gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.MIRRORED_REPEAT);
+    const e = { tex: t, aspect: v.videoWidth / v.videoHeight, url, cam: v, stream: null, label: 'Video', vid: true, remote: null, gid: null, st: imgStats(v), _init: true };
+    if (typeof paused !== 'undefined' && paused) v.pause();
+    ok(e); const d = isFinite(v.duration) ? Math.round(v.duration * 10) / 10 : 0;
+    codeAdd('image ' + (IM.indexOf(e) + 1) + ' = video  // ' + d + ' s loop', 'a', 'image ' + (IM.indexOf(e) + 1) + ': video, ' + d + ' s loop', 'vid');
+  }, { once: true });
+  try { v.play().catch(() => {}); } catch (e) {}
 }
 function addWebcam() {   // webcam becomes one more image source; LOW resolution (320 px width), no audio
   if (IM.length >= 5) { toast('Max 5 images: remove one (✕) first', 2500); return; }

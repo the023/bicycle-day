@@ -11,6 +11,7 @@ dump.py
 TICKETS.md
 assets/local/
 .tickets/
+notes/
 
 # local media, never committed
 assets/midi/

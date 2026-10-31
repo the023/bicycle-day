@@ -1,7 +1,8 @@
 /* ════════════════════════ LIVE MODE (prototype): listen to a tab (e.g. YouTube) and follow the music ════════════════════════
    Nothing is recorded or uploaded; the audio is analysed in the browser. The tab keeps playing on its own (we never route it to the speakers).
    Real-time features → a causal "intensity" 0..1 → it picks a position on the 'journey' arc, so all the existing looks are reused. */
-let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null;
+let LIVE = null, liveOn = false, liveStream = null, liveT0 = 0, LF = null, LB = null, liveSrc = null;   // liveSrc = the stream's source node (clean tab audio, for the clip recorder T166)
+const liveRecNode = () => document.body.classList.contains('mic') ? micGain : liveSrc;   // what a clip records in Live: mic after its gain, else the clean tab audio
 const bandsFor = k => {   // bin ranges for the 3 analysis bands + 10 log-spaced bands of the spectral profile
   const e = []; for (let i = 0; i <= 10; i++) e.push(Math.round(40 * Math.pow(6500 / 40, i / 10) / k));
   return { b: [Math.round(40 / k), Math.round(170 / k)], m: [Math.round(170 / k), Math.round(1300 / k)], h: [Math.round(1300 / k), Math.round(6500 / k)], p: e };
@@ -38,7 +39,7 @@ async function startLive(mic = Q.get('live') === 'mic') {
 function liveUp(stream, mic) {   // the analysis side of Live: AudioContext + analyser on the stream (no output), 'journey' arc, a new seed
   if (ac) ac.close().catch(() => {});
   ac = new (window.AudioContext || window.webkitAudioContext)(); ac.resume();
-  const src = ac.createMediaStreamSource(stream);
+  const src = liveSrc = ac.createMediaStreamSource(stream);
   analyser = ac.createAnalyser(); analyser.fftSize = 2048; analyser.smoothingTimeConstant = .3;   // analyser only: no output
   micGain = ac.createGain(); micGain.gain.value = Math.pow(10, MICDB / 20); src.connect(micGain); micGain.connect(analyser); TD = new Float32Array(analyser.fftSize);
   document.body.classList.toggle('mic', !!mic); document.body.classList.add('live');
@@ -105,8 +106,9 @@ function liveStep(dt) {   // causal features from the current spectrum → inten
 }
 function liveLoop() {
   if (!liveOn) return;
+  if (REC) recTick();
   const t = ac.currentTime - liveT0, dt = clamp(t - lastT, 0, .1); lastT = t;
-  liveStep(dt); render(t, dt, LIVE.bn, LIVE.mn, LIVE.hn);
+  liveStep(dt); render(t, dt, LIVE.bn, LIVE.mn, LIVE.hn); if (REC) recCopy();
   if (snapWant) { snapWant = false; takeSnapshot(t); }
   $('lstate').textContent = LIVE.state; $('lbar').firstElementChild.style.width = (LIVE.I * 100) + '%';
   analyser.getFloatTimeDomainData(TD);   // input meter: RMS in dBFS (smoothed) and clipping
@@ -125,9 +127,9 @@ function liveLoop() {
   requestAnimationFrame(liveLoop);
 }
 function stopLive() {
-  if (!liveOn) return; liveOn = false; LIVE = null;
+  if (!liveOn) return; recStop(); liveOn = false; LIVE = null;   // recStop first: the clip is saved (also on Chrome's "Stop sharing")
   if (liveStream) liveStream.getTracks().forEach(t => t.stop()); liveStream = null;
-  if (ac) ac.close().catch(() => {}); ac = null; analyser = null;
+  if (ac) ac.close().catch(() => {}); ac = null; analyser = null; liveSrc = null;
   resetFx(); resetControls(); document.body.classList.remove('live', 'mic', 'ui', 'pultH', 'pultZ', 'pshow', 'liveZ'); syncPult(); micGain = null; METER.db = -90; homeGate(true); applyArc(); updateHint();
 }
 $('tabmode').addEventListener('click', e => { e.stopPropagation(); lsSet('setup', { src: 'tab' }); startLive(Q.get('live') === 'mic'); });

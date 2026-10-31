@@ -314,7 +314,7 @@ if (Q.has('debug')) window.__pic = t => {
   const h = EV ? evtIdx(t, ['hit']).e : null, th = h ? h.s * Math.exp(-(t - h.t) / trD) * RI : 0, trP = Math.max(tr, th), flash = h ? .5 * h.s * Math.exp(-(t - h.t) / .3) * cz : 0;
   const raw = surgeAt(t, false, EV), lwi = LOC ? upper(LOC.sceneT, t) : LIVE ? LIVE.scenes : wi;   // T150: lwi = the light-set window: the Local timeline's scene at t (a pure function), the live scene now (Live: only the current frame), else the generated window
   const gn = EV ? gridNb() : 0, gl = x => gn ? gridLine(x, gn) : beatNear(x);   // T51: the active grid and the grid line nearest to t (beat grid when 'beat')
-  return { t, grid: GRID_NAMES[USER.grid], gridActive: gn ? GRID_NAMES[USER.grid] : 'beat', gridLine: gl(t), gridDist: Math.abs(t - gl(t)), sceneStart: t - since, sceneLen: VP.length ? VP[i].b - VP[i].a : sc.len, minorIv: mn.iv, minorE: mn.e, wi, tr, tm, mi: mn.mi, ms: mn.ms, surge: raw, sg: raw * cz * (VP.length ? .6 + .8 * secE * UE.big : 1), th, trP, blaze: Math.max(moodAt(t, false, EV).blaze, flash) * UE.big, strobe: moodAt(t, false, EV).strobe * UE.strb, svar: (m => m && m.k === 'strobe' ? { name: SV_NAMES[m.v], phase: m.v === 1 ? (r => r - Math.floor(r))(rampPhase(t - m.a, ENGINE.strobe.acc[0], ENGINE.strobe.acc[1], m.b - m.a)) : (r => r - Math.floor(r))(t * m.rate), t0: m.a, D: m.b - m.a } : null)(moodRun(t, false)), planE: planE(t), zoomPulse: (zp => zp ? { f: zp.f, a: zp.a, b: zp.b } : null)(!(SHOW || CTRL || hcOn()) ? zoomPulseActive(t) : null), calm: RI, cz, g15: RI, ramp: RI, ls: lsNames(lightSet(lwi)), lsKey: lsKey(lwi), lsWin: lwi, TRN: TR, engineV: ENGINE.v, acc: accInfo(t), srcGain: { src: SRC_NOW, g: srcGainText(SRC_NOW, hcOn()) } };
+  return { t, grid: GRID_NAMES[USER.grid], gridActive: gn ? GRID_NAMES[USER.grid] : 'beat', gridLine: gl(t), gridDist: Math.abs(t - gl(t)), sceneStart: t - since, sceneLen: VP.length ? VP[i].b - VP[i].a : sc.len, minorIv: mn.iv, minorE: mn.e, wi, tr, tm, mi: mn.mi, ms: mn.ms, surge: raw, sg: raw * cz * (VP.length ? .6 + .8 * secE * UE.big : 1), th, trP, blaze: Math.max(moodAt(t, false, EV).blaze, flash) * UE.big, strobe: moodAt(t, false, EV).strobe * UE.strb, svar: (m => m && m.k === 'strobe' ? { name: SV_NAMES[m.v], phase: m.v === 1 ? (r => r - Math.floor(r))(rampPhase(t - m.a, ENGINE.strobe.acc[0], ENGINE.strobe.acc[1], m.b - m.a)) : (r => r - Math.floor(r))(t * m.rate), t0: m.a, D: m.b - m.a } : null)(moodRun(t, false)), planE: planE(t), zoomPulse: (zp => zp ? { f: zp.f, a: zp.a, b: zp.b } : null)(!(SHOW || CTRL || hcOn()) ? zoomPulseActive(t) : null), calm: RI, cz, g15: RI, ramp: RI, ls: lsNames(lightSet(lwi)), lsKey: lsKey(lwi), lsWin: lwi, TRN: TR, engineV: ENGINE.v, acc: accInfo(t), srcGain: { src: SRC_NOW, g: srcGainText(SRC_NOW, hcOn()) }, video: [imFrom, imTo].filter((k, i, a) => a.indexOf(k) === i && IM[k] && IM[k].vid).map(k => k + 1), morph: imMix < 1 ? { on: !!USER.morph, style: MSTY[MORPH.st], m: MORPH.m, dur: MORPH.dur, from: imFrom, to: imTo } : null };
 };
 function tileSizeAt(t) {   // T55 tile effect: cell-size factor, seeded pure function of t, easing smoothly between 2.0 and 5.0 (doubled from 1.0-2.5); each target held for a seeded random 2-20 s
   if (!isFinite(t) || t <= 0) return 2;
@@ -341,6 +341,16 @@ const lsNames = on => LS_NAME.filter((_, i) => on[i]);
 const softCap = (x, c, kn) => { const a = kn * c; if (x <= a) return x; const y = (x - a) / ((1 - kn) * c); return a + (1 - kn) * c * y / (1 + y); };   // knee at kn*c, then approaches c without ever reaching it (the motion stays alive)
 let SRC_NOW = 'gen', SG_LOGGED = '';   // T114: the source of the current frame; last logged source-gain key
 let PLOG = null;   // T108: window.__plog while a debug still runs, else null (zero cost)
+// T167: the morph uniforms (style, seed, softness, colour shift, iris centres + norm, A / B colour statistics); style 0 (crossfade, off, idle) = k is just uImgMix
+function morphUniforms() {
+  const st = imMix < 1 && USER.morph ? MORPH.st : 0, m = MORPH.m, M = MORPH;
+  gl.uniform4f(uS.uMo, st, M.seed, st === 2 ? .12 : .15, st === 3 ? clamp(m / .4) : 0);
+  if (!st) return;
+  let dn = 0; for (const cx of [0, ASPECT]) for (const cy of [0, 1]) { let d = 9; for (let i = 0; i < M.ni; i++) d = Math.min(d, Math.hypot(cx - M.c[i][0] * ASPECT, cy - M.c[i][1])); dn = Math.max(dn, d); }
+  gl.uniform4f(uS.uMi, M.c[0][0], M.c[0][1], M.c[1][0], M.c[1][1]); gl.uniform4f(uS.uMj, M.c[2][0], M.c[2][1], M.ni, dn * 1.15);
+  const sa = IM[imFrom].st || MSTAT0, sb = IM[imTo].st || MSTAT0;
+  gl.uniform3f(uS.uMuA, ...sa.mu); gl.uniform3f(uS.uMuB, ...sb.mu); gl.uniform3f(uS.uMr, ...sb.sd.map((v, i) => clamp(v / Math.max(sa.sd[i], .02), .5, 1.6)));
+}
 function render(t, dt, bass, mid = 0, hi = 0) {
   const { u, u0 } = uAt(t, UE.off), [warp, kal0, n0, fb0, hueSpd, pal, side, breath, melt, zoomAmp, aber, bright] = score(u);
   const morphOn = (IM.length >= 2) && !SHOW && !LIVE && !LOC;
@@ -495,9 +505,9 @@ function render(t, dt, bass, mid = 0, hi = 0) {
   // pass 1 → offscreen (with feedback from the previous frame)
   const w = cur ^ 1;
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo[w]); gl.viewport(0, 0, FW, FH); gl.useProgram(progS);
-  if (imMix < 1) { imMix = Math.min(1, imMix + dt / 1.5); ASPECT = lerp(IM[imFrom].aspect, IM[imTo].aspect, smooth(0, 1, imMix)); if (imMix >= 1) { imFrom = imTo; ASPECT = IM[imTo].aspect; } }
+  if (imMix < 1) { imMix = Math.min(1, imMix + dt / MORPH.dur); MORPH.m = morphM(imMix); ASPECT = lerp(MORPH.a0, IM[imTo].aspect, MORPH.m); if (imMix >= 1) { imFrom = imTo; ASPECT = IM[imTo].aspect; } }
   if (imMix >= 1 && IM[imTo]) ASPECT = IM[imTo].aspect;
-  const imK = imMix >= 1 ? 0 : smooth(0, 1, imMix);
+  const imK = imMix >= 1 ? 0 : MORPH.m;
   // webcam source textures: upload only the current/crossfade frames when their video frame changed
   for (let _wi = 0; _wi < IM.length; _wi++) {
     const _we = IM[_wi]; if (!_we || !_we.cam) continue;
@@ -516,7 +526,7 @@ function render(t, dt, bass, mid = 0, hi = 0) {
     _we._w = _v.videoWidth; _we._h = _v.videoHeight; _we._t = _v.currentTime; _we.aspect = _v.videoWidth / _v.videoHeight;
   }
   gl.activeTexture(gl.TEXTURE0); gl.bindTexture(gl.TEXTURE_2D, IM[imFrom].tex); gl.uniform1i(uS.uTex, 0);
-  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, IM[imTo].tex); gl.uniform1i(uS.uTex2, 2); gl.uniform1f(uS.uImgMix, imK);
+  gl.activeTexture(gl.TEXTURE2); gl.bindTexture(gl.TEXTURE_2D, IM[imTo].tex); gl.uniform1i(uS.uTex2, 2); gl.uniform1f(uS.uImgMix, imK); morphUniforms();
   gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, IM[Math.min(gi.a, IM.length - 1)].tex); gl.uniform1i(uS.uGhostA, 4);
   gl.activeTexture(gl.TEXTURE5); gl.bindTexture(gl.TEXTURE_2D, IM[Math.min(gi.b, IM.length - 1)].tex); gl.uniform1i(uS.uGhostB, 5);
   gl.uniform1f(uS.uGhostMix, gi.mix);

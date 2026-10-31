@@ -17,6 +17,12 @@ xdg-open dist/bicycle-day.html   # or double-click it
 Chrome / Edge / Firefox / Safari with WebGL2, sound on. Tab-audio capture (Stream) needs desktop Chrome or Edge.
 Source and issues: https://github.com/the023/bicycle-day
 
+## Video sources
+
+- Works: MP4 with H.264 video, WebM with VP8 or VP9. Videos play muted and loop, as one image source (up to 5 sources in all).
+- Often fails: iPhone HEVC (H.265) and .mov files. Convert first:
+- `ffmpeg -i in.mov -c:v libx264 -pix_fmt yuv420p -an -vf "scale=-2:720" out.mp4`
+
 ## Start screen
 
 **Play → Choose your sound**, one of four sources:

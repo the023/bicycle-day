@@ -31,7 +31,7 @@ function begin(off, fresh) {   // (re)start sound + state at song time `off`; th
   off = clamp(off, 0, Math.max(0, TOTAL - 3));
   t0 = ac.currentTime + .2 - off; lat = ac.outputLatency || ac.baseLatency || 0;
   if (fresh) newSeed(); else rng = mulberry32(seedUsed + Math.floor(off) + 1);
-  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; strPrev = 0; strLn = cellLn = null; cellGrid = 4; paused = false; setPP();
+  AI.scene = null; bi = 0; bassE = 0; lastT = off; snapLook = true; cellPrev = 0; strPrev = 0; strLn = cellLn = null; cellGrid = 4; paused = false; setPP(); vidPause(false);
   pump = LOC ? playLocal(ac, t0, off) : buildAudio(ac, t0, off); if (Q.has('debug') && !LOC) console.log('EVT', MUSIC, JSON.stringify(EVT)); integrateTo(off);   // T103: after buildAudio (uAt -> planE -> vplan reads EVT)
   if (STYLES[MUSIC]) drawProfile(); pump(); pumpId = setInterval(pump, 1000);
 }
@@ -45,8 +45,8 @@ function start() {
   if (CL) toast('Control: ' + LVL[CL] + '  ·  M = level  ·  H = all keys  ·  Q W E R Y U I O P effects  ·  A S D G moods  ·  Enter = surge  ·  Space = pause', 7000); else toast('Move the mouse for controls  ·  Space pause  ·  Shift+← → ±10 s  ·  F fullscreen  ·  Esc leaves fullscreen, then stops');
   requestAnimationFrame(loop);
 }
-function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); } }
-function togglePause() { if (!playing) return; if (paused) ac.resume(); else ac.suspend(); paused = !paused; setPP(); }
+function seekTo(sec) { if (!playing) return; const was = paused; begin(sec, false); if (was) { ac.suspend(); paused = true; setPP(); vidPause(true); } }
+function togglePause() { if (!playing) return; if (paused) ac.resume(); else ac.suspend(); paused = !paused; setPP(); vidPause(paused); }   // T172: video sources follow the pause
 const DBG = Q.has('debug');
 let dbgEl = null, dbgLast = 0, dbgMs = 16, dbgUr = 0, dbgUt = 0;
 function dbgTick() {   // ?debug=1: fps/frame ms + audio underrun stats (playoutStats is Chrome-only, feature-detected)
@@ -68,20 +68,25 @@ function endWarn(t) {   // red dot + countdown 30, 20, 10 s before the end (gene
   if (n === endN) return; endN = n;   // the DOM is touched only when the shown number changes
   const el = $('endwarn'); el.classList.toggle('on', n > 0); if (n) el.lastElementChild.textContent = n;
 }
-// Clip recording (T79): the canvas + the master output (volNode, tapped, speakers unchanged). One clip at a time; webcam footage is recorded too.
+// Clip recording (T79, T166 Live): the canvas + the master output (volNode, tapped, speakers unchanged); Live: the clean tab source (liveSrc) or the mic after its gain (micGain), never routed to the speakers. One clip at a time; webcam footage is recorded too.
 let REC = null, CLIP = null;   // REC = the clip being recorded; CLIP = the last finished clip
 const REC_MIME = window.MediaRecorder ? ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4'].find(m => MediaRecorder.isTypeSupported(m)) || '' : '';
-const REC_BPS = 12e6, REC_ABPS = 192e3;   // clip bitrates (video / audio); the browser default is far lower
+// T171 clip qualities (chosen in #recpick, saved as bicycleday.recq): h = max output height in px, v / a = video / audio bits per second; width keeps the canvas aspect (even), never upscaled. The browser default bitrate is far lower.
+const RECQ = { hd: { name: 'HD', h: 1080, v: 8e6, a: 192e3 }, small: { name: 'Small', h: 720, v: 3e6, a: 128e3 } };
+const recqGet = () => { const q = lsGet('recq'); return RECQ[q] ? q : 'hd'; };
 function recStart(sec) {
-  if (REC || !playing || liveOn || !REC_MIME) return;
-  const tap = ac.createMediaStreamDestination(), stream = new MediaStream([...cv.captureStream(30).getVideoTracks(), ...tap.stream.getAudioTracks()]);
-  const rec = new MediaRecorder(stream, { mimeType: REC_MIME, videoBitsPerSecond: REC_BPS, audioBitsPerSecond: REC_ABPS }), chunks = [];
+  if (REC || !(playing || liveOn) || !REC_MIME) return;
+  const qn = recqGet(), q = RECQ[qn], tap = ac.createMediaStreamDestination();
+  let src = cv, c2 = null;   // canvas taller than q.h: a 2D canvas of the target size, refilled right after each rendered frame (recCopy); else the WebGL canvas itself
+  if (q.h && cv.height > q.h) { c2 = document.createElement('canvas'); c2.height = q.h; c2.width = Math.max(2, 2 * Math.round(cv.width * q.h / cv.height / 2)); src = c2; }
+  const stream = new MediaStream([...src.captureStream(30).getVideoTracks(), ...tap.stream.getAudioTracks()]);
+  const rec = new MediaRecorder(stream, { mimeType: REC_MIME, videoBitsPerSecond: q.v, audioBitsPerSecond: q.a }), chunks = [];
   rec.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-  rec.onstop = () => recDone(chunks, rec.mimeType, sec);
-  REC = { ac, tap, out: null, rec, sec, t0: performance.now(), txt: '', timer: setTimeout(recStop, sec * 1000) };
-  if (volNode) { volNode.connect(tap); REC.out = volNode; }
+  rec.onstop = () => recDone(chunks, rec.mimeType, sec, qn);
+  REC = { ac, tap, out: null, rec, sec, c2, x2: c2 && c2.getContext('2d'), t0: performance.now(), txt: '', timer: setTimeout(recStop, sec * 1000) };
+  const o = liveOn ? liveRecNode() : volNode; if (o) { o.connect(tap); REC.out = o; }
   CLIP = null; $('recshare').hidden = true; $('recpick').hidden = true;
-  rec.start(1000); document.body.classList.add('recording'); toast('Recording ' + sec + ' s', 2000);
+  rec.start(1000); document.body.classList.add('recording'); toast('Recording ' + sec + ' s · ' + q.name, 2000);
 }
 function recStop(msg) {   // stop now (timer, button, Stop, or the piece changed); the recorder's onstop saves the clip
   const r = REC; if (!r) return;
@@ -90,15 +95,20 @@ function recStop(msg) {   // stop now (timer, button, Stop, or the piece changed
   if (msg) toast(msg, 4000);
   if (r.rec.state !== 'inactive') r.rec.stop();
 }
-function recTick() {   // once per frame while recording: keep the tap on the current master, end the clip if the piece restarted or a webcam was added
+function recTick() {   // once per frame while recording (loop() and liveLoop()): keep the tap on the current master (not in Live), end the clip if the piece restarted or a webcam was added
   if (ac !== REC.ac) return recStop('Clip ended: the piece restarted');
-  if (volNode && REC.out !== volNode) { volNode.connect(REC.tap); REC.out = volNode; }
+  if (!liveOn && volNode && REC.out !== volNode) { volNode.connect(REC.tap); REC.out = volNode; }
   const txt = '■ ' + Math.max(0, Math.ceil(REC.sec - (performance.now() - REC.t0) / 1000)) + ' s';
   if (txt !== REC.txt) { REC.txt = txt; $('rec').textContent = txt; }
 }
-function recDone(chunks, type, sec) {
+function recCopy() {   // scaled clips: copy the frame just rendered (the WebGL canvas does not keep its buffer after the task); called right after render() in loop() and liveLoop()
+  const r = REC; if (r && r.c2) r.x2.drawImage(cv, 0, 0, r.c2.width, r.c2.height);
+}
+async function recDone(chunks, type, sec, qn) {
   if (!chunks.length) { toast('Nothing recorded', 3000); return; }
-  CLIP = new File(chunks, 'bicycle-day-' + seedUsed + '-' + sec + 's.' + (type.includes('mp4') ? 'mp4' : 'webm'), { type });
+  let parts = chunks;
+  if (type.includes('webm')) try { parts = [webmFix(await new Blob(chunks).arrayBuffer())]; } catch (e) {}   // T169: add Duration + Cues so players can seek (webmFix never throws; unchanged on error)
+  CLIP = new File(parts, 'bicycle-day-' + seedUsed + '-' + sec + 's' + (qn === 'hd' ? '' : '-' + qn) + '.' + (type.includes('mp4') ? 'mp4' : 'webm'), { type });
   if (navigator.canShare && navigator.canShare({ files: [CLIP] })) { $('recshare').hidden = false; toast('Clip ready · tap Share clip', 4000); }   // Web Share needs a tap, so it is a button
   else saveClip();
 }
@@ -107,7 +117,7 @@ function saveClip() {   // download the last clip
   a.href = url; a.download = CLIP.name; a.click(); setTimeout(() => URL.revokeObjectURL(url), 10000); toast('Saved ' + CLIP.name, 3000);
 }
 $('rec').addEventListener('click', () => { if (REC) recStop(); else $('recpick').hidden = !$('recpick').hidden; });
-document.querySelectorAll('#recpick button').forEach(b => b.addEventListener('click', () => recStart(+b.dataset.s)));
+document.querySelectorAll('#recpick button[data-s]').forEach(b => b.addEventListener('click', () => recStart(+b.dataset.s)));
 $('recshare').addEventListener('click', () => { if (CLIP) navigator.share({ files: [CLIP], title: 'Bicycle Day' }).then(() => toast('Shared', 1500), err => { if (err && err.name !== 'AbortError') saveClip(); }); });
 function loop() {
   if (!playing) return;
@@ -121,7 +131,7 @@ function loop() {
     for (let i = 1; i < 7; i++) bass += fdata[i]; for (let i = 7; i < 41; i++) mid += fdata[i]; for (let i = 41; i < 200; i++) hi += fdata[i];
     bass /= 6 * 255; mid /= 34 * 255; hi /= 159 * 255;
   }
-  const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi);
+  const tc = Math.min(t, TOTAL); render(tc, dt, bass, mid, hi); if (REC) recCopy();
   if (DBG) dbgTick();
   if (snapWant) { snapWant = false; takeSnapshot(tc); }
   if ((document.body.classList.contains('ui') || document.body.classList.contains('pshow')) && !dragging) { $('tm').textContent = $('mtm').textContent = fmt(tc) + ' / ' + fmt(TOTAL); $('head').style.left = $('mhead').style.left = (tc / TOTAL * 100) + '%'; }
@@ -179,15 +189,44 @@ function zoneCheck(e) {   // pupitre shows while the pointer is in the bottom 10
   const b = document.body.classList; if (low !== b.contains('pultZ')) { b.toggle('pultZ', low); syncPult(); }
   if (low) showUI();   // body.ui un-hides the cursor
 }
+const HELP_TOOLS = `<div class="phtools"><div class="ptcol"><h4>Tools</h4>
+<a href="bicycle-day.html?showcase=1&tune=1" target="_blank" rel="noopener"><b>Effects showcase + tuning</b><span>every effect alone, engine sliders, export JSON</span></a>
+<a href="bicycle-day-doc.html" target="_blank" rel="noopener"><b>Engine doc</b><span>signal flow, effect cards, invariants</span></a>
+<a href="../tools/sound-lab.html" target="_blank" rel="noopener"><b>Sound lab</b><span>tune the synth voices by ear, export constants</span></a>
+<a href="../tools/morph-lab.html" target="_blank" rel="noopener"><b>Morph lab</b><span>image-change morph styles</span></a>
+<p>The labs only work from the repo folder (not from a lone copy of the .html). The morph lab needs http for its default images: <code>python3 -m http.server</code> from the repo root.</p></div>
+<div class="ptcol"><h4>URL parameters (testing / debug)</h4><div class="ptp">
+<a href="bicycle-day.html?debug=1" target="_blank" rel="noopener">?debug=1</a><span>__pic(t), __plog, P range warnings</span>
+<a href="bicycle-day.html?t=120&res=.3&step=.5" target="_blank" rel="noopener">?t=120</a><span>silent still at song time 120 s (&amp;res= &amp;step=)</span>
+<a href="bicycle-day.html?seed=3" target="_blank" rel="noopener">?seed=3</a><span>fixed random seed</span>
+<a href="bicycle-day.html?energy=2" target="_blank" rel="noopener">?energy=0..4</a><span>calm ... extreme</span>
+<a href="bicycle-day.html?quality=low" target="_blank" rel="noopener">?quality=</a><span>high | medium | low</span>
+<a href="bicycle-day.html?level=1" target="_blank" rel="noopener">?level=</a><span>0 auto | 1 assisted | 2 manual</span>
+<a href="bicycle-day.html?music=ambient" target="_blank" rel="noopener">?music=</a><span>ambient, piano pieces, synth styles</span>
+<a href="bicycle-day.html?mood=strobe" target="_blank" rel="noopener">?mood=</a><span>dark | bw | blaze | strobe</span>
+<a href="bicycle-day.html?surge=1" target="_blank" rel="noopener">?surge=0..1</a><span>force an intensity surge</span>
+<a href="bicycle-day.html?style=kali" target="_blank" rel="noopener">?style=</a><span>kali | julia | auto</span>
+<a href="bicycle-day.html?pal=0" target="_blank" rel="noopener">?pal=0..5</a><span>force a palette</span>
+<a href="bicycle-day.html?morph=0" target="_blank" rel="noopener">?morph=0|1</a><span>image change: plain crossfade | morph</span>
+<a href="bicycle-day.html?code=1" target="_blank" rel="noopener">?code=0..3</a><span>live-coding log: off, log, overlay, crazy</span>
+<a href="bicycle-day.html?debug=1&neutral=1&pset=warp:.5" target="_blank" rel="noopener">?neutral=1&amp;pset=</a><span>plain image + set P fields (warp:.5,...)</span>
+<a href="bicycle-day.html?engine=%7B%7D" target="_blank" rel="noopener">?engine=&lt;json&gt;</a><span>deep-merge ENGINE bounds</span>
+</div></div></div>`;
 function openDemo() {   // home Help: read-only copy of the pupitre (same DOM + CSS), fixed demo gauge values, no engine
   const box = $('phelp'); box.innerHTML = '';
   const cl = $('pult').cloneNode(true);
   cl.removeAttribute('id'); cl.querySelectorAll('.pctl,.pexpb').forEach(el => el.remove());   // (the explanation panel stays: open in the demo, see #phelp .pxt) cl.querySelectorAll('[id]').forEach(el => el.removeAttribute('id'));
   let k = 0; cl.querySelectorAll('.pg i').forEach(i => { i.style.width = (30 + (k++ * 17) % 41) + '%'; });
   cl.querySelectorAll('input[type=range]').forEach(i => { i.disabled = true; i.value = Math.round(i.max * .4); });
+  box.insertAdjacentHTML('beforeend', HELP_TOOLS);
   box.append(Object.assign(document.createElement('div'), { className: 'phtext', textContent: 'This is the control panel you get while playing (move the mouse, or H to pin it). Hover a key for its meaning.' }), cl, Object.assign(document.createElement('button'), { id: 'phx', textContent: '✕', title: 'Close (Esc)' }));
-  box.classList.add('on'); document.body.classList.add('help-open');
+  box.classList.add('on'); document.body.classList.add('help-open'); fitHelpTools();
 }
+function fitHelpTools() {   // the Tools block uses the free space above the explanation panel (scrolls inside if it does not fit)
+  const t = document.querySelector('#phelp .phtools'), x = document.querySelector('#phelp .pxt'); if (!t) return;
+  t.style.maxHeight = Math.max(120, (x ? x.getBoundingClientRect().top : innerHeight - 200) - 12 - 16) + 'px';
+}
+addEventListener('resize', fitHelpTools);
 function closeDemo() { const box = $('phelp'); box.classList.remove('on'); box.innerHTML = ''; document.body.classList.remove('help-open'); }
 // Source panel stays open while the pointer is in its box or on the Source button (+12 px bridge: the gap between them and the 8 px gaps between action buttons are not "outside")
 const liveZone = e => { const z = e.clientX < innerWidth * .2 && e.clientY < innerHeight * .2; if (z !== document.body.classList.contains('liveZ')) document.body.classList.toggle('liveZ', z); };
@@ -375,7 +414,7 @@ $('m-calm').addEventListener('input', e => { setCalm(+e.target.value); }); $('m-
 const markQ = () => { document.querySelectorAll('[data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === quality)); };
 function setQuality(q, save = true) { if (!QUAL[q]) return; quality = q; if (save) lsSet('quality', q); if (gl && progS) { makeTargets(); resize(); } markQ(); }
 $('helpbtn').addEventListener('click', e => { e.stopPropagation(); openDemo(); });
-$('phelp').addEventListener('click', e => { if (!e.target.closest('.pult')) closeDemo(); });   // click outside the demo (or ✕) closes it
+$('phelp').addEventListener('click', e => { if (!e.target.closest('.pult,.phtools')) closeDemo(); });   // click outside the demo (or ✕) closes it
 $('qual').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
 $('tgfxbtn').addEventListener('click', () => { const open = $('tgfx').hidden; $('tgfx').hidden = !open; $('tgfxbtn').setAttribute('aria-expanded', String(open)); });
 $('tgfx').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('button'); if (b) setQuality(b.dataset.q); });
@@ -383,6 +422,9 @@ const setTileMode = m => { USER.force = m; };
 const COLS = ['auto', 'frozen', 'b&w'], KEYS_U = ['auto', 'trans', 'hold', 'calm', 'energy', 'kal', 'tile', 'fb', 'col', 'src', 'force', 'style', 'grid'], SLID = { kal: 'u-kal', tile: 'u-tile', fb: 'u-fb' };
 const lsGet = k => { try { return JSON.parse(localStorage.getItem('bicycleday.' + k)); } catch (e) { return null; } };
 const lsSet = (k, v) => { try { localStorage.setItem('bicycleday.' + k, JSON.stringify(v)); } catch (e) {} };
+const recqSync = () => document.querySelectorAll('#recpick button[data-q]').forEach(b => b.classList.toggle('on', b.dataset.q === recqGet()));
+document.querySelectorAll('#recpick button[data-q]').forEach(b => b.addEventListener('click', () => { lsSet('recq', b.dataset.q); recqSync(); }));   // picking a quality does not start a clip
+recqSync();
 function setPexp(on, save = true) {   // T37: ▾ / ▴ unfolds the explanation panel #pxt above the pupitre (outside the flow: the height does not change)
   document.body.classList.toggle('pexpo', on); $('pexp').textContent = on ? '▴' : '▾'; $('pexp').setAttribute('aria-expanded', String(on)); if (save) lsSet('pexp', on);
 }
@@ -402,6 +444,10 @@ $('u-mg').addEventListener('input', e => {
   if (micGain) micGain.gain.setTargetAtTime(Math.pow(10, MICDB / 20), ac.currentTime, .05);
 });
 $('u-mg').addEventListener('change', e => e.target.blur());
+const markMorph = () => document.querySelectorAll('#tmorph [data-morph]').forEach(b => b.classList.toggle('on', +b.dataset.morph === USER.morph));
+function setMorph(v, save = true) { USER.morph = v ? 1 : 0; if (save) lsSet('morph', USER.morph); markMorph(); }   // T167: image change = masked morph (1) / plain crossfade (0); only the next change reads it
+$('tmorph').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('[data-morph]'); if (b) setMorph(+b.dataset.morph); });
+{ const v = lsGet('morph'); if (v === 0 || v === 1) USER.morph = v; if (Q.has('morph')) USER.morph = Q.get('morph') === '0' ? 0 : 1; setMorph(USER.morph, false); }   // ?morph=0|1
 const markGrid = () => document.querySelectorAll('#tgrid [data-grid]').forEach(b => b.classList.toggle('on', +b.dataset.grid === USER.grid));
 function setGrid(g, save = true) { g = clamp(Math.round(+g) || 0, 0, 2); USER.grid = g; if (save) { lsSet('grid', g); autosave(); } markGrid(); }   // T51: only the next change moves (pure function of t, no state to reset)
 $('tgrid').addEventListener('click', e => { e.stopPropagation(); const b = e.target.closest('[data-grid]'); if (b) setGrid(b.dataset.grid); });
